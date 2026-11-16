@@ -100,6 +100,10 @@ _Avoid_: Transliteration, conversion
 The bar that opens above the keys when the user taps the translate key. The user types into it, sees the translation in it, and taps the translation to put it into the app they are typing in.
 _Avoid_: Toolbar, suggestion bar, translate panel
 
+**Translate as you type**:
+The setting that makes the translate strip translate by itself when the user pauses typing in it, instead of waiting for a tap on Translate. Off unless the user turns it on.
+_Avoid_: Auto translate, live translation, instant translate
+
 **Translation direction**:
 Which language is translated into which. It follows the input language when the translate strip opens, and the user can swap it.
 _Avoid_: Language pair, mode
