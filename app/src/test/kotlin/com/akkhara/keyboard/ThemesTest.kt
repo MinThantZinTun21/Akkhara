@@ -20,12 +20,21 @@ class ThemesTest {
     }
 
     @Test
-    fun `there are ten themes, the light ones first`() {
+    fun `the ten classic themes come first, the light ones first`() {
+        val classic = Theme.entries.takeWhile { it.group == Theme.Group.Classic }
         assertEquals(
             listOf("Light", "Sand", "Rose", "Sky", "Lavender", "Dark", "Midnight", "Forest", "Plum", "Black"),
-            Theme.entries.map { it.name },
+            classic.map { it.name },
         )
-        assertEquals(listOf(false, true), Theme.entries.map { it.isDark }.distinct())
+        assertEquals(listOf(false, true), classic.map { it.isDark }.distinct())
+    }
+
+    @Test
+    fun `the trending themes follow the classic ones, the light ones first`() {
+        val trending = Theme.entries.dropWhile { it.group == Theme.Group.Classic }
+        assertEquals(listOf("Moss", "Cinder"), trending.map { it.name })
+        assertTrue(trending.all { it.group == Theme.Group.Trending })
+        assertEquals(listOf(false, true), trending.map { it.isDark }.distinct())
     }
 
     @Test

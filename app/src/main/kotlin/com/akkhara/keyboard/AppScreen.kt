@@ -189,31 +189,46 @@ fun AppScreen(
 }
 
 /**
- * The choice of theme: a grid of small previews, one for following the system
- * and one for each theme. See GLOSSARY.md, "Theme".
+ * The choice of theme: small previews in a grid, following the system first,
+ * then the classic themes and the trending ones, each group under its name.
+ * See GLOSSARY.md, "Theme".
  */
 @Composable
 private fun ThemePicker(settings: KeyboardSettings) {
     var chosen by remember { mutableStateOf(settings.theme) }
-    // Null is following the system, which comes first as it is what a new install does.
-    val choices: List<Theme?> = listOf(null) + Theme.entries
+    val choose: (Theme?) -> Unit = { theme ->
+        chosen = theme
+        settings.theme = theme
+    }
     Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        choices.chunked(THEME_COLUMNS).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                row.forEach { theme ->
-                    ThemeCard(
-                        theme = theme,
-                        isChosen = theme == chosen,
-                        onChoose = {
-                            chosen = theme
-                            settings.theme = theme
-                        },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                // A short last row keeps its cards the width of the others.
-                repeat(THEME_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+        // Null is following the system, which comes first as it is what a new install does.
+        ThemeGrid(listOf(null), chosen, choose)
+        Theme.Group.entries.forEach { group ->
+            Text(
+                stringResource(group.nameRes()),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            ThemeGrid(Theme.entries.filter { it.group == group }, chosen, choose)
+        }
+    }
+}
+
+/** Rows of [ThemeCard]s, [THEME_COLUMNS] to a row. */
+@Composable
+private fun ThemeGrid(choices: List<Theme?>, chosen: Theme?, onChoose: (Theme?) -> Unit) {
+    choices.chunked(THEME_COLUMNS).forEach { row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            row.forEach { theme ->
+                ThemeCard(
+                    theme = theme,
+                    isChosen = theme == chosen,
+                    onChoose = { onChoose(theme) },
+                    modifier = Modifier.weight(1f),
+                )
             }
+            // A short last row keeps its cards the width of the others.
+            repeat(THEME_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
@@ -302,6 +317,13 @@ private fun Theme?.nameRes(): Int = when (this) {
     Theme.Forest -> R.string.theme_forest
     Theme.Plum -> R.string.theme_plum
     Theme.Black -> R.string.theme_black
+    Theme.Moss -> R.string.theme_moss
+    Theme.Cinder -> R.string.theme_cinder
+}
+
+private fun Theme.Group.nameRes(): Int = when (this) {
+    Theme.Group.Classic -> R.string.theme_group_classic
+    Theme.Group.Trending -> R.string.theme_group_trending
 }
 
 /**

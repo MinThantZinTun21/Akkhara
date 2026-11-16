@@ -37,6 +37,10 @@
     <string name="theme_forest">Forest</string>
     <string name="theme_plum">Plum</string>
     <string name="theme_black">Black</string>
+    <string name="theme_group_classic">Classic</string>
+    <string name="theme_group_trending">Trending</string>
+    <string name="theme_moss">Moss</string>
+    <string name="theme_cinder">Cinder</string>
     <string name="setting_translate_as_you_type_note">When you pause typing, the translation above the keys updates by itself. Your text changes only when you tap the translation.</string>
 
     <string name="models_title">Translation models</string>
