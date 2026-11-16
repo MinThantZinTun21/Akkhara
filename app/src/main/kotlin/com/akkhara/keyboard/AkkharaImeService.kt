@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.inputmethodservice.InputMethodService
 import android.os.SystemClock
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import com.akkhara.keyboard.engine.InputLanguage
 import com.akkhara.keyboard.engine.KeyboardEngine
@@ -20,7 +21,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         super.onCreate()
         preferences = getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         engine = KeyboardEngine(
-            editor = InputConnectionEditor { currentInputConnection },
+            editor = InputConnectionEditor({ currentInputConnection }, { currentInputEditorInfo }),
             clock = SystemClock::uptimeMillis,
             inputLanguage = lastInputLanguage(),
         )
@@ -31,6 +32,26 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
             view.bind(engine, this)
             keyboardView = view
         }
+
+    override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        engine.startInput(info.toField())
+        keyboardView?.onEngineChanged()
+    }
+
+    override fun onUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int,
+    ) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        val shiftBefore = engine.shift
+        engine.onCursorMoved()
+        if (engine.shift != shiftBefore) keyboardView?.onEngineChanged()
+    }
 
     /** Runs one key's worth of engine work so the app sees its edits as a single change. */
     override fun edit(work: KeyboardEngine.() -> Unit) {

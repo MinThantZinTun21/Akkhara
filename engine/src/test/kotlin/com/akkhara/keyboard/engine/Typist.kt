@@ -23,6 +23,21 @@ class Typist(private val engine: KeyboardEngine) {
         tap(label)
     }
 
+    /**
+     * Taps the letter keys for [letters] whichever case they are showing in,
+     * as a user who is not using shift does. A space taps the space bar.
+     */
+    fun typeIgnoringCase(letters: String) = letters.forEach { c ->
+        if (c == ' ') {
+            tap(Action.Space)
+        } else {
+            val key = visibleKeys().filterIsInstance<CharKey>()
+                .firstOrNull { it.char.equals(c.toString(), ignoreCase = true) }
+                ?: error("No key '$c' on the showing layer: ${labels()}")
+            engine.press(key)
+        }
+    }
+
     /** Taps each character of [text] as its own key; a space taps the space bar. */
     fun type(text: String) = text.forEach { c ->
         if (c == ' ') tap(Action.Space) else tap(c.toString())

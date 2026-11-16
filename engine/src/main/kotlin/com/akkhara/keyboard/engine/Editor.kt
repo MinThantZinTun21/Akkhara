@@ -18,4 +18,10 @@ interface Editor {
 
     /** Deletes the selected text. Returns false, changing nothing, when nothing is selected. */
     fun deleteSelection(): Boolean
+
+    /** Whether this text field asks for a capital letter at the cursor, as at the start of a sentence. */
+    fun wantsCapital(): Boolean
+
+    /** Performs the text field's own enter action, such as send or search. */
+    fun performEnterAction()
 }

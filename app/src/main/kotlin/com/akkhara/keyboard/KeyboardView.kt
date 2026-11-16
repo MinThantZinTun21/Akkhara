@@ -13,6 +13,7 @@ import android.view.ViewConfiguration
 import com.akkhara.keyboard.engine.Action
 import com.akkhara.keyboard.engine.ActionKey
 import com.akkhara.keyboard.engine.CharKey
+import com.akkhara.keyboard.engine.EnterAction
 import com.akkhara.keyboard.engine.Hold
 import com.akkhara.keyboard.engine.InputLanguage
 import com.akkhara.keyboard.engine.Key
@@ -59,6 +60,10 @@ class KeyboardView(context: Context) : View(context) {
     var keyPreviewEnabled = true
 
     private var engine: KeyboardEngine? = null
+
+    /** Never in a password field, whatever the setting says. */
+    private val showsKeyPreview: Boolean
+        get() = keyPreviewEnabled && engine?.allowsKeyPreview == true
     private var host: Host? = null
 
     private val palette = Palette.Light
@@ -221,7 +226,15 @@ class KeyboardView(context: Context) : View(context) {
                 iconPath.moveTo(cx + s * 0.65f, cy - s * 0.35f)
                 iconPath.lineTo(cx - s * 0.05f, cy + s * 0.35f)
             }
-            Action.Enter -> {
+            Action.Enter -> enterIcon(engine?.enterAction ?: EnterAction.NewLine, cx, cy, s)
+        }
+        canvas.drawPath(iconPath, iconPaint)
+    }
+
+    /** Adds to [iconPath] the picture of what enter does in this text field. */
+    private fun enterIcon(action: EnterAction, cx: Float, cy: Float, s: Float) {
+        when (action) {
+            EnterAction.NewLine -> {
                 // down, then left, with an arrow head
                 iconPath.moveTo(cx + s, cy - s * 0.7f)
                 iconPath.lineTo(cx + s, cy + s * 0.3f)
@@ -230,8 +243,37 @@ class KeyboardView(context: Context) : View(context) {
                 iconPath.lineTo(cx - s, cy + s * 0.3f)
                 iconPath.lineTo(cx - s * 0.4f, cy + s * 0.9f)
             }
+            EnterAction.Search -> {
+                // a magnifying glass
+                iconPath.addCircle(cx - s * 0.2f, cy - s * 0.2f, s * 0.7f, Path.Direction.CW)
+                iconPath.moveTo(cx + s * 0.3f, cy + s * 0.3f)
+                iconPath.lineTo(cx + s, cy + s)
+            }
+            EnterAction.Send -> {
+                // a paper plane pointing right
+                iconPath.moveTo(cx - s, cy - s * 0.8f)
+                iconPath.lineTo(cx + s, cy)
+                iconPath.lineTo(cx - s, cy + s * 0.8f)
+                iconPath.lineTo(cx - s * 0.6f, cy)
+                iconPath.close()
+                iconPath.moveTo(cx - s * 0.6f, cy)
+                iconPath.lineTo(cx + s, cy)
+            }
+            EnterAction.Go, EnterAction.Next -> {
+                // an arrow pointing right
+                iconPath.moveTo(cx - s, cy)
+                iconPath.lineTo(cx + s, cy)
+                iconPath.moveTo(cx + s * 0.3f, cy - s * 0.7f)
+                iconPath.lineTo(cx + s, cy)
+                iconPath.lineTo(cx + s * 0.3f, cy + s * 0.7f)
+            }
+            EnterAction.Done -> {
+                // a tick
+                iconPath.moveTo(cx - s, cy)
+                iconPath.lineTo(cx - s * 0.3f, cy + s * 0.7f)
+                iconPath.lineTo(cx + s, cy - s * 0.7f)
+            }
         }
-        canvas.drawPath(iconPath, iconPaint)
     }
 
     // ---- touch ----
@@ -268,7 +310,7 @@ class KeyboardView(context: Context) : View(context) {
         val cell = touch.cell
         touches[pointerId] = touch
         if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-        if (keyPreviewEnabled && cell.key is CharKey) bubble.showPreview(this, cell.bounds, cell.key.char)
+        if (showsKeyPreview && cell.key is CharKey) bubble.showPreview(this, cell.bounds, cell.key.char)
         touch.holdTimer = Runnable { onHeld(pointerId, touch) }.also { postDelayed(it, HOLD_MILLIS) }
     }
 

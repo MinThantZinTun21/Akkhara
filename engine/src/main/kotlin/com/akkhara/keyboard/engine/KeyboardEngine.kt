@@ -21,8 +21,20 @@ class KeyboardEngine(
     var shift: ShiftState = ShiftState.Off
         private set
 
-    /** When the tap that turned on the current one-shot shift happened. */
-    private var oneShotSince = 0L
+    /** When shift was last tapped, if no other key has been pressed since. */
+    private var lastShiftTap: Long? = null
+
+    /** Whether the current one-shot shift was put there by automatic capitalisation. */
+    private var shiftIsAutomatic = false
+
+    private var textField = Field()
+    private var conveniences = Conveniences()
+
+    /** What the enter key does in the current text field, for its label. */
+    val enterAction: EnterAction get() = textField.enterAction
+
+    /** False while typing a password, where no typed character may be shown enlarged. */
+    val allowsKeyPreview: Boolean get() = !textField.isPassword
 
     /** The keys of the layer that is showing, top row first. */
     val rows: List<List<Key>>
@@ -34,6 +46,22 @@ class KeyboardEngine(
 
     /** The name of the current input language, for the space bar. */
     val spaceLabel: String get() = layoutFor(inputLanguage).name
+
+    /**
+     * Typing is starting in [field]. The input language carries over from the
+     * last text field; the layer and shift do not.
+     */
+    fun startInput(field: Field, conveniences: Conveniences = this.conveniences) {
+        textField = field
+        this.conveniences = conveniences
+        layer = if (field.kind == FieldKind.Number) Layer.Symbols else Layer.Letters
+        setShift(ShiftState.Off)
+        lastShiftTap = null
+        updateAutomaticCapital()
+    }
+
+    /** The cursor went somewhere the keyboard did not put it. */
+    fun onCursorMoved() = updateAutomaticCapital()
 
     /** What holding [key] down should do. Holding never types or changes state by itself. */
     fun hold(key: Key): Hold = when {
@@ -47,18 +75,29 @@ class KeyboardEngine(
     fun pressAlternate(key: CharKey, alternate: String) {
         require(alternate in key.alternates) { "'${key.char}' does not offer '$alternate'" }
         type(alternate)
+        afterEdit()
     }
 
     fun press(key: Key) {
+        if (key is ActionKey && key.action == Action.Shift) {
+            tapShift()
+            return
+        }
         when (key) {
             is CharKey -> type(key.char)
             is ActionKey -> perform(key.action)
         }
+        afterEdit()
+    }
+
+    private fun afterEdit() {
+        lastShiftTap = null
+        updateAutomaticCapital()
     }
 
     private fun type(text: String) {
         insert(text)
-        if (shift == ShiftState.OneShot) shift = ShiftState.Off
+        if (shift == ShiftState.OneShot) setShift(ShiftState.Off)
     }
 
     /** Puts [text] into the text field, reordering the Myanmar syllable at the cursor if need be. */
@@ -71,8 +110,8 @@ class KeyboardEngine(
 
     private fun perform(action: Action) {
         when (action) {
-            Action.Space -> insert(" ")
-            Action.Enter -> insert("\n")
+            Action.Space -> space()
+            Action.Enter -> enter()
             Action.Backspace -> backspace()
             Action.Shift -> tapShift()
             Action.Globe -> switchInputLanguage()
@@ -82,16 +121,60 @@ class KeyboardEngine(
         }
     }
 
+    private fun space() {
+        if (conveniencesApply && conveniences.doubleSpaceFullStop) {
+            val before = editor.textBeforeCursor(2)
+            if (before.length == 2 && before[0].isLetterOrDigit() && before[1] == ' ') {
+                editor.deleteBeforeCursor(1)
+                editor.commit(". ")
+                return
+            }
+        }
+        insert(" ")
+    }
+
+    private fun enter() {
+        if (textField.enterAction == EnterAction.NewLine) insert("\n") else editor.performEnterAction()
+    }
+
     private fun tapShift() {
         val now = clock()
-        shift = when (shift) {
-            ShiftState.Off -> {
-                oneShotSince = now
-                ShiftState.OneShot
+        val previous = lastShiftTap
+        val isDoubleTap = previous != null && now - previous <= DOUBLE_TAP_MILLIS
+        lastShiftTap = null
+        when {
+            shift == ShiftState.Locked -> setShift(ShiftState.Off)
+            isDoubleTap -> setShift(ShiftState.Locked)
+            else -> {
+                setShift(if (shift == ShiftState.Off) ShiftState.OneShot else ShiftState.Off)
+                lastShiftTap = now
             }
-            ShiftState.OneShot ->
-                if (now - oneShotSince <= DOUBLE_TAP_MILLIS) ShiftState.Locked else ShiftState.Off
-            ShiftState.Locked -> ShiftState.Off
+        }
+    }
+
+    /** Any change of shift that automatic capitalisation did not make. */
+    private fun setShift(state: ShiftState) {
+        shift = state
+        shiftIsAutomatic = false
+    }
+
+    /** The English conveniences apply only to ordinary writing in English. */
+    private val conveniencesApply: Boolean
+        get() = inputLanguage == InputLanguage.English &&
+            textField.kind == FieldKind.Text &&
+            !textField.isPassword
+
+    /**
+     * Shows one-shot shift when a capital is coming, and takes it away again
+     * when it is not. A shift the user chose is never taken away.
+     */
+    private fun updateAutomaticCapital() {
+        val wanted = conveniencesApply && conveniences.capitaliseSentences && editor.wantsCapital()
+        if (wanted && shift == ShiftState.Off) {
+            shift = ShiftState.OneShot
+            shiftIsAutomatic = true
+        } else if (!wanted && shiftIsAutomatic) {
+            setShift(ShiftState.Off)
         }
     }
 
@@ -101,12 +184,12 @@ class KeyboardEngine(
             InputLanguage.Myanmar -> InputLanguage.English
         }
         layer = Layer.Letters
-        shift = ShiftState.Off
+        setShift(ShiftState.Off)
     }
 
     private fun show(target: Layer) {
         layer = target
-        if (shift == ShiftState.OneShot) shift = ShiftState.Off
+        if (shift == ShiftState.OneShot) setShift(ShiftState.Off)
     }
 
     private fun backspace() {
