@@ -3,12 +3,14 @@ package com.akkhara.keyboard
 import android.content.Context
 import androidx.core.content.edit
 import com.akkhara.keyboard.engine.InputLanguage
+import com.akkhara.keyboard.engine.ModelTask
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 /**
- * The user's choices, kept on the device. Nothing the user types is ever
- * stored here or anywhere else.
+ * The user's choices, kept on the device. Nothing typed with the keyboard is
+ * ever stored here or anywhere else; the prompts are settings the user writes
+ * in the app.
  *
  * The app screen writes these and the keyboard reads them each time it
  * opens; both run in the same process, so a change is seen at once.
@@ -35,6 +37,23 @@ class KeyboardSettings(context: Context) {
                 preferences.edit { putString(KEY_INPUT_LANGUAGE, value.name) }
             }
         }
+
+    /** The user's own prompt for [task], or an empty string while the task uses its default. See GLOSSARY.md, "Prompt". */
+    fun prompt(task: ModelTask): String = preferences.getString(promptKey(task), null).orEmpty()
+
+    /** Keeps [prompt] for [task]. A blank prompt, or the default itself, goes back to the default. */
+    fun setPrompt(task: ModelTask, prompt: String) {
+        preferences.edit {
+            if (prompt.isBlank() || prompt == task.defaultPrompt) remove(promptKey(task))
+            else putString(promptKey(task), prompt.take(ModelTask.MAX_PROMPT_CHARS))
+        }
+    }
+
+    /** Every prompt the user has rewritten, by task. */
+    val customPrompts: Map<ModelTask, String>
+        get() = ModelTask.entries.associateWith(::prompt).filterValues { it.isNotBlank() }
+
+    private fun promptKey(task: ModelTask) = "prompt_" + task.name
 
     /** A setting that is [default] until the user changes it. */
     private fun toggle(key: String, default: Boolean = true) = object : ReadWriteProperty<Any?, Boolean> {

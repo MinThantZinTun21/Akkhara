@@ -68,6 +68,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         super.onStartInputView(info, restarting)
         engine.isTranslationAvailable = TranslationModel.isInstalled(this)
         engine.translateAsYouType = settings.translateAsYouType
+        engine.customPrompts = settings.customPrompts
         engine.startInput(
             info.toField(),
             Conveniences(

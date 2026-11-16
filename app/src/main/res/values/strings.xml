@@ -26,6 +26,13 @@
     <string name="setting_translate_as_you_type">Translate as you type</string>
     <string name="setting_translate_as_you_type_note">When you pause typing, the translation above the keys updates by itself. Your text changes only when you tap the translation.</string>
 
+    <string name="prompts_title">Prompts</string>
+    <string name="prompts_note">What the translation model is told to do for each task. Changes apply the next time the keyboard opens; an empty box uses the default.</string>
+    <string name="prompt_english_to_myanmar">English → Myanmar</string>
+    <string name="prompt_myanmar_to_english">Myanmar → English</string>
+    <string name="prompt_grammar_check">Grammar check</string>
+    <string name="prompt_reset">Reset to default</string>
+    <string name="prompt_length">%1$d / %2$d</string>
     <string name="translate_strip_checking_grammar">Checking grammar…</string>
     <string name="translate_strip_no_mistakes">No mistakes found</string>
     <string name="translate_strip_translating">Translating…</string>

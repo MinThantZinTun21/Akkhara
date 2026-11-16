@@ -44,6 +44,9 @@ class KeyboardEngine(
     /** Whether the translate strip translates by itself when typing pauses. See GLOSSARY.md, "Translate as you type". */
     var translateAsYouType = false
 
+    /** The user's own prompts; a task left out, or given a blank prompt, uses its default. See GLOSSARY.md, "Prompt". */
+    var customPrompts: Map<ModelTask, String> = emptyMap()
+
     private var stripState: StripState = StripState.Idle
 
     /** The text the shown translation was made from, so a changed text field can be noticed. */
@@ -294,7 +297,7 @@ class KeyboardEngine(
         stripState = if (checkGrammar) StripState.CheckingGrammar else StripState.Translating
         val task = if (checkGrammar) ModelTask.GrammarCheck else source.translationTask
         val request = ++stripRequest
-        translator.run(source.text, task.defaultPrompt) { result ->
+        translator.run(source.text, task.prompt(customPrompts[task])) { result ->
             if (request != stripRequest) return@run
             translatedSource = source
             stripState = when {

@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.akkhara.keyboard.engine.ModelTask
 import kotlin.reflect.KMutableProperty0
 
 /** Follows the system light or dark setting with two fixed schemes, as the keyboard does. */
@@ -130,7 +132,58 @@ fun AppScreen(
                     note = R.string.setting_translate_as_you_type_note,
                 )
             }
+
+            SectionTitle(R.string.prompts_title)
+            Text(
+                stringResource(R.string.prompts_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ModelTask.entries.forEach { task -> PromptField(task, settings) }
         }
+    }
+}
+
+/**
+ * The prompt for [task], ready to rewrite. It shows the default until the
+ * user changes it; clearing the box also means the default.
+ */
+@Composable
+private fun PromptField(task: ModelTask, settings: KeyboardSettings) {
+    var prompt by remember { mutableStateOf(settings.prompt(task).ifBlank { task.defaultPrompt }) }
+    Column {
+        OutlinedTextField(
+            value = prompt,
+            onValueChange = {
+                prompt = it.take(ModelTask.MAX_PROMPT_CHARS)
+                settings.setPrompt(task, prompt)
+            },
+            label = {
+                Text(
+                    stringResource(
+                        when (task) {
+                            ModelTask.EnglishToMyanmar -> R.string.prompt_english_to_myanmar
+                            ModelTask.MyanmarToEnglish -> R.string.prompt_myanmar_to_english
+                            ModelTask.GrammarCheck -> R.string.prompt_grammar_check
+                        },
+                    ),
+                )
+            },
+            supportingText = {
+                Text(stringResource(R.string.prompt_length, prompt.length, ModelTask.MAX_PROMPT_CHARS))
+            },
+            minLines = 3,
+            maxLines = 8,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        TextButton(
+            onClick = {
+                prompt = task.defaultPrompt
+                settings.setPrompt(task, prompt)
+            },
+            enabled = prompt != task.defaultPrompt,
+            modifier = Modifier.align(Alignment.End),
+        ) { Text(stringResource(R.string.prompt_reset)) }
     }
 }
 

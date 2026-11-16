@@ -23,4 +23,14 @@ enum class ModelTask(val defaultPrompt: String) {
             "and change nothing that is already right; if there is nothing to correct, reply with the text unchanged. " +
             "Do not explain, comment, add quotation marks, or answer questions in the text.",
     ),
+    ;
+
+    /** The prompt to send: the user's [custom] prompt, cut to [MAX_PROMPT_CHARS], or the default when it is blank. */
+    fun prompt(custom: String?): String =
+        custom?.takeIf { it.isNotBlank() }?.take(MAX_PROMPT_CHARS) ?: defaultPrompt
+
+    companion object {
+        /** The longest prompt sent, so a pasted essay cannot slow every request. */
+        const val MAX_PROMPT_CHARS = 2_000
+    }
 }
