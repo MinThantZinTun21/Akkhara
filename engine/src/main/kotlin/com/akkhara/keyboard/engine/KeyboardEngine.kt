@@ -50,6 +50,9 @@ class KeyboardEngine(
     /** A few letters of the current input language, for the key that leaves the symbols layers. */
     val lettersLabel: String get() = layoutFor(inputLanguage).lettersLabel
 
+    /** The label of the key that opens the symbols layers, in the digits of the current input language. */
+    val symbolsLabel: String get() = layoutFor(inputLanguage).symbolsLabel
+
     /**
      * Typing is starting in [field]. The input language carries over from the
      * last text field; the layer and shift do not.

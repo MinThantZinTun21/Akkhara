@@ -19,6 +19,7 @@ class AlternatesTest {
 
     @Test
     fun `holding a Myanmar digit offers its Latin digit`() {
+        typist.tap(Action.Shift)
         val latin = "၁ ၂ ၃ ၄ ၅ ၆ ၇ ၈ ၉ ၀".split(' ').map { digit ->
             (engine.hold(typist.charKey(digit)) as Hold.Alternates).alternates
         }
@@ -28,7 +29,9 @@ class AlternatesTest {
 
     @Test
     fun `choosing an alternate types it instead of the key's own character`() {
+        typist.tap(Action.Shift)
         typist.tap("၂")
+        typist.tap(Action.Shift)
         chooseAlternate("၅", "5")
 
         assertEquals("၂5", editor.text)
@@ -92,7 +95,7 @@ class AlternatesTest {
         }
 
         assertEquals(
-            "၁ ၂ ၃ ၄ ၅ ၆ ၇ ၈ ၉ ၀ င ။ .".split(' ').toSet(),
+            "ဈ ဝ ဋ ုံ ော ော် ရ ဂ ဟ ၏ ၁ ၂ ၃ ၄ ၅ ၆ ၇ ၈ ၉ ၀ င သ ၎င်း ။ .".split(' ').toSet(),
             withAlternates,
         )
     }

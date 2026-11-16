@@ -7,12 +7,14 @@ sealed interface Key {
 
 /**
  * A key that types [text]: one character, or a short fixed sequence such as
- * kinzi. Held down, it offers its [alternates].
+ * kinzi. Held down, it offers its [alternates]. [hint] is the alternate shown
+ * small in the key's corner, for the keys that show one.
  */
 data class CharKey(
     val text: String,
     val alternates: List<String> = emptyList(),
     override val width: Float = 1f,
+    val hint: String? = null,
 ) : Key
 
 /** A key that performs [action] instead of typing a character. */

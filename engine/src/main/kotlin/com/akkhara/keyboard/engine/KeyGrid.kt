@@ -24,8 +24,8 @@ data class Cell(
  *
  * Key widths come from the [width] on offer, so the same layout serves
  * portrait and landscape. Rows narrower than the keyboard are centred.
- * [padding] is the empty band along each edge of the keyboard and [gap] the
- * space between neighbouring keys.
+ * [padding] is the empty band along each edge of the keyboard, [gap] the
+ * space between neighbouring keys in a row and [rowGap] the space between rows.
  */
 class KeyGrid(
     rows: List<List<Key>>,
@@ -33,6 +33,7 @@ class KeyGrid(
     private val rowHeight: Float,
     private val padding: Float,
     gap: Float,
+    rowGap: Float,
 ) {
     private val rows: List<List<Cell>> = run {
         val unit = (width - 2 * padding) / COLUMNS
@@ -42,13 +43,16 @@ class KeyGrid(
             val top = padding + rowIndex * rowHeight
             row.map { key ->
                 val keyWidth = key.width * unit
-                Cell(key, x + gap / 2, top + gap, x + keyWidth - gap / 2, top + rowHeight - gap)
+                Cell(key, x + gap / 2, top + rowGap / 2, x + keyWidth - gap / 2, top + rowHeight - rowGap / 2)
                     .also { x += keyWidth }
             }
         }
     }
 
     val cells: List<Cell> = this.rows.flatten()
+
+    /** Whether [cell] is in the last row, the one with the space bar. */
+    fun isInBottomRow(cell: Cell): Boolean = rows.lastOrNull()?.any { it.isAt(cell) } == true
 
     /** Height of all the rows with the padding above and below them. */
     val height: Float = rows.size * rowHeight + 2 * padding

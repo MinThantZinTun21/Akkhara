@@ -86,7 +86,7 @@ class KeyCallout(context: Context, private val palette: Palette) {
         private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
         private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textAlign = Paint.Align.CENTER
-            textSize = 26f * resources.displayMetrics.scaledDensity
+            textSize = 24f * resources.displayMetrics.scaledDensity
         }
         private val bounds = RectF()
         private val radius = 8f * density
@@ -97,8 +97,13 @@ class KeyCallout(context: Context, private val palette: Palette) {
             canvas.drawRoundRect(bounds, radius, radius, fill)
             if (texts.isEmpty()) return
             val each = width.toFloat() / texts.size
-            val baseline = height / 2f - (label.descent() + label.ascent()) / 2
+            val fullSize = label.textSize
             texts.forEachIndexed { index, text ->
+                // A key that types several characters may be wider than its share of the callout.
+                val needed = label.measureText(text)
+                val room = each - 4f * density
+                label.textSize = if (needed > room) fullSize * room / needed else fullSize
+                val baseline = height / 2f - (label.descent() + label.ascent()) / 2
                 val isSelected = index == selected
                 if (isSelected) {
                     fill.color = palette.accent
@@ -108,6 +113,7 @@ class KeyCallout(context: Context, private val palette: Palette) {
                 label.color = if (isSelected) palette.onAccent else palette.label
                 canvas.drawText(text, (index + 0.5f) * each, baseline, label)
             }
+            label.textSize = fullSize
         }
     }
 

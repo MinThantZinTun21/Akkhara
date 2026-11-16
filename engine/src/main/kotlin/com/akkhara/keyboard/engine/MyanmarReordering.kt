@@ -34,7 +34,26 @@ internal object MyanmarReordering {
         typed == E_VOWEL.toString() -> Edit(0, "$ZERO_WIDTH_SPACE$E_VOWEL")
         typed == KINZI || (typed.length == 1 && isBase(typed[0])) -> typeBase(before, typed)
         typed.length == 1 && isMark(typed[0]) -> typeMark(before, typed[0])
+        typed.any { isBase(it) || isMark(it) } -> typeSequence(before, typed)
         else -> typeOther(before, typed)
+    }
+
+    /**
+     * A key that types several Myanmar characters at once, such as ော် or ဏ္ဍ.
+     * Its marks belong to the consonant already typed: only an e-vowel typed
+     * by its own key stands ahead of its consonant.
+     */
+    private fun typeSequence(before: String, typed: String): Edit {
+        var text = before
+        for (c in typed) {
+            val edit = when {
+                isBase(c) -> typeBase(text, c.toString())
+                isMark(c) -> typeMark(text, c)
+                else -> typeOther(text, c.toString())
+            }
+            text = text.dropLast(edit.delete) + edit.insert
+        }
+        return replace(before, text)
     }
 
     /**

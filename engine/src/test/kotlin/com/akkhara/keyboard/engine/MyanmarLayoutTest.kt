@@ -11,13 +11,29 @@ class MyanmarLayoutTest {
     private val typist = Typist(engine)
 
     @Test
-    fun `the base layer is the standard Myanmar layout`() {
+    fun `the base layer has the keys of the Myanmar layout people know from their phone`() {
+        assertEquals(
+            listOf(
+                "ဈ ဝ ဋ ုံ ော ော် ရ ဂ ဟ ၏",
+                "ဆ တ န မ အ ပ က င သ စ",
+                "ေ ျ ိ ် ါ ့ ြ ု ူ း",
+                "ဖ ထ ခ လ ဘ ည ာ ယ",
+                "၊ ။",
+            ),
+            typist.rowLabels(),
+        )
+    }
+
+    @Test
+    fun `the shift layer has the Myanmar digits on its top row and the rarer letters below`() {
+        typist.tap(Action.Shift)
+
         assertEquals(
             listOf(
                 "၁ ၂ ၃ ၄ ၅ ၆ ၇ ၈ ၉ ၀",
-                "ဆ တ န မ အ ပ က င သ စ",
-                "ေ ျ ိ ် ါ ့ ြ ု ူ း",
-                "ဖ ထ ခ လ ဘ ည ာ",
+                "ဍ ဏ္ဍ ဣ ၎င်း ဤ ၌ ဥ ၍ ဿ ဏ",
+                "ဗ ှ ီ ္ ွ ံ ဲ ဒ ဓ ဏ္ဌ",
+                "ဇ ဌ ဃ ဠ ဎ ဉ ဦ ဧ",
                 "၊ ။",
             ),
             typist.rowLabels(),
@@ -25,32 +41,33 @@ class MyanmarLayoutTest {
     }
 
     @Test
-    fun `the shift layer is the standard Myanmar shift layer, with the overflow letters on its number row`() {
-        typist.tap(Action.Shift)
+    fun `the comma sits between the symbols key and the globe key`() {
+        val bottomRow = engine.rows.last()
 
         assertEquals(
-            listOf(
-                "ဍ ဎ ဋ ဟ ဧ ဩ ရ ဪ ၏ ?",
-                "ဈ ဝ ဣ ၎ ဤ ၌ ဥ ၍ ဿ ဏ",
-                "ဗ ှ ီ ္ ွ ံ ဲ ဒ ဓ ဂ",
-                "ဇ ဌ ဃ ဠ ယ ဉ ဦ",
-                "၊ ။",
-            ),
-            typist.rowLabels(),
+            listOf(ActionKey(Action.Symbols, 1.5f), CharKey("၊"), ActionKey(Action.Globe)),
+            bottomRow.take(3),
         )
     }
 
     @Test
-    fun `ရ sits above ၇`() {
-        val digitRow = typist.rowLabels()[0].split(' ')
-        typist.tap(Action.Shift)
-        val shiftedRow = typist.rowLabels()[0].split(' ')
+    fun `the top row shows a Latin digit as the hint on each key, and holding the key offers it`() {
+        val topRow = engine.rows.first().filterIsInstance<CharKey>()
 
-        assertEquals(digitRow.indexOf("၇"), shiftedRow.indexOf("ရ"))
+        assertEquals("1 2 3 4 5 6 7 8 9 0", topRow.joinToString(" ") { it.hint.orEmpty() })
+        assertEquals(Hold.Alternates(listOf("7")), engine.hold(typist.charKey("ရ")))
     }
 
     @Test
-    fun `every Burmese letter, mark, digit and punctuation sign is reachable`() {
+    fun `the Myanmar digits on the shift layer show their Latin digit as the hint`() {
+        typist.tap(Action.Shift)
+        val topRow = engine.rows.first().filterIsInstance<CharKey>()
+
+        assertEquals("1 2 3 4 5 6 7 8 9 0", topRow.joinToString(" ") { it.hint.orEmpty() })
+    }
+
+    @Test
+    fun `every Burmese letter, mark, digit and punctuation sign can be typed with a tap or a hold`() {
         val burmese = buildList {
             addAll(0x1000..0x1021)          // consonants က to အ
             addAll(listOf(0x1023, 0x1024, 0x1025, 0x1026, 0x1027, 0x1029, 0x102A)) // independent vowels
@@ -62,11 +79,64 @@ class MyanmarLayoutTest {
             addAll(0x104A..0x104F)          // punctuation and symbols
         }.map { String(Character.toChars(it)) }
 
-        val reachable = typist.labels().toMutableSet()
+        val offered = offeredOnShowingLayer().toMutableSet()
         typist.tap(Action.Shift)
-        reachable += typist.labels()
+        offered += offeredOnShowingLayer()
 
-        assertEquals(emptyList<String>(), burmese.filterNot { it in reachable })
+        assertEquals(emptyList<String>(), burmese.filterNot { it in offered })
+    }
+
+    /** Every character a key on the showing layer types by itself, by a tap or as an alternate. */
+    private fun offeredOnShowingLayer(): List<String> =
+        engine.rows.flatten().filterIsInstance<CharKey>().flatMap { listOf(it.text) + it.alternates }
+
+    @Test
+    fun `a key that shows a vowel with its tone types the whole of it onto the consonant`() {
+        typist.tap("က", "ော်")
+
+        assertEquals(codePoints("ကော်"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `the key for ော types both vowel signs in canonical order`() {
+        typist.tap("မ", "ြ", "ော")
+
+        assertEquals(codePoints("မြော"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `the key for ုံ types the vowel and the anusvara`() {
+        typist.tap("တ", "ုံ", "း")
+
+        assertEquals(codePoints("တုံး"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `the keys for whole stacked consonants type them stacked`() {
+        typist.tap("က")
+        typist.tapThroughShift("ဏ္ဍ")
+
+        assertEquals(codePoints("ကဏ္ဍ"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `the key for ၎င်း types the whole word`() {
+        typist.tapThroughShift("၎င်း")
+
+        assertEquals(codePoints("၎င်း"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `backspace after a key that typed several characters takes them away one at a time`() {
+        typist.tap("က", "ော်")
+        typist.tap(Action.Backspace)
+
+        assertEquals(codePoints("ကော"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `the key that opens the symbols layer is labelled in Myanmar digits`() {
+        assertEquals("?၁၂၃", engine.symbolsLabel)
     }
 
     @Test
@@ -79,10 +149,10 @@ class MyanmarLayoutTest {
     @Test
     fun `one-shot shift works on the Myanmar layout`() {
         typist.tap(Action.Shift)
-        typist.tap("ဂ")
+        typist.tap("ဗ")
         typist.tap("က")
 
-        assertEquals("ဂက", editor.text)
+        assertEquals("ဗက", editor.text)
         assertEquals(ShiftState.Off, engine.shift)
     }
 

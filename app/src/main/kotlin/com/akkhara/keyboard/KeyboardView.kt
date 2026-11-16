@@ -83,9 +83,10 @@ class KeyboardView(context: Context) : View(context) {
 
     /** Height of whatever the system draws over the bottom of the keyboard's window. */
     private var bottomInset = 0
-    private val keyGap = 3f * density
-    private val keyRadius = 6f * density
-    private val edgePadding = 4f * density
+    private val keyGap = 4.2f * density
+    private val rowGap = 5.8f * density
+    private val keyRadius = 7f * density
+    private val edgePadding = 2f * density
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     private var grid: KeyGrid? = null
@@ -93,10 +94,15 @@ class KeyboardView(context: Context) : View(context) {
     private val callout = KeyCallout(context, palette)
 
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val labelSize = 22f * resources.displayMetrics.scaledDensity
-    private val smallLabelSize = 15f * resources.displayMetrics.scaledDensity
+    private val labelSize = 20f * resources.displayMetrics.scaledDensity
+    private val smallLabelSize = 14f * resources.displayMetrics.scaledDensity
+    private val hintSize = 10f * resources.displayMetrics.scaledDensity
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val smallLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
+    private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.RIGHT
+        color = palette.hint
+    }
     private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 2f * density
@@ -135,6 +141,7 @@ class KeyboardView(context: Context) : View(context) {
         val scale = rowHeight / fullRowHeight
         labelPaint.textSize = labelSize * scale
         smallLabelPaint.textSize = smallLabelSize * scale
+        hintPaint.textSize = hintSize * scale
         val height = (rowCount * rowHeight + 2 * edgePadding).toInt() + bottomInset
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), height)
     }
@@ -165,50 +172,102 @@ class KeyboardView(context: Context) : View(context) {
      */
     private fun layoutKeys() {
         val rows = engine?.rows
-        grid = if (rows == null || width == 0) null else KeyGrid(rows, width.toFloat(), rowHeight, edgePadding, keyGap)
+        grid = if (rows == null || width == 0) null else KeyGrid(rows, width.toFloat(), rowHeight, edgePadding, keyGap, rowGap)
     }
 
     // ---- drawing ----
 
+    /** How a key is coloured. */
+    private enum class Tone { Plain, Action, Accent }
+
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(palette.background)
-        val shiftActive = engine?.shift != ShiftState.Off
-        for (cell in grid?.cells.orEmpty()) {
-            val key = cell.key
-            val isActiveShift = shiftActive && key is ActionKey && key.action == Action.Shift
-            keyPaint.color = when {
-                touches.values.any { it.cell.isAt(cell) } -> palette.keyPressed
-                isActiveShift -> palette.accent
-                key is ActionKey && key.action != Action.Space -> palette.actionKey
-                else -> palette.key
+        for (cell in grid?.cells.orEmpty()) drawKey(canvas, cell)
+    }
+
+    private fun drawKey(canvas: Canvas, cell: Cell) {
+        val key = cell.key
+        val tone = toneOf(cell)
+        val isPressed = touches.values.any { it.cell.isAt(cell) }
+        keyPaint.color = when {
+            isPressed -> palette.keyPressed
+            tone == Tone.Accent -> palette.accent
+            tone == Tone.Action -> palette.actionKey
+            else -> palette.key
+        }
+        val ink = when {
+            isPressed -> palette.label
+            tone == Tone.Accent -> palette.onAccent
+            tone == Tone.Action -> palette.actionLabel
+            else -> palette.label
+        }
+        labelPaint.color = ink
+        smallLabelPaint.color = ink
+        iconPaint.color = ink
+        val radius = if (isPill(cell)) cell.height / 2 else keyRadius
+        canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom, radius, radius, keyPaint)
+        when (key) {
+            is CharKey -> {
+                val hint = key.hint
+                if (hint == null) {
+                    drawLabel(canvas, key.text, cell, labelPaint)
+                } else {
+                    // The label moves down a little to leave the corner to the hint.
+                    drawLabel(canvas, key.text, cell, labelPaint, lowerBy = cell.height * HINT_SHIFT)
+                    val inset = 3f * density
+                    canvas.drawText(hint, cell.right - inset, cell.top + inset / 2 - hintPaint.ascent(), hintPaint)
+                }
             }
-            val ink = if (isActiveShift) palette.onAccent else palette.label
-            labelPaint.color = ink
-            smallLabelPaint.color = ink
-            iconPaint.color = ink
-            canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom, keyRadius, keyRadius, keyPaint)
-            when (key) {
-                is CharKey -> drawLabel(canvas, key.text, cell, labelPaint)
-                is ActionKey -> drawAction(canvas, key.action, cell)
-            }
+            is ActionKey -> drawAction(canvas, key.action, cell)
         }
     }
 
-    private fun drawLabel(canvas: Canvas, text: String, cell: Cell, paint: Paint) {
-        val baseline = (cell.top + cell.bottom) / 2 - (paint.descent() + paint.ascent()) / 2
+    private fun toneOf(cell: Cell): Tone = when (val key = cell.key) {
+        // The punctuation beside the space bar is coloured with the action keys.
+        is CharKey -> if (grid?.isInBottomRow(cell) == true) Tone.Action else Tone.Plain
+        is ActionKey -> when (key.action) {
+            Action.Space, Action.Globe -> Tone.Plain
+            Action.Shift -> if (engine?.shift == ShiftState.Locked) Tone.Accent else Tone.Action
+            Action.Enter -> if (engine?.enterAction == EnterAction.NewLine) Tone.Action else Tone.Accent
+            Action.Backspace, Action.Symbols, Action.MoreSymbols, Action.Letters -> Tone.Action
+        }
+    }
+
+    /** The two keys at the ends of the bottom row are drawn with fully rounded ends. */
+    private fun isPill(cell: Cell): Boolean {
+        val key = cell.key
+        val isEndKey = key is ActionKey &&
+            (key.action == Action.Symbols || key.action == Action.Letters || key.action == Action.Enter)
+        return isEndKey && grid?.isInBottomRow(cell) == true
+    }
+
+    /**
+     * Draws [text] in the middle of [cell], smaller if it would not fit the
+     * key's width. Myanmar is drawn a little smaller than Latin, because its
+     * letters are wider and its stacked consonants taller.
+     */
+    private fun drawLabel(canvas: Canvas, text: String, cell: Cell, paint: Paint, lowerBy: Float = 0f) {
+        val fullSize = paint.textSize
+        if (text.any { it in MYANMAR }) paint.textSize = fullSize * MYANMAR_SCALE
+        val room = cell.width - 2 * density
+        val width = paint.measureText(text)
+        if (width > room) paint.textSize *= room / width
+        val baseline = (cell.top + cell.bottom) / 2 + lowerBy - (paint.descent() + paint.ascent()) / 2
         canvas.drawText(text, cell.centerX, baseline, paint)
+        paint.textSize = fullSize
     }
 
     private fun drawAction(canvas: Canvas, action: Action, cell: Cell) {
         val cx = cell.centerX
         val cy = (cell.top + cell.bottom) / 2
-        val half = 9f * density * (rowHeight / fullRowHeight) // half the picture's size
+        val half = 10f * density * (rowHeight / fullRowHeight) // half the picture's size
         iconPath.rewind()
         iconPaint.style = Paint.Style.STROKE
         when (action) {
             Action.Space ->
                 return drawLabel(canvas, engine?.spaceLabel.orEmpty(), cell, smallLabelPaint)
-            Action.Symbols -> return drawLabel(canvas, "?123", cell, smallLabelPaint)
+            Action.Symbols ->
+                return drawLabel(canvas, engine?.symbolsLabel.orEmpty(), cell, smallLabelPaint)
             Action.MoreSymbols -> return drawLabel(canvas, "=\\<", cell, smallLabelPaint)
             Action.Letters ->
                 return drawLabel(canvas, engine?.lettersLabel.orEmpty(), cell, smallLabelPaint)
@@ -220,7 +279,7 @@ class KeyboardView(context: Context) : View(context) {
                 iconPath.lineTo(cx + half, cy)
             }
             Action.Shift -> {
-                // an upward arrow: outlined when off, filled for one-shot shift, underlined for shift lock
+                // an upward arrow: outlined when off, filled for one-shot shift, underlined on the accent for shift lock
                 val shift = engine?.shift ?: ShiftState.Off
                 iconPath.moveTo(cx, cy - half)
                 iconPath.lineTo(cx + half, cy)
@@ -419,7 +478,14 @@ class KeyboardView(context: Context) : View(context) {
 
     private companion object {
         /** Height of a row of keys where the screen has room for it. */
-        const val FULL_ROW_DP = 54f
+        const val FULL_ROW_DP = 45f
+
+        /** The Myanmar block of Unicode, and how large its letters are drawn beside Latin ones. */
+        val MYANMAR = '\u1000'..'\u109F'
+        const val MYANMAR_SCALE = 0.88f
+
+        /** How far down its key a label moves to make room for a hint, as a share of the key's height. */
+        const val HINT_SHIFT = 0.07f
 
         /** The most of the screen's height the keys may take. */
         const val MAX_SCREEN_SHARE = 0.5f

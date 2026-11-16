@@ -20,8 +20,8 @@ private fun Row.withAlternates(text: String, vararg alternates: String): Row =
 /** The row under the letters, with the layout's own [comma] and [fullStop] key. */
 private fun lettersBottomRow(comma: String, fullStop: CharKey): Row = listOf(
     ActionKey(Action.Symbols, WIDE),
-    ActionKey(Action.Globe),
     CharKey(comma),
+    ActionKey(Action.Globe),
     ActionKey(Action.Space, width = 4f),
     fullStop,
     enterKey,
@@ -45,6 +45,9 @@ internal interface Layout {
 
     /** A few of the layout's letters, shown on the key that comes back to it from the symbols layers. */
     val lettersLabel: String
+
+    /** Shown on the key that opens the symbols layers, in the layout's own digits. */
+    val symbolsLabel: String
 }
 
 internal fun layoutFor(language: InputLanguage): Layout = when (language) {
@@ -55,6 +58,7 @@ internal fun layoutFor(language: InputLanguage): Layout = when (language) {
 internal object EnglishLayout : Layout {
     override val name = "English"
     override val lettersLabel = "ABC"
+    override val symbolsLabel = "?123"
 
     private val bottom = lettersBottomRow(
         comma = ",",
@@ -79,38 +83,40 @@ internal object EnglishLayout : Layout {
 }
 
 /**
- * The standard Unicode Myanmar layout (Myanmar3), with the same key positions
- * as other phone keyboards. The standard layout has more keys than fit in ten
- * columns, so the letters left over sit on the shift layer's number row, with
- * ရ in its standard place above ၇.
+ * The Unicode Myanmar layout as Gboard arranges it, so that the keys are where
+ * people already look for them on their phone. The top row of the base layer
+ * holds letters and whole vowels, each with a Latin digit as its hint; the
+ * Myanmar digits are the top row of the shift layer.
  */
 internal object MyanmarLayout : Layout {
     override val name = "မြန်မာ"
     override val lettersLabel = "ကခဂ"
+    override val symbolsLabel = "?၁၂၃"
 
     private val bottom = lettersBottomRow(
         comma = "၊",
         fullStop = CharKey("။", alternates = listOf("၊", "?", "!")),
     )
 
-    /** Each Myanmar digit offers its Latin digit. */
-    private val digits: Row = "၁၂၃၄၅၆၇၈၉၀".map { digit ->
-        CharKey(digit.toString(), alternates = listOf(((digit - '၀') % 10).toString()))
+    /** Each key of the top row offers the Latin digit of its column, and shows it as its hint. */
+    private fun Row.withLatinDigitHints(): Row = mapIndexed { column, key ->
+        val digit = ((column + 1) % 10).toString()
+        (key as CharKey).copy(alternates = listOf(digit), hint = digit)
     }
 
     override val base: List<Row> = listOf(
-        digits,
-        chars("ဆ တ န မ အ ပ က င သ စ").withAlternates("င", KINZI),
+        chars("ဈ ဝ ဋ ုံ ော ော် ရ ဂ ဟ ၏").withLatinDigitHints(),
+        chars("ဆ တ န မ အ ပ က င သ စ").withAlternates("င", KINZI).withAlternates("သ", "ဩ", "ဪ"),
         chars("ေ ျ ိ ် ါ ့ ြ ု ူ း"),
-        listOf(shiftKey) + chars("ဖ ထ ခ လ ဘ ည ာ") + backspaceKey,
+        listOf(ActionKey(Action.Shift)) + chars("ဖ ထ ခ လ ဘ ည ာ ယ") + ActionKey(Action.Backspace),
         bottom,
     )
 
     override val shift: List<Row> = listOf(
-        chars("ဍ ဎ ဋ ဟ ဧ ဩ ရ ဪ ၏ ?"),
-        chars("ဈ ဝ ဣ ၎ ဤ ၌ ဥ ၍ ဿ ဏ"),
-        chars("ဗ ှ ီ ္ ွ ံ ဲ ဒ ဓ ဂ"),
-        listOf(shiftKey) + chars("ဇ ဌ ဃ ဠ ယ ဉ ဦ") + backspaceKey,
+        chars("၁ ၂ ၃ ၄ ၅ ၆ ၇ ၈ ၉ ၀").withLatinDigitHints(),
+        chars("ဍ ဏ္ဍ ဣ ၎င်း ဤ ၌ ဥ ၍ ဿ ဏ").withAlternates("၎င်း", "၎"),
+        chars("ဗ ှ ီ ္ ွ ံ ဲ ဒ ဓ ဏ္ဌ"),
+        listOf(ActionKey(Action.Shift)) + chars("ဇ ဌ ဃ ဠ ဎ ဉ ဦ ဧ") + ActionKey(Action.Backspace),
         bottom,
     )
 }
