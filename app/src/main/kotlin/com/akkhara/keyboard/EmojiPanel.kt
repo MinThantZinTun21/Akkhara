@@ -9,6 +9,7 @@ import android.view.VelocityTracker
 import android.view.ViewConfiguration
 import android.widget.OverScroller
 import androidx.core.graphics.withClip
+import com.akkhara.keyboard.engine.Emoji
 import com.akkhara.keyboard.engine.EmojiCategory
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -24,6 +25,8 @@ import kotlin.math.min
  * The grid is one list that scrolls through every category, each starting on
  * a new row; a tab jumps to its category, and the tab of the category in view
  * is marked. Only emoji the phone's font can draw are shown.
+ *
+ * The recent emoji come first, so the panel opens on them when there are any.
  */
 class EmojiPanel(context: Context, private val palette: Palette) {
 
@@ -33,6 +36,9 @@ class EmojiPanel(context: Context, private val palette: Palette) {
 
         data object Nothing : Lift
     }
+
+    /** The emoji a finger is holding, and the cell it fills in the View's coordinates. */
+    class Held(val emoji: Emoji, val cell: RectF)
 
     private val density = context.resources.displayMetrics.density
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
@@ -134,7 +140,7 @@ class EmojiPanel(context: Context, private val palette: Palette) {
                         CORNER_DP * density, CORNER_DP * density, markPaint,
                     )
                 }
-                drawText(emoji[index], left + cellWidth / 2, top + cellHeight / 2 + baselineOffset, emojiPaint)
+                drawText(emoji[index].text, left + cellWidth / 2, top + cellHeight / 2 + baselineOffset, emojiPaint)
             }
         }
     }
@@ -203,10 +209,25 @@ class EmojiPanel(context: Context, private val palette: Palette) {
                     scroller.fling(0, scrollY.toInt(), 0, speed.toInt(), 0, 0, 0, maxScroll.toInt())
                 }
             }
-            emoji != null && emojiAt(x, y) == emoji -> lift = Lift.Typed(emojiOf(emoji))
+            emoji != null && emojiAt(x, y) == emoji -> lift = Lift.Typed(emojiOf(emoji).text)
         }
         cancel()
         return lift
+    }
+
+    /**
+     * The emoji the finger has stayed on, if it has skin tones to offer. Null
+     * once the finger has scrolled the grid, and for an emoji with none.
+     */
+    fun held(): Held? {
+        val place = downEmoji ?: return null
+        val emoji = emojiOf(place)
+        if (isDragging || emoji.skinTones.isEmpty()) return null
+        val category = place shr 16
+        val index = place and 0xFFFF
+        val left = grid.left + index % columns * cellWidth
+        val top = grid.top + (firstRows[category] + index / columns) * cellHeight - scrollY
+        return Held(emoji, RectF(left, top, left + cellWidth, top + cellHeight))
     }
 
     /** Forgets the finger without doing anything. */
@@ -254,7 +275,7 @@ class EmojiPanel(context: Context, private val palette: Palette) {
     /** One number for an emoji's place: its category's in the high bits, its own in the low. */
     private fun indexInPanel(category: Int, index: Int) = category shl 16 or index
 
-    private fun emojiOf(place: Int): String = categories[place shr 16].emoji[place and 0xFFFF]
+    private fun emojiOf(place: Int): Emoji = categories[place shr 16].emoji[place and 0xFFFF]
 
     private companion object {
         /** Rows of emoji in view at once; with the bar they are as tall as the keys they replace. */
@@ -271,6 +292,7 @@ class EmojiPanel(context: Context, private val palette: Palette) {
 
         /** The emoji that stands for each category on its tab. */
         val TAB_ICONS = mapOf(
+            EmojiCategory.Kind.Recent to "🕒",
             EmojiCategory.Kind.SmileysAndPeople to "😀",
             EmojiCategory.Kind.AnimalsAndNature to "🐻",
             EmojiCategory.Kind.FoodAndDrink to "🍔",
@@ -281,18 +303,29 @@ class EmojiPanel(context: Context, private val palette: Palette) {
             EmojiCategory.Kind.Flags to "🏁",
         )
 
-        /** Which emoji the phone's font can draw, worked out once: the font does not change while the keyboard runs. */
-        @Volatile
-        private var drawableCache: Pair<List<EmojiCategory>, List<EmojiCategory>>? = null
+        /**
+         * Unicode's categories with only the emoji the phone's font can draw,
+         * worked out once: neither the list nor the font changes while the
+         * keyboard runs.
+         */
+        private val drawableCache = HashMap<EmojiCategory.Kind, EmojiCategory>()
 
+        /**
+         * [categories] without the emoji and skin tones the font cannot draw,
+         * and without a category left empty. The recent emoji were all chosen
+         * from the panel, so they are kept as they are, even when there are none.
+         */
         fun drawable(categories: List<EmojiCategory>): List<EmojiCategory> {
-            drawableCache?.let { (from, to) -> if (from === categories) return to }
             val paint = Paint()
-            val result = categories
-                .map { category -> category.copy(emoji = category.emoji.filter(paint::hasGlyph)) }
-                .filter { it.emoji.isNotEmpty() }
-            drawableCache = categories to result
-            return result
+            return categories.mapNotNull { category ->
+                if (category.kind == EmojiCategory.Kind.Recent) return@mapNotNull category
+                drawableCache.getOrPut(category.kind) {
+                    val emoji = category.emoji
+                        .filter { paint.hasGlyph(it.text) }
+                        .map { it.copy(skinTones = it.skinTones.filter(paint::hasGlyph)) }
+                    category.copy(emoji = emoji)
+                }.takeIf { it.emoji.isNotEmpty() }
+            }
         }
     }
 }

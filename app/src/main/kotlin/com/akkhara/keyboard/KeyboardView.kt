@@ -114,6 +114,11 @@ class KeyboardView(context: Context) : View(context) {
 
     /** The finger on the emoji panel's grid or tabs, if any. */
     private var panelPointer: Int? = null
+    private var panelHoldTimer: Runnable? = null
+
+    /** The emoji held in the panel and its skin tones on offer, once they are showing. */
+    private var heldEmoji: EmojiPanel.Held? = null
+    private var skinToneChoice: AlternateChoice? = null
 
     /** Which layer was showing when the View last looked, so the emoji panel opens at its start. */
     private var shownLayer: Layer? = null
@@ -459,6 +464,7 @@ class KeyboardView(context: Context) : View(context) {
                     engine?.layer == Layer.Emoji && (emojiPanel.contains(x, y) || cell?.key === EMOJI_TABS) -> {
                         panelPointer = event.getPointerId(index)
                         emojiPanel.down(event, index)
+                        panelHoldTimer = Runnable { onEmojiHeld(x, y) }.also { postDelayed(it, HOLD_MILLIS) }
                     }
                     cell != null -> touchDown(event.getPointerId(index), Touch(cell, x, y))
                 }
@@ -466,7 +472,7 @@ class KeyboardView(context: Context) : View(context) {
             MotionEvent.ACTION_MOVE ->
                 for (index in 0 until event.pointerCount) {
                     val pointerId = event.getPointerId(index)
-                    if (pointerId == panelPointer) emojiPanel.move(event, index)
+                    if (pointerId == panelPointer) panelMove(event, index)
                     val touch = touches[pointerId] ?: continue
                     slide(touch, event.getX(index), event.getY(index))
                 }
@@ -496,19 +502,57 @@ class KeyboardView(context: Context) : View(context) {
         super.onDetachedFromWindow()
     }
 
-    /** The finger lifted from the emoji panel: an emoji tapped is typed. */
-    private fun panelUp(event: MotionEvent, index: Int, pointerId: Int) {
-        panelPointer = null
-        val lift = emojiPanel.up(event, index, pointerId)
-        if (lift is EmojiPanel.Lift.Typed) {
-            if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-            host?.edit { typeEmoji(lift.emoji) }
-        }
+    /** The finger has stayed on an emoji: its skin tones are offered, if it has any. */
+    private fun onEmojiHeld(x: Float, y: Float) {
+        panelHoldTimer = null
+        val held = emojiPanel.held() ?: return
+        heldEmoji = held
+        skinToneChoice = AlternateChoice(held.emoji.skinTones, x, y)
+        val cell = held.cell
+        callout.showAlternates(this, Cell(CharKey(held.emoji.text), cell.left, cell.top, cell.right, cell.bottom), held.emoji.skinTones)
+        invalidate()
     }
 
+    /** The finger moved on the emoji panel: it scrolls the grid, or picks a skin tone once they are offered. */
+    private fun panelMove(event: MotionEvent, index: Int) {
+        val choice = skinToneChoice ?: return emojiPanel.move(event, index)
+        val x = event.getX(index)
+        if (choice.selected == null) {
+            val moved = maxOf(abs(x - choice.startX), abs(event.getY(index) - choice.startY))
+            if (moved < touchSlop) return
+        }
+        choice.selected = callout.alternateAt(x)
+        callout.select(choice.selected)
+    }
+
+    /**
+     * The finger lifted from the emoji panel: an emoji tapped is typed. With
+     * skin tones on offer, the one the finger slid to is typed, or the emoji
+     * without a skin tone when it never slid.
+     */
+    private fun panelUp(event: MotionEvent, index: Int, pointerId: Int) {
+        val held = heldEmoji
+        val choice = skinToneChoice
+        val lift = emojiPanel.up(event, index, pointerId)
+        dropPanelTouch()
+        val emoji = when {
+            held != null && choice != null -> choice.selected?.let(choice.alternates::get) ?: held.emoji.text
+            lift is EmojiPanel.Lift.Typed -> lift.emoji
+            else -> return
+        }
+        if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        host?.edit { typeEmoji(emoji) }
+    }
+
+    /** Forgets the finger on the emoji panel without typing anything. */
     private fun dropPanelTouch() {
         if (panelPointer == null) return
         panelPointer = null
+        panelHoldTimer?.let(::removeCallbacks)
+        panelHoldTimer = null
+        if (skinToneChoice != null) callout.dismiss()
+        heldEmoji = null
+        skinToneChoice = null
         emojiPanel.cancel()
     }
 

@@ -83,8 +83,15 @@ class KeyboardEngine(
             Layer.Emoji -> EmojiPanelLayout.bar
         }
 
-    /** What the emoji panel offers, category by category. */
-    val emojiCategories: List<EmojiCategory> get() = EmojiList.categories
+    /** The emoji chosen since the keyboard started, newest first. Never stored. See GLOSSARY.md, "Recent emoji". */
+    private val recentEmoji = ArrayDeque<String>()
+
+    /** The recent emoji as they were when the emoji panel opened, so the grid does not move under the finger. */
+    private var shownRecentEmoji: List<Emoji> = emptyList()
+
+    /** What the emoji panel offers, category by category: the recent emoji, then Unicode's categories. */
+    val emojiCategories: List<EmojiCategory>
+        get() = listOf(EmojiCategory(EmojiCategory.Kind.Recent, shownRecentEmoji)) + EmojiList.categories
 
     /** The name of the current input language, for the space bar. */
     val spaceLabel: String get() = layoutFor(inputLanguage).name
@@ -141,6 +148,9 @@ class KeyboardEngine(
 
     /** The user tapped [emoji] in the emoji panel. It is typed as it is, whatever the input language. */
     fun typeEmoji(emoji: String) {
+        recentEmoji.remove(emoji)
+        recentEmoji.addFirst(emoji)
+        if (recentEmoji.size > MAX_RECENT_EMOJI) recentEmoji.removeLast()
         insert(emoji)
         afterEdit()
         onTextFieldEdited()
@@ -272,6 +282,7 @@ class KeyboardEngine(
 
     /** Every visit to another layer starts from, and comes back to, the base layer. */
     private fun show(target: Layer) {
+        if (target == Layer.Emoji) shownRecentEmoji = recentEmoji.map { Emoji(it) }
         layer = target
         setShift(ShiftState.Off)
     }
@@ -409,6 +420,8 @@ class KeyboardEngine(
 
         /** The keys that change the text field's text. */
         val EDITING_ACTIONS = setOf(Action.Space, Action.Enter, Action.Backspace)
+
+        const val MAX_RECENT_EMOJI = 32
 
         /** The most UTF-16 units translated at once, so no translation runs for minutes. */
         const val MAX_TRANSLATION_CHARS = 500

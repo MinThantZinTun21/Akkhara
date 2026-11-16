@@ -122,6 +122,58 @@ class EmojiTest {
         assertEquals(",၊", editor.text)
     }
 
+    @Test
+    fun `there are no recent emoji when the keyboard starts`() {
+        openPanel()
+
+        assertEquals(emptyList<String>(), recentEmoji())
+    }
+
+    @Test
+    fun `recent emoji are the ones chosen, newest first and each once, skin tones included`() {
+        openPanel()
+        for (emoji in listOf("😀", "👍🏽", "🇲🇲", "😀")) engine.typeEmoji(emoji)
+        typist.tap(Action.Letters)
+        openPanel()
+
+        assertEquals(listOf("😀", "🇲🇲", "👍🏽"), recentEmoji())
+    }
+
+    @Test
+    fun `only the last 32 emoji chosen are recent`() {
+        val chosen = engine.emojiCategories.flatMap { it.emoji }.map { it.text }.take(40)
+        openPanel()
+        chosen.forEach(engine::typeEmoji)
+        typist.tap(Action.Letters)
+        openPanel()
+
+        assertEquals(chosen.reversed().take(32), recentEmoji())
+    }
+
+    @Test
+    fun `the recent emoji stay as they are while the panel is open`() {
+        openPanel()
+        engine.typeEmoji("😀")
+        typist.tap(Action.Letters)
+        openPanel()
+        engine.typeEmoji("🐶")
+
+        assertEquals(listOf("😀"), recentEmoji())
+    }
+
+    @Test
+    fun `holding a recent emoji offers no skin tones`() {
+        openPanel()
+        engine.typeEmoji("👋")
+        typist.tap(Action.Letters)
+        openPanel()
+
+        assertEquals(listOf(Emoji("👋")), engine.emojiCategories.first().emoji)
+    }
+
+    private fun recentEmoji(): List<String> =
+        engine.emojiCategories.single { it.kind == EmojiCategory.Kind.Recent }.emoji.map { it.text }
+
     private fun openPanel() {
         typist.tap(Action.Symbols)
         typist.tap(Action.Emoji)
