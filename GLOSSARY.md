@@ -139,3 +139,25 @@ _Avoid_: Update, sync, install
 **Import**:
 Choosing a translation model file with Android's file picker so the Akkhara app keeps its own copy.
 _Avoid_: Install, sideload
+
+### Emoji
+
+**Emoji panel**:
+What takes the place of the keys to choose an emoji: one grid that scrolls through every emoji category, above a bar with a key back to the letters, a tab for each category, and backspace. It offers every emoji the phone can draw.
+_Avoid_: Emoji keyboard, emoji picker, emoji layer
+
+**Emoji key**:
+The key that opens the emoji panel: on the symbols layers, and offered above the comma key while the comma key is held.
+_Avoid_: Smiley key, emoji button
+
+**Emoji category**:
+One of the groups Unicode puts emoji in, such as Smileys & people or Flags, each with its own tab in the emoji panel.
+_Avoid_: Emoji page, section
+
+**Recent emoji**:
+The emoji chosen since the keyboard last started, shown first in the emoji panel. They are never stored, so they are gone when Android restarts the keyboard.
+_Avoid_: History, favourites, frequently used
+
+**Skin tone**:
+One of the five versions of an emoji showing a person in a different skin colour. Holding such an emoji in the emoji panel offers them; a tap types the emoji without a skin tone.
+_Avoid_: Skin colour, variant, modifier
