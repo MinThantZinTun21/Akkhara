@@ -89,3 +89,25 @@ _Avoid_: Subscript, conjunct, pat sint
 
 **Kinzi**:
 The sequence `င်္`, drawn as a small mark above the following consonant.
+
+### Translation
+
+**Translation**:
+Turning text in one input language into the other, done entirely on the phone. Myanmar text becomes English and English text becomes Myanmar.
+_Avoid_: Transliteration, conversion
+
+**Translate strip**:
+The bar that opens above the keys when the user taps the translate key. The user types into it, sees the translation in it, and taps the translation to put it into the app they are typing in.
+_Avoid_: Toolbar, suggestion bar, translate panel
+
+**Translation direction**:
+Which language is translated into which. It follows the input language when the translate strip opens, and the user can swap it.
+_Avoid_: Language pair, mode
+
+**Translation model**:
+The file that does the translating. The user downloads it and imports it into the Akkhara app; until then, translation is unavailable.
+_Avoid_: Language pack, dictionary, AI
+
+**Import**:
+Choosing a translation model file with Android's file picker so the Akkhara app keeps its own copy.
+_Avoid_: Install, download, sideload
