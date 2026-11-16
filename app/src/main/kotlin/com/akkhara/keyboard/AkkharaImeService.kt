@@ -1,29 +1,27 @@
 package com.akkhara.keyboard
 
-import android.content.Context
-import android.content.SharedPreferences
 import android.inputmethodservice.InputMethodService
 import android.os.SystemClock
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import com.akkhara.keyboard.engine.InputLanguage
+import com.akkhara.keyboard.engine.Conveniences
 import com.akkhara.keyboard.engine.KeyboardEngine
 
 /** Hosts the keyboard View and connects the engine to the current text field. */
 class AkkharaImeService : InputMethodService(), KeyboardView.Host {
 
-    private lateinit var preferences: SharedPreferences
+    private lateinit var settings: KeyboardSettings
     private lateinit var engine: KeyboardEngine
     private var keyboardView: KeyboardView? = null
 
     override fun onCreate() {
         super.onCreate()
-        preferences = getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        settings = KeyboardSettings(this)
         engine = KeyboardEngine(
             editor = InputConnectionEditor({ currentInputConnection }, { currentInputEditorInfo }),
             clock = SystemClock::uptimeMillis,
-            inputLanguage = lastInputLanguage(),
+            inputLanguage = settings.inputLanguage,
         )
     }
 
@@ -39,10 +37,21 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
      */
     override fun onEvaluateFullscreenMode(): Boolean = false
 
+    /** The keyboard is opening: this is when a changed setting takes effect. */
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        engine.startInput(info.toField())
-        keyboardView?.onEngineChanged()
+        engine.startInput(
+            info.toField(),
+            Conveniences(
+                capitaliseSentences = settings.automaticCapitalisation,
+                doubleSpaceFullStop = settings.doubleSpaceFullStop,
+            ),
+        )
+        keyboardView?.apply {
+            hapticsEnabled = settings.hapticFeedback
+            keyPreviewEnabled = settings.keyPreview
+            onEngineChanged()
+        }
     }
 
     override fun onUpdateSelection(
@@ -68,28 +77,11 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         } finally {
             ic?.endBatchEdit()
         }
-        rememberInputLanguage()
+        settings.inputLanguage = engine.inputLanguage
         keyboardView?.onEngineChanged()
     }
 
     override fun showKeyboardPicker() {
         getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
-    }
-
-    private fun lastInputLanguage(): InputLanguage {
-        val name = preferences.getString(KEY_INPUT_LANGUAGE, null)
-        return InputLanguage.entries.firstOrNull { it.name == name } ?: InputLanguage.English
-    }
-
-    private fun rememberInputLanguage() {
-        val current = engine.inputLanguage.name
-        if (preferences.getString(KEY_INPUT_LANGUAGE, null) != current) {
-            preferences.edit().putString(KEY_INPUT_LANGUAGE, current).apply()
-        }
-    }
-
-    private companion object {
-        const val PREFERENCES = "akkhara"
-        const val KEY_INPUT_LANGUAGE = "input_language"
     }
 }

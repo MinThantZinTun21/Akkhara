@@ -1,4 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Akkhara Keyboard</string>
+
+    <string name="setup_title">Set up the keyboard</string>
+    <string name="setup_step_done">Done</string>
+    <string name="setup_step_not_done">Not done yet</string>
+    <string name="setup_enable_title">1. Turn on Akkhara Keyboard</string>
+    <string name="setup_enable_body">Switch it on in Android\'s list of keyboards. Android will show its usual warning for any new keyboard; Akkhara has no internet access and stores nothing you type.</string>
+    <string name="setup_enable_button">Open keyboard settings</string>
+    <string name="setup_select_title">2. Switch to Akkhara Keyboard</string>
+    <string name="setup_select_body">Choose it as the keyboard to type with.</string>
+    <string name="setup_select_button">Choose keyboard</string>
+
+    <string name="try_title">Try it</string>
+    <string name="try_label">Type here</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_note">Changes apply the next time the keyboard opens.</string>
+    <string name="setting_haptic_feedback">Vibrate on key press</string>
+    <string name="setting_key_preview">Show key preview</string>
+    <string name="setting_key_preview_note">Never shown while typing a password.</string>
+    <string name="setting_automatic_capitalisation">Capitalise the start of a sentence</string>
+    <string name="setting_double_space_full_stop">Double space types a full stop</string>
+    <string name="setting_english_only_note">English only.</string>
 </resources>

@@ -2,7 +2,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- No uses-permission elements, and never INTERNET: see docs/adr/0002-no-network-permission.md -->
+    <!--
+      The app asks for no Android permission, and never INTERNET: see
+      docs/adr/0002-no-network-permission.md. The line below strips INTERNET
+      from the merged manifest, so no library can bring it in either. (The only
+      permission in the built app is the app-private one AndroidX declares for
+      its own internal broadcasts.)
+    -->
+    <uses-permission
+        android:name="android.permission.INTERNET"
+        tools:node="remove" />
 
     <application
         android:allowBackup="false"
@@ -12,6 +21,17 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         tools:targetApi="s">
+
+        <activity
+            android:name=".SetupActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Akkhara"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
         <service
             android:name=".AkkharaImeService"
