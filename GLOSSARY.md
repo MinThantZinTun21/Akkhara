@@ -105,9 +105,13 @@ Which language is translated into which. It follows the input language when the 
 _Avoid_: Language pair, mode
 
 **Translation model**:
-The file that does the translating. The user downloads it and imports it into the Akkhara app; until then, translation is unavailable.
+The file that does the translating. The user downloads it in the Akkhara app or imports a copy they already have; until then, translation is unavailable.
 _Avoid_: Language pack, dictionary, AI
+
+**Model download**:
+Fetching the translation model from the internet inside the Akkhara app. It is the app's only use of the network.
+_Avoid_: Update, sync, install
 
 **Import**:
 Choosing a translation model file with Android's file picker so the Akkhara app keeps its own copy.
-_Avoid_: Install, download, sideload
+_Avoid_: Install, sideload
