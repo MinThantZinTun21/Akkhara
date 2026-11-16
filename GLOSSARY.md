@@ -109,7 +109,7 @@ The file that does the translating. The user downloads it in the Akkhara app or 
 _Avoid_: Language pack, dictionary, AI
 
 **Model download**:
-Fetching the translation model from the internet inside the Akkhara app. It is the app's only use of the network.
+Fetching the translation model from the internet inside the Akkhara app. It runs in the background, shown in a notification, and is the app's only use of the network.
 _Avoid_: Update, sync, install
 
 **Import**:

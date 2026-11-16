@@ -4,10 +4,10 @@ Translation runs a language model on the phone, and the model (about 2.6 GB) is 
 
 To keep that cost as small as we can:
 
-- **The download is the only network use.** It goes through Android's system `DownloadManager`, so the app contains no networking code of its own. No other feature may use the network: no analytics, crash reporting, cloud suggestions, update checks or "small" exceptions. ADR 0002's ban on those still stands.
+- **The download is the only network use.** One foreground service, the model download service, holds the app's only networking code: a plain HTTPS request for one file. No other feature may use the network: no analytics, crash reporting, cloud suggestions, update checks or "small" exceptions. ADR 0002's ban on those still stands. The owner chose the app's own service over Android's `DownloadManager` so that the download runs in the background with its own progress and Cancel in a notification, resumes after a dropped connection, and writes straight into private storage instead of needing a second 2.6 GB copy.
 - **One fixed file.** The app downloads a single URL pinned to one revision of the model on Hugging Face and checks the file's SHA-256 before using it. It never fetches a URL from anywhere else.
 - **Wi-Fi only.** The download runs only on unmetered networks, because the file is large.
-- **Same path as import.** The downloaded file goes through the same steps as a file the user imports with the system file picker: it is copied into the app's private storage, checked to open as a model, and only then counts as installed. Importing a file stays available for phones that cannot download it.
+- **Same checks as import.** The downloaded file lands in a temporary file in the app's private storage and goes through the same check as a file the user imports with the system file picker: it must open as a model before it counts as installed. Importing a file stays available for phones that cannot download it.
 - **Nothing typed leaves the phone.** Translation runs on the phone. The text being translated and its translation are never stored or sent anywhere, as ADR 0002 requires of all typed text.
 
 We considered leaving the download to the user's browser, which keeps the app free of the permission, and a separate downloader app. The owner chose the in-app download for a simpler first run.
