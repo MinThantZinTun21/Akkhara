@@ -21,4 +21,7 @@ enum class TranslationFailure {
 
     /** Anything else: the model failed, or the translator went away. */
     Failed,
+
+    /** The text is longer than is translated at once; it was not sent. */
+    TooLong,
 }

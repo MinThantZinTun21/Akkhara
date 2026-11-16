@@ -6,7 +6,7 @@ package com.akkhara.keyboard.engine
  *
  * [clock] gives the current time in milliseconds and only needs to be
  * monotonic; it is used to recognise a double tap on shift. [translator]
- * translates the text typed into the translate strip.
+ * translates the text field's text for the translate strip.
  */
 class KeyboardEngine(
     private val editor: Editor,
@@ -38,16 +38,16 @@ class KeyboardEngine(
     /** False while typing a password, where no typed character may be shown enlarged. */
     val allowsKeyPreview: Boolean get() = !textField.isPassword
 
-    /** Whether a translation model is installed, which puts the translate key on the keyboard. */
+    /** Whether a translation model is installed, which shows the translate strip. */
     var isTranslationAvailable = false
 
     /** Whether the translate strip translates by itself when typing pauses. See GLOSSARY.md, "Translate as you type". */
     var translateAsYouType = false
 
-    /** The translate strip's text while it is open; typing goes there instead of the text field. */
-    private var stripEditor: StripEditor? = null
-    private var stripDirection = TranslationDirection.EnglishToMyanmar
     private var stripState: StripState = StripState.Idle
+
+    /** The text the shown translation was made from, so a changed text field can be noticed. */
+    private var translatedSource: TranslationSource? = null
 
     /** Counts translation requests, so a result for an earlier one can be recognised and dropped. */
     private var stripRequest = 0
@@ -58,28 +58,24 @@ class KeyboardEngine(
      */
     var onStripChanged: (() -> Unit)? = null
 
-    /** The translate strip, or null while it is closed. */
-    val strip: TranslateStrip?
-        get() = stripEditor?.let { TranslateStrip(it.text, stripDirection, stripState) }
-
-    /** Where typing goes: the translate strip while it is open, otherwise the text field. */
-    private val target: Editor get() = stripEditor ?: editor
+    /**
+     * What the translate strip shows, or null when there is none: without a
+     * translation model, and in a password field, which is never translated.
+     */
+    val strip: StripState?
+        get() = if (isTranslationAvailable && translator != null && !textField.isPassword) stripState else null
 
     /** The keys of the layer that is showing, top row first. */
     val rows: List<List<Key>>
         get() = when (layer) {
             Layer.Letters -> layoutFor(inputLanguage)
                 .let { if (shift == ShiftState.Off) it.base else it.shift }
-                .let { if (isTranslationAvailable && translator != null) it.withTranslateKey() else it }
             Layer.Symbols -> SymbolsLayout.first
             Layer.MoreSymbols -> SymbolsLayout.second
         }
 
     /** The name of the current input language, for the space bar. */
     val spaceLabel: String get() = layoutFor(inputLanguage).name
-
-    /** The name of [language] in its own language, as on the space bar. */
-    fun languageName(language: InputLanguage): String = layoutFor(language).name
 
     /** A few letters of the current input language, for the key that leaves the symbols layers. */
     val lettersLabel: String get() = layoutFor(inputLanguage).lettersLabel
@@ -98,10 +94,14 @@ class KeyboardEngine(
         setShift(ShiftState.Off)
         lastShiftTap = null
         updateAutomaticCapital()
+        forgetTranslation()
     }
 
     /** Typing in the current text field is over, as when the keyboard closes. */
-    fun finishInput() = finishSyllable()
+    fun finishInput() {
+        finishSyllable()
+        forgetTranslation()
+    }
 
     /** The cursor went somewhere the keyboard did not put it. */
     fun onCursorMoved() = updateAutomaticCapital()
@@ -117,19 +117,17 @@ class KeyboardEngine(
     /** The user held [key], slid to [alternate] and lifted. */
     fun pressAlternate(key: CharKey, alternate: String) {
         require(alternate in key.alternates) { "'${key.text}' does not offer '$alternate'" }
-        val stripTextBefore = stripEditor?.text
         type(alternate)
-        if (stripTextBefore != null && stripEditor?.text != stripTextBefore) onStripTextChanged()
         afterEdit()
+        onTextFieldEdited()
     }
 
     fun press(key: Key) {
-        val stripTextBefore = stripEditor?.text
         when (key) {
             is CharKey -> type(key.text)
             is ActionKey -> perform(key.action)
         }
-        if (stripTextBefore != null && stripEditor?.text != stripTextBefore) onStripTextChanged()
+        if (key is CharKey || (key as ActionKey).action in EDITING_ACTIONS) onTextFieldEdited()
         // A tap on shift is the user's own choice of shift, so it is left as they set it.
         val isShift = key is ActionKey && key.action == Action.Shift
         if (!isShift) afterEdit()
@@ -147,12 +145,10 @@ class KeyboardEngine(
 
     /** Puts [text] into the text field, reordering the Myanmar syllable at the cursor if need be. */
     private fun insert(text: String) {
-        val before = target.textBeforeCursor(MyanmarReordering.WINDOW)
+        val before = editor.textBeforeCursor(MyanmarReordering.WINDOW)
         val edit = MyanmarReordering.type(before, text)
-        val strip = stripEditor
-        if (strip != null && strip.text.length - edit.delete + edit.insert.length > STRIP_MAX_CHARS) return
-        if (edit.delete > 0) target.deleteBeforeCursor(edit.delete)
-        target.commit(edit.insert)
+        if (edit.delete > 0) editor.deleteBeforeCursor(edit.delete)
+        editor.commit(edit.insert)
     }
 
     private fun perform(action: Action) {
@@ -165,16 +161,15 @@ class KeyboardEngine(
             Action.Symbols -> show(Layer.Symbols)
             Action.MoreSymbols -> show(Layer.MoreSymbols)
             Action.Letters -> show(Layer.Letters)
-            Action.Translate -> openStrip()
         }
     }
 
     private fun space() {
         if (conveniencesApply && conveniences.doubleSpaceFullStop) {
-            val before = target.textBeforeCursor(2)
+            val before = editor.textBeforeCursor(2)
             if (before.length == 2 && before[0].isLetterOrDigit() && before[1] == ' ') {
-                target.deleteBeforeCursor(1)
-                target.commit(". ")
+                editor.deleteBeforeCursor(1)
+                editor.commit(". ")
                 return
             }
         }
@@ -182,9 +177,7 @@ class KeyboardEngine(
     }
 
     private fun enter() {
-        if (stripEditor != null) {
-            translateStrip()
-        } else if (textField.enterAction == EnterAction.NewLine) {
+        if (textField.enterAction == EnterAction.NewLine) {
             insert("\n")
         } else {
             finishSyllable()
@@ -194,10 +187,10 @@ class KeyboardEngine(
 
     /** Leaves nothing invisible in the text when a Myanmar syllable is left unfinished. */
     private fun finishSyllable() {
-        val edit = MyanmarReordering.finish(target.textBeforeCursor(MyanmarReordering.WINDOW))
+        val edit = MyanmarReordering.finish(editor.textBeforeCursor(MyanmarReordering.WINDOW))
         if (edit.delete > 0) {
-            target.deleteBeforeCursor(edit.delete)
-            target.commit(edit.insert)
+            editor.deleteBeforeCursor(edit.delete)
+            editor.commit(edit.insert)
         }
     }
 
@@ -226,15 +219,14 @@ class KeyboardEngine(
     private val conveniencesApply: Boolean
         get() = inputLanguage == InputLanguage.English &&
             textField.kind == FieldKind.Text &&
-            !textField.isPassword &&
-            stripEditor == null
+            !textField.isPassword
 
     /**
      * Shows one-shot shift when a capital is coming, and takes it away again
      * when it is not. A shift the user chose is never taken away.
      */
     private fun updateAutomaticCapital() {
-        val wanted = conveniencesApply && conveniences.capitaliseSentences && target.wantsCapital()
+        val wanted = conveniencesApply && conveniences.capitaliseSentences && editor.wantsCapital()
         if (wanted && shift == ShiftState.Off) {
             shift = ShiftState.OneShot
             shiftIsAutomatic = true
@@ -259,42 +251,35 @@ class KeyboardEngine(
     }
 
     private fun backspace() {
-        if (target.deleteSelection()) return
-        val units = MyanmarReordering.backspace(target.textBeforeCursor(2))
-        if (units > 0) target.deleteBeforeCursor(units)
-    }
-
-    /** Opens an empty translate strip, translating from the current input language. */
-    private fun openStrip() {
-        finishSyllable()
-        stripEditor = StripEditor()
-        stripDirection = TranslationDirection.entries.first { it.from == inputLanguage }
-        stripState = StripState.Idle
-    }
-
-    /** Closes the translate strip and forgets everything in it. */
-    fun closeStrip() {
-        stripEditor = null
-        stripState = StripState.Idle
-        stripRequest++
+        if (editor.deleteSelection()) return
+        val units = MyanmarReordering.backspace(editor.textBeforeCursor(2))
+        if (units > 0) editor.deleteBeforeCursor(units)
     }
 
     /**
-     * Translates the strip's text. Does nothing when the strip is closed or
-     * empty, or while a translation is already running.
+     * Translates the text field's text: the selection if there is one,
+     * otherwise all of it. Myanmar text becomes English, and anything else
+     * becomes Myanmar. Does nothing for an empty field or while a translation
+     * is already running.
      */
-    fun translateStrip() {
-        val strip = stripEditor ?: return
+    fun translate() {
         val translator = translator ?: return
-        val text = strip.text
-        if (text.isBlank() || stripState == StripState.Translating) return
+        if (strip == null || stripState == StripState.Translating) return
+        finishSyllable()
+        val source = translationSource()
+        if (source.text.isBlank()) return
+        if (source.text.length > MAX_TRANSLATION_CHARS) {
+            stripState = StripState.Failed(TranslationFailure.TooLong)
+            return
+        }
         stripState = StripState.Translating
         val request = ++stripRequest
-        translator.translate(text, stripDirection) { result ->
+        translator.translate(source.text, source.direction) { result ->
             if (request != stripRequest) return@translate
+            translatedSource = source
             stripState = when {
-                // The user kept typing: this translation is of older text.
-                strip.text != text -> StripState.Idle
+                // The text changed while this ran: the translation is of older text.
+                translationSource() != source -> StripState.Idle
                 result is TranslationResult.Translated -> StripState.Translated(result.text)
                 result is TranslationResult.Failed -> StripState.Failed(result.reason)
                 else -> StripState.Idle
@@ -307,39 +292,63 @@ class KeyboardEngine(
 
     /** The user has stopped typing for a moment: with [translateAsYouType] on, the strip translates by itself. */
     fun onTypingPaused() {
-        // Idle means the strip's text has no translation yet; any other state already covers it.
-        if (translateAsYouType && stripState == StripState.Idle) translateStrip()
+        // Idle means the text has no translation shown yet; any other state already covers it.
+        if (translateAsYouType && stripState == StripState.Idle) translate()
     }
 
-    /** Puts the translation into the text field at the cursor and closes the strip. */
-    fun insertTranslation() {
-        val translated = stripState as? StripState.Translated ?: return
-        closeStrip()
-        editor.commit(translated.translation)
-    }
-
-    /** A translation shown for earlier text no longer applies. */
-    private fun onStripTextChanged() {
+    /** A translation shown for the text before this edit no longer applies. */
+    private fun onTextFieldEdited() {
         if (stripState != StripState.Translating) stripState = StripState.Idle
     }
 
-    /** Puts the translate key after the globe key, taking its width from the space bar. */
-    private fun List<List<Key>>.withTranslateKey(): List<List<Key>> {
-        val bottom = last().flatMap { key ->
-            when {
-                key is ActionKey && key.action == Action.Globe -> listOf(key, ActionKey(Action.Translate))
-                key is ActionKey && key.action == Action.Space -> listOf(key.copy(width = key.width - 1f))
-                else -> listOf(key)
-            }
+    /** Drops what the strip shows and any translation still running. */
+    private fun forgetTranslation() {
+        stripState = StripState.Idle
+        translatedSource = null
+        stripRequest++
+    }
+
+    /** Puts the translation in place of the text it was made from. */
+    fun replaceWithTranslation() {
+        val translated = stripState as? StripState.Translated ?: return
+        val source = translationSource()
+        stripState = StripState.Idle
+        if (source != translatedSource) return
+        if (!source.isSelection) {
+            editor.deleteBeforeCursor(source.before)
+            editor.deleteAfterCursor(source.after)
         }
-        return dropLast(1) + listOf(bottom)
+        editor.commit(translated.translation)
+    }
+
+    /** The text Translate would translate now, and where it sits in the text field. */
+    private fun translationSource(): TranslationSource {
+        val selected = editor.selectedText()
+        if (selected.isNotEmpty()) return TranslationSource(selected, isSelection = true, before = 0, after = 0)
+        // One unit more than the limit is enough to know the text is too long.
+        val before = editor.textBeforeCursor(MAX_TRANSLATION_CHARS + 1)
+        val after = editor.textAfterCursor(MAX_TRANSLATION_CHARS + 1)
+        return TranslationSource(before + after, isSelection = false, before = before.length, after = after.length)
+    }
+
+    /** Text to translate: the selection, or the text field's text with [before] units before the cursor and [after] after it. */
+    private data class TranslationSource(val text: String, val isSelection: Boolean, val before: Int, val after: Int) {
+        val direction: TranslationDirection
+            get() {
+                val myanmar = text.count { it in '\u1000'..'\u109F' }
+                val latin = text.count { it in 'A'..'Z' || it in 'a'..'z' }
+                return if (myanmar > latin) TranslationDirection.MyanmarToEnglish else TranslationDirection.EnglishToMyanmar
+            }
     }
 
     private companion object {
         /** Two taps on shift this close together are a double tap. */
         const val DOUBLE_TAP_MILLIS = 300L
 
-        /** The most UTF-16 units the translate strip takes, so no translation runs for minutes. */
-        const val STRIP_MAX_CHARS = 500
+        /** The keys that change the text field's text. */
+        val EDITING_ACTIONS = setOf(Action.Space, Action.Enter, Action.Backspace)
+
+        /** The most UTF-16 units translated at once, so no translation runs for minutes. */
+        const val MAX_TRANSLATION_CHARS = 500
     }
 }

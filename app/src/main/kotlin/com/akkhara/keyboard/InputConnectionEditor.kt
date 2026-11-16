@@ -19,6 +19,16 @@ class InputConnectionEditor(
     override fun textBeforeCursor(maxChars: Int): String =
         connection()?.getTextBeforeCursor(maxChars, 0)?.toString().orEmpty()
 
+    override fun textAfterCursor(maxChars: Int): String =
+        connection()?.getTextAfterCursor(maxChars, 0)?.toString().orEmpty()
+
+    override fun selectedText(): String =
+        connection()?.getSelectedText(0)?.toString().orEmpty()
+
+    override fun deleteAfterCursor(chars: Int) {
+        connection()?.deleteSurroundingText(0, chars)
+    }
+
     override fun commit(text: String) {
         connection()?.commitText(text, 1)
     }

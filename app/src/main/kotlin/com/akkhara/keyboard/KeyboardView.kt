@@ -197,12 +197,8 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(palette.background)
-        val engine = engine
         val strip = engine?.strip
-        if (strip != null && stripHeight > 0f) {
-            val direction = engine.languageName(strip.direction.from) + "  →  " + engine.languageName(strip.direction.to)
-            stripPainter.draw(canvas, strip, stripTarget, direction)
-        }
+        if (strip != null && stripHeight > 0f) stripPainter.draw(canvas, strip, stripTarget)
         for (cell in grid?.cells.orEmpty()) drawKey(canvas, cell)
     }
 
@@ -249,7 +245,7 @@ class KeyboardView(context: Context) : View(context) {
         // The comma and full stop in the bottom row are coloured with the action keys.
         is CharKey -> if (grid?.isInBottomRow(cell) == true) KeyStyle.Action else KeyStyle.Plain
         is ActionKey -> when (key.action) {
-            Action.Space, Action.Globe, Action.Translate -> KeyStyle.Plain
+            Action.Space, Action.Globe -> KeyStyle.Plain
             Action.Shift -> if (engine?.shift == ShiftState.Locked) KeyStyle.Accent else KeyStyle.Action
             Action.Enter -> if (engine?.enterAction == EnterAction.NewLine) KeyStyle.Action else KeyStyle.Accent
             Action.Backspace, Action.Symbols, Action.MoreSymbols, Action.Letters -> KeyStyle.Action
@@ -329,10 +325,6 @@ class KeyboardView(context: Context) : View(context) {
                 iconPath.lineTo(cx - half * 0.05f, cy + half * 0.35f)
             }
             Action.Enter -> enterIcon(engine?.enterAction ?: EnterAction.NewLine, cx, cy, half)
-            Action.Translate -> {
-                // a Latin A and a Myanmar letter with a two-way arrow between them
-                return drawLabel(canvas, "A⇄က", cell, smallLabelPaint)
-            }
         }
         canvas.drawPath(iconPath, iconPaint)
     }
@@ -434,7 +426,7 @@ class KeyboardView(context: Context) : View(context) {
         super.onDetachedFromWindow()
     }
 
-    /** A finger went down on the translate strip. Only its buttons and the translation respond. */
+    /** A finger went down on the translate strip. Only its button and the translation respond. */
     private fun stripDown(pointerId: Int, x: Float, y: Float) {
         val strip = engine?.strip ?: return
         val target = stripPainter.targetAt(x, y, strip) ?: return
@@ -451,9 +443,8 @@ class KeyboardView(context: Context) : View(context) {
         val strip = engine?.strip ?: return
         if (target == null || stripPainter.targetAt(x, y, strip) != target) return
         when (target) {
-            StripPainter.Target.Close -> host?.edit { closeStrip() }
-            StripPainter.Target.Translate -> host?.edit { translateStrip() }
-            StripPainter.Target.Insert -> host?.edit { insertTranslation() }
+            StripPainter.Target.Translate -> host?.edit { translate() }
+            StripPainter.Target.Replace -> host?.edit { replaceWithTranslation() }
         }
     }
 

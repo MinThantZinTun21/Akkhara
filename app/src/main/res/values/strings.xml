@@ -24,11 +24,11 @@
     <string name="setting_double_space_full_stop">Double space types a full stop</string>
     <string name="setting_english_only_note">English only.</string>
     <string name="setting_translate_as_you_type">Translate as you type</string>
-    <string name="setting_translate_as_you_type_note">The translate strip translates by itself when you pause, instead of waiting for Translate.</string>
+    <string name="setting_translate_as_you_type_note">When you pause typing, the translation above the keys updates by itself. Your text changes only when you tap the translation.</string>
 
     <string name="translate_strip_translate">Translate</string>
     <string name="translate_strip_translating">Translating…</string>
-    <string name="translate_strip_hint">Type to translate</string>
     <string name="translate_strip_failed">Couldn\'t translate</string>
     <string name="translate_strip_not_installed">Translation model not installed</string>
+    <string name="translate_strip_too_long">Too long to translate: 500 characters at most</string>
 </resources>

@@ -1,249 +1,227 @@
 package com.akkhara.keyboard.engine
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TranslateStripTest {
-    private val editor = FakeEditor()
+    private val editor = FakeEditor("Good morning")
     private val translator = FakeTranslator()
     private val engine = KeyboardEngine(editor, FakeClock(), translator = translator)
     private val typist = Typist(engine)
 
-    private fun bottomRow(): List<Key> = engine.rows.last()
-
-    private fun hasTranslateKey() = bottomRow().any { it is ActionKey && it.action == Action.Translate }
-
-    private fun spaceWidth() = bottomRow().filterIsInstance<ActionKey>().single { it.action == Action.Space }.width
+    private fun spaceWidth() =
+        engine.rows.last().filterIsInstance<ActionKey>().single { it.action == Action.Space }.width
 
     @Test
-    fun `there is no translate key until a translation model is installed`() {
-        assertFalse(hasTranslateKey())
+    fun `there is no translate strip until a translation model is installed`() {
+        assertNull(engine.strip)
+    }
+
+    @Test
+    fun `with a translation model the strip shows above the keys, and the keys stay as they are`() {
+        engine.isTranslationAvailable = true
+
+        assertEquals(StripState.Idle, engine.strip)
         assertEquals(4f, spaceWidth())
     }
 
     @Test
-    fun `with a translation model the translate key sits between the globe key and a narrower space bar`() {
+    fun `there is no translate strip in a password field`() {
         engine.isTranslationAvailable = true
-
-        val actions = bottomRow().filterIsInstance<ActionKey>().map { it.action }
-        val globe = actions.indexOf(Action.Globe)
-        assertEquals(Action.Translate, actions[globe + 1])
-        assertEquals(Action.Space, actions[globe + 2])
-        assertEquals(3f, spaceWidth())
-    }
-
-    private fun openStrip() {
-        engine.isTranslationAvailable = true
-        typist.tap(Action.Translate)
-    }
-
-    @Test
-    fun `the translate key opens the strip, translating from the input language`() {
-        assertNull(engine.strip)
-
-        typist.tap(Action.Globe)
-        openStrip()
-
-        val strip = engine.strip!!
-        assertEquals("", strip.text)
-        assertEquals(TranslationDirection.MyanmarToEnglish, strip.direction)
-        assertEquals(StripState.Idle, strip.state)
-    }
-
-    @Test
-    fun `typing goes into the strip and leaves the text field alone`() {
-        editor.commit("Hi ")
-        openStrip()
-
-        typist.type("cat")
-        typist.tap(Action.Backspace)
-
-        assertEquals("ca", engine.strip!!.text)
-        assertEquals("Hi ", editor.text)
-    }
-
-    @Test
-    fun `Myanmar typed into the strip is reordered just as in a text field`() {
-        typist.tap(Action.Globe)
-        openStrip()
-
-        typist.tap("ေ", "က", "ာ", "်")
-
-        assertEquals("ကော်", engine.strip!!.text)
-    }
-
-    @Test
-    fun `closing the strip clears it and sends typing back to the text field`() {
-        openStrip()
-        typist.type("cat")
-
-        engine.closeStrip()
-        typist.type("dog")
+        engine.startInput(Field(isPassword = true))
 
         assertNull(engine.strip)
-        assertEquals("dog", editor.text)
+    }
 
-        typist.tap(Action.Translate)
-        assertEquals("", engine.strip!!.text)
+    private fun request(text: String, direction: TranslationDirection) = FakeTranslator.Request(text, direction)
+
+    @Test
+    fun `Translate translates everything in the text field, wherever the cursor is`() {
+        engine.isTranslationAvailable = true
+        editor.moveCursorTo(4)
+
+        engine.translate()
+
+        assertEquals(listOf(request("Good morning", TranslationDirection.EnglishToMyanmar)), translator.requests)
+        assertEquals(StripState.Translating, engine.strip)
     }
 
     @Test
-    fun `Translate with an empty strip does nothing`() {
-        openStrip()
+    fun `Myanmar text is translated into English, whatever the input language`() {
+        val editor = FakeEditor("မင်္ဂလာပါ")
+        val engine = KeyboardEngine(editor, FakeClock(), translator = translator)
+        engine.isTranslationAvailable = true
 
-        engine.translateStrip()
+        engine.translate()
 
-        assertTrue(translator.requests.isEmpty())
-        assertEquals(StripState.Idle, engine.strip!!.state)
+        assertEquals(listOf(request("မင်္ဂလာပါ", TranslationDirection.MyanmarToEnglish)), translator.requests)
     }
 
     @Test
-    fun `Translate shows the strip translating, then the translation`() {
-        openStrip()
-        typist.type("good morning")
-
-        engine.translateStrip()
-
-        assertEquals(listOf(FakeTranslator.Request("good morning", TranslationDirection.EnglishToMyanmar)), translator.requests)
-        assertEquals(StripState.Translating, engine.strip!!.state)
-
+    fun `tapping the translation replaces the text field's text with it`() {
+        engine.isTranslationAvailable = true
+        editor.moveCursorTo(4)
+        engine.translate()
         translator.answer("မင်္ဂလာနံနက်ခင်းပါ")
+        assertEquals(StripState.Translated("မင်္ဂလာနံနက်ခင်းပါ"), engine.strip)
 
-        assertEquals(StripState.Translated("မင်္ဂလာနံနက်ခင်းပါ"), engine.strip!!.state)
+        engine.replaceWithTranslation()
+
+        assertEquals("မင်္ဂလာနံနက်ခင်းပါ", editor.text)
+        assertEquals(StripState.Idle, engine.strip)
     }
 
     @Test
-    fun `the app hears when a translation arrives`() {
-        var changes = 0
-        engine.onStripChanged = { changes++ }
-        openStrip()
-        typist.type("hi")
-        engine.translateStrip()
+    fun `with text selected, only the selection is translated and replaced`() {
+        engine.isTranslationAvailable = true
+        editor.select(5, 12)
 
-        translator.answer("ဟိုင်း")
+        engine.translate()
+        translator.answer("နံနက်")
+        engine.replaceWithTranslation()
 
-        assertEquals(1, changes)
+        assertEquals(listOf(request("morning", TranslationDirection.EnglishToMyanmar)), translator.requests)
+        assertEquals("Good နံနက်", editor.text)
     }
 
     @Test
-    fun `Translate does nothing while a translation is running`() {
-        openStrip()
-        typist.type("hi")
+    fun `a translation is not put in once the text field has changed`() {
+        engine.isTranslationAvailable = true
+        engine.translate()
+        translator.answer("မင်္ဂလာနံနက်ခင်းပါ")
+        editor.commit("!") // the app changed the text by itself
 
-        engine.translateStrip()
-        engine.translateStrip()
+        engine.replaceWithTranslation()
+
+        assertEquals("Good morning!", editor.text)
+        assertEquals(StripState.Idle, engine.strip)
+    }
+
+    @Test
+    fun `Translate does nothing in an empty text field`() {
+        val engine = KeyboardEngine(FakeEditor("  "), FakeClock(), translator = translator)
+        engine.isTranslationAvailable = true
+
+        engine.translate()
+
+        assertEquals(emptyList<FakeTranslator.Request>(), translator.requests)
+        assertEquals(StripState.Idle, engine.strip)
+    }
+
+    @Test
+    fun `Translate again while translating asks only once`() {
+        engine.isTranslationAvailable = true
+
+        engine.translate()
+        engine.translate()
 
         assertEquals(1, translator.requests.size)
     }
 
     @Test
-    fun `enter in the strip translates instead of starting a new line`() {
-        openStrip()
-        typist.type("hi")
+    fun `text longer than the translator takes is not sent`() {
+        val engine = KeyboardEngine(FakeEditor("a".repeat(501)), FakeClock(), translator = translator)
+        engine.isTranslationAvailable = true
 
-        typist.tap(Action.Enter)
+        engine.translate()
 
-        assertEquals(1, translator.requests.size)
-        assertEquals("hi", engine.strip!!.text)
-        assertEquals(0, editor.enterActionsPerformed)
+        assertEquals(emptyList<FakeTranslator.Request>(), translator.requests)
+        assertEquals(StripState.Failed(TranslationFailure.TooLong), engine.strip)
     }
 
     @Test
-    fun `tapping the translation puts it into the text field at the cursor and closes the strip`() {
-        editor.commit("Note: ")
-        openStrip()
-        typist.type("thank you")
-        engine.translateStrip()
-        translator.answer("ကျေးဇူးတင်ပါတယ်")
-
-        engine.insertTranslation()
-
-        assertEquals("Note: ကျေးဇူးတင်ပါတယ်", editor.text)
-        assertNull(engine.strip)
-    }
-
-    @Test
-    fun `there is nothing to insert before a translation has arrived`() {
-        openStrip()
-        typist.type("hi")
-        engine.translateStrip()
-
-        engine.insertTranslation()
-
-        assertEquals("", editor.text)
-        assertEquals(StripState.Translating, engine.strip!!.state)
-    }
-
-    @Test
-    fun `typing after a translation takes the old translation away`() {
-        openStrip()
-        typist.type("hi")
-        engine.translateStrip()
-        translator.answer("ဟိုင်း")
-
-        typist.type("s")
-        engine.insertTranslation()
-
-        assertEquals(StripState.Idle, engine.strip!!.state)
-        assertEquals("", editor.text)
-    }
-
-    @Test
-    fun `a failed translation says it could not translate`() {
-        openStrip()
-        typist.type("hi")
-        engine.translateStrip()
-
-        translator.fail()
-
-        assertEquals(StripState.Failed(TranslationFailure.Failed), engine.strip!!.state)
-    }
-
-    @Test
-    fun `a missing model says the translation model is not installed`() {
-        openStrip()
-        typist.type("hi")
-        engine.translateStrip()
+    fun `a failed translation says why`() {
+        engine.isTranslationAvailable = true
+        engine.translate()
 
         translator.fail(TranslationFailure.NotInstalled)
 
-        assertEquals(StripState.Failed(TranslationFailure.NotInstalled), engine.strip!!.state)
+        assertEquals(StripState.Failed(TranslationFailure.NotInstalled), engine.strip)
     }
 
     @Test
-    fun `a translation that arrives after the strip closed is dropped`() {
-        openStrip()
-        typist.type("hi")
-        engine.translateStrip()
-        engine.closeStrip()
+    fun `a translation arriving later is reported once`() {
+        engine.isTranslationAvailable = true
+        var reports = 0
+        engine.onStripChanged = { reports++ }
+        engine.translate()
 
-        translator.answer("ဟိုင်း")
+        translator.answer("မင်္ဂလာနံနက်ခင်းပါ")
 
-        assertNull(engine.strip)
-        assertEquals("", editor.text)
+        assertEquals(1, reports)
     }
 
     @Test
-    fun `the strip takes at most 500 characters`() {
-        openStrip()
+    fun `typing after a translation takes the translation away, but shift does not`() {
+        engine.isTranslationAvailable = true
+        engine.translate()
+        translator.answer("မင်္ဂလာနံနက်ခင်းပါ")
 
-        typist.type("a".repeat(499) + "bc")
+        typist.tap(Action.Shift)
+        assertEquals(StripState.Translated("မင်္ဂလာနံနက်ခင်းပါ"), engine.strip)
 
-        assertEquals("a".repeat(499) + "b", engine.strip!!.text)
+        typist.type("S")
+        assertEquals(StripState.Idle, engine.strip)
     }
 
     @Test
-    fun `the English conveniences do not apply in the strip`() {
-        engine.startInput(Field(), Conveniences(capitaliseSentences = true, doubleSpaceFullStop = true))
-        editor.capitalisesSentences = true
-        openStrip()
+    fun `a translation of text that changed while it ran is not shown`() {
+        engine.isTranslationAvailable = true
+        engine.translate()
+        typist.type("s")
 
-        assertEquals(ShiftState.Off, engine.shift)
-        typist.type("hi  there")
+        translator.answer("မင်္ဂလာနံနက်ခင်းပါ")
 
-        assertEquals("hi  there", engine.strip!!.text)
+        assertEquals(StripState.Idle, engine.strip)
+    }
+
+    @Test
+    fun `a translation arriving after the keyboard closed is dropped`() {
+        engine.isTranslationAvailable = true
+        engine.translate()
+        engine.finishInput()
+        engine.startInput(Field())
+
+        translator.answer("မင်္ဂလာနံနက်ခင်းပါ")
+
+        assertEquals(StripState.Idle, engine.strip)
+    }
+
+    @Test
+    fun `a pause in typing translates nothing while translate as you type is off`() {
+        engine.isTranslationAvailable = true
+
+        engine.onTypingPaused()
+
+        assertEquals(emptyList<FakeTranslator.Request>(), translator.requests)
+    }
+
+    @Test
+    fun `with translate as you type on, a pause translates, and only once for the same text`() {
+        engine.isTranslationAvailable = true
+        engine.translateAsYouType = true
+
+        engine.onTypingPaused()
+        translator.answer("မင်္ဂလာနံနက်ခင်းပါ")
+        engine.onTypingPaused()
+
+        assertEquals(1, translator.requests.size)
+        assertEquals(StripState.Translated("မင်္ဂလာနံနက်ခင်းပါ"), engine.strip)
+        assertEquals("Good morning", editor.text) // shown only: nothing is replaced until tapped
+    }
+
+    @Test
+    fun `with translate as you type on, text typed while a translation runs is translated when it returns`() {
+        engine.isTranslationAvailable = true
+        engine.translateAsYouType = true
+        engine.onTypingPaused()
+        typist.type("s")
+        engine.onTypingPaused() // still translating: nothing to do yet
+
+        translator.answer("မင်္ဂလာနံနက်ခင်းပါ")
+
+        assertEquals(listOf("Good morning", "Good mornings"), translator.requests.map { it.text })
+        assertEquals(StripState.Translating, engine.strip)
     }
 }

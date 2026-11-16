@@ -31,6 +31,15 @@ class FakeEditor(initial: String = "") : Editor {
     override fun textBeforeCursor(maxChars: Int): String =
         buffer.substring(maxOf(0, selectionStart - maxChars), selectionStart)
 
+    override fun textAfterCursor(maxChars: Int): String =
+        buffer.substring(selectionEnd, minOf(buffer.length, selectionEnd + maxChars))
+
+    override fun selectedText(): String = buffer.substring(selectionStart, selectionEnd)
+
+    override fun deleteAfterCursor(chars: Int) {
+        buffer.delete(selectionEnd, minOf(buffer.length, selectionEnd + chars))
+    }
+
     override fun commit(text: String) {
         buffer.replace(selectionStart, selectionEnd, text)
         selectionStart += text.length
