@@ -48,7 +48,8 @@ internal object MyanmarReordering {
     private fun typeSequence(before: String, typed: String): Edit {
         var text = before
         for (c in typed) {
-            val alreadyThere = isMark(c) && c in text.substring(syllableStart(text))
+            val marks = parse(text.substring(syllableStart(text)))?.marks.orEmpty()
+            val alreadyThere = isMark(c) && c in marks
             if (alreadyThere) continue
             val edit = when {
                 isBase(c) -> typeBase(text, c.toString())

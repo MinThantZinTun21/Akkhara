@@ -119,6 +119,22 @@ class MyanmarLayoutTest {
     }
 
     @Test
+    fun `the key for ော် after kinzi and its consonant keeps its own asat`() {
+        engine.pressAlternate(typist.charKey("င"), KINZI)
+        typist.tap("ဂ", "ော်")
+
+        assertEquals(codePoints("င်္ဂော်"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `a key for a stacked consonant after a virama keeps its own virama`() {
+        typist.tap("က")
+        typist.tapThroughShift("္", "ဏ္ဍ")
+
+        assertEquals(codePoints("က္ဏ္ဍ"), codePoints(editor.text))
+    }
+
+    @Test
     fun `the key for ုံ types the vowel and the anusvara`() {
         typist.tap("တ", "ုံ", "း")
 
