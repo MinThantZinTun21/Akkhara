@@ -101,6 +101,32 @@ class AlternatesTest {
     }
 
     @Test
+    fun `the Myanmar top row types the Latin digit of its column when held`() {
+        chooseAlternate("ဈ", "1")
+        chooseAlternate("ရ", "7")
+        chooseAlternate("၏", "0")
+
+        assertEquals("170", editor.text)
+    }
+
+    @Test
+    fun `the vowels ဩ and ဪ are offered by holding သ`() {
+        chooseAlternate("သ", "ဩ")
+        typist.tap(Action.Space)
+        chooseAlternate("သ", "ဪ")
+
+        assertEquals("ဩ ဪ", editor.text)
+    }
+
+    @Test
+    fun `the sign ၎ by itself is offered by holding the key for ၎င်း`() {
+        typist.tap(Action.Shift)
+        chooseAlternate("၎င်း", "၎")
+
+        assertEquals("၎", editor.text)
+    }
+
+    @Test
     fun `holding backspace asks for it to repeat`() {
         assertEquals(Hold.Repeat, engine.hold(typist.actionKey(Action.Backspace)))
     }

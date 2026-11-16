@@ -6,7 +6,7 @@ enum class Layer { Letters, Symbols, MoreSymbols }
 enum class ShiftState {
     Off,
 
-    /** The shift layer shows for exactly one typed character. */
+    /** The shift layer shows for one key press that types. */
     OneShot,
 
     /** The shift layer shows until the user turns it off. */

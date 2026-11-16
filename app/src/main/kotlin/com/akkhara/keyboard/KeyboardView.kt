@@ -101,7 +101,6 @@ class KeyboardView(context: Context) : View(context) {
     private val smallLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
-        color = palette.hint
     }
     private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -177,8 +176,8 @@ class KeyboardView(context: Context) : View(context) {
 
     // ---- drawing ----
 
-    /** How a key is coloured. */
-    private enum class Tone { Plain, Action, Accent }
+    /** Which colours a key is drawn in. */
+    private enum class KeyStyle { Plain, Action, Accent }
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(palette.background)
@@ -187,18 +186,18 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun drawKey(canvas: Canvas, cell: Cell) {
         val key = cell.key
-        val tone = toneOf(cell)
+        val style = styleOf(cell)
         val isPressed = touches.values.any { it.cell.isAt(cell) }
         keyPaint.color = when {
             isPressed -> palette.keyPressed
-            tone == Tone.Accent -> palette.accent
-            tone == Tone.Action -> palette.actionKey
+            style == KeyStyle.Accent -> palette.accent
+            style == KeyStyle.Action -> palette.actionKey
             else -> palette.key
         }
         val ink = when {
             isPressed -> palette.label
-            tone == Tone.Accent -> palette.onAccent
-            tone == Tone.Action -> palette.actionLabel
+            style == KeyStyle.Accent -> palette.onAccent
+            style == KeyStyle.Action -> palette.actionLabel
             else -> palette.label
         }
         labelPaint.color = ink
@@ -215,6 +214,8 @@ class KeyboardView(context: Context) : View(context) {
                     // The label moves down a little to leave the corner to the hint.
                     drawLabel(canvas, key.text, cell, labelPaint, lowerBy = cell.height * HINT_SHIFT)
                     val inset = 3f * density
+                    // On a pressed key the hint takes the label's colour, which keeps its contrast.
+                    hintPaint.color = if (isPressed) palette.label else palette.hint
                     canvas.drawText(hint, cell.right - inset, cell.top + inset / 2 - hintPaint.ascent(), hintPaint)
                 }
             }
@@ -222,14 +223,14 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    private fun toneOf(cell: Cell): Tone = when (val key = cell.key) {
-        // The punctuation beside the space bar is coloured with the action keys.
-        is CharKey -> if (grid?.isInBottomRow(cell) == true) Tone.Action else Tone.Plain
+    private fun styleOf(cell: Cell): KeyStyle = when (val key = cell.key) {
+        // The comma and full stop in the bottom row are coloured with the action keys.
+        is CharKey -> if (grid?.isInBottomRow(cell) == true) KeyStyle.Action else KeyStyle.Plain
         is ActionKey -> when (key.action) {
-            Action.Space, Action.Globe -> Tone.Plain
-            Action.Shift -> if (engine?.shift == ShiftState.Locked) Tone.Accent else Tone.Action
-            Action.Enter -> if (engine?.enterAction == EnterAction.NewLine) Tone.Action else Tone.Accent
-            Action.Backspace, Action.Symbols, Action.MoreSymbols, Action.Letters -> Tone.Action
+            Action.Space, Action.Globe -> KeyStyle.Plain
+            Action.Shift -> if (engine?.shift == ShiftState.Locked) KeyStyle.Accent else KeyStyle.Action
+            Action.Enter -> if (engine?.enterAction == EnterAction.NewLine) KeyStyle.Action else KeyStyle.Accent
+            Action.Backspace, Action.Symbols, Action.MoreSymbols, Action.Letters -> KeyStyle.Action
         }
     }
 
@@ -249,9 +250,7 @@ class KeyboardView(context: Context) : View(context) {
     private fun drawLabel(canvas: Canvas, text: String, cell: Cell, paint: Paint, lowerBy: Float = 0f) {
         val fullSize = paint.textSize
         if (text.any { it in MYANMAR }) paint.textSize = fullSize * MYANMAR_SCALE
-        val room = cell.width - 2 * density
-        val width = paint.measureText(text)
-        if (width > room) paint.textSize *= room / width
+        paint.shrinkToFit(text, room = cell.width - 2 * density)
         val baseline = (cell.top + cell.bottom) / 2 + lowerBy - (paint.descent() + paint.ascent()) / 2
         canvas.drawText(text, cell.centerX, baseline, paint)
         paint.textSize = fullSize

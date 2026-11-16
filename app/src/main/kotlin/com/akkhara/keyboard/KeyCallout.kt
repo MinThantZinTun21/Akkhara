@@ -99,10 +99,9 @@ class KeyCallout(context: Context, private val palette: Palette) {
             val each = width.toFloat() / texts.size
             val fullSize = label.textSize
             texts.forEachIndexed { index, text ->
+                label.textSize = fullSize
                 // A key that types several characters may be wider than its share of the callout.
-                val needed = label.measureText(text)
-                val room = each - 4f * density
-                label.textSize = if (needed > room) fullSize * room / needed else fullSize
+                label.shrinkToFit(text, room = each - 4f * density)
                 val baseline = height / 2f - (label.descent() + label.ascent()) / 2
                 val isSelected = index == selected
                 if (isSelected) {

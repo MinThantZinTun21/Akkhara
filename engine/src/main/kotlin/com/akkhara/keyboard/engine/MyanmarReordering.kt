@@ -41,11 +41,15 @@ internal object MyanmarReordering {
     /**
      * A key that types several Myanmar characters at once, such as ော် or ဏ္ဍ.
      * Its marks belong to the consonant already typed: only an e-vowel typed
-     * by its own key stands ahead of its consonant.
+     * by its own key stands ahead of its consonant. A mark the syllable
+     * already has is not added a second time, so the key for ော after ေ
+     * gives ော.
      */
     private fun typeSequence(before: String, typed: String): Edit {
         var text = before
         for (c in typed) {
+            val alreadyThere = isMark(c) && c in text.substring(syllableStart(text))
+            if (alreadyThere) continue
             val edit = when {
                 isBase(c) -> typeBase(text, c.toString())
                 isMark(c) -> typeMark(text, c)

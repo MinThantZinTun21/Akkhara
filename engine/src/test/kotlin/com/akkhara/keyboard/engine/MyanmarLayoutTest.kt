@@ -91,7 +91,7 @@ class MyanmarLayoutTest {
         engine.rows.flatten().filterIsInstance<CharKey>().flatMap { listOf(it.text) + it.alternates }
 
     @Test
-    fun `a key that shows a vowel with its tone types the whole of it onto the consonant`() {
+    fun `a key that shows a vowel with asat types all of it onto the consonant`() {
         typist.tap("က", "ော်")
 
         assertEquals(codePoints("ကော်"), codePoints(editor.text))
@@ -102,6 +102,20 @@ class MyanmarLayoutTest {
         typist.tap("မ", "ြ", "ော")
 
         assertEquals(codePoints("မြော"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `the key for ော after an e-vowel typed ahead of its consonant does not double the e-vowel`() {
+        typist.tap("ေ", "ော", "က")
+
+        assertEquals(codePoints("ကော"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `the key for ော after an e-vowel already on the consonant does not double the e-vowel`() {
+        typist.tap("ေ", "က", "ော")
+
+        assertEquals(codePoints("ကော"), codePoints(editor.text))
     }
 
     @Test
@@ -120,7 +134,7 @@ class MyanmarLayoutTest {
     }
 
     @Test
-    fun `the key for ၎င်း types the whole word`() {
+    fun `the key for ၎င်း types all of it`() {
         typist.tapThroughShift("၎င်း")
 
         assertEquals(codePoints("၎င်း"), codePoints(editor.text))

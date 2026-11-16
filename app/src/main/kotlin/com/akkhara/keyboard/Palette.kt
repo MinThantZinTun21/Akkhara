@@ -14,7 +14,10 @@ data class Palette(
     val background: Int,
     val key: Int,
     val keyPressed: Int,
-    /** The keys that act instead of typing a letter, and the punctuation beside the space bar. */
+    /**
+     * Shift, backspace, the layer keys and an enter that starts a new line, and
+     * the comma and full stop in the bottom row. Space and globe are drawn as [key].
+     */
     val actionKey: Int,
     val label: Int,
     /** Labels and pictures on [actionKey]. */
