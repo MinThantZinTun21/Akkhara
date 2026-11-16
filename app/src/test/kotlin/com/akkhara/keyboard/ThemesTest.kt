@@ -20,6 +20,25 @@ class ThemesTest {
     }
 
     @Test
+    fun `there are ten themes, the light ones first`() {
+        assertEquals(
+            listOf("Light", "Sand", "Rose", "Sky", "Lavender", "Dark", "Midnight", "Forest", "Plum", "Black"),
+            Theme.entries.map { it.name },
+        )
+        assertEquals(listOf(false, true), Theme.entries.map { it.isDark }.distinct())
+    }
+
+    @Test
+    fun `no two themes look the same`() {
+        assertEquals(Theme.entries.size, Theme.entries.map { it.palette }.distinct().size)
+    }
+
+    @Test
+    fun `Black has a pure black background`() {
+        assertEquals(BLACK, Theme.valueOf("Black").palette.background)
+    }
+
+    @Test
     fun `every label is readable on what it sits on, in every theme`() {
         for (theme in Theme.entries) {
             val palette = theme.palette

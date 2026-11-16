@@ -293,7 +293,15 @@ private fun PreviewKey(colour: Color, modifier: Modifier = Modifier, label: @Com
 private fun Theme?.nameRes(): Int = when (this) {
     null -> R.string.theme_follow_system
     Theme.Light -> R.string.theme_light
+    Theme.Sand -> R.string.theme_sand
+    Theme.Rose -> R.string.theme_rose
+    Theme.Sky -> R.string.theme_sky
+    Theme.Lavender -> R.string.theme_lavender
     Theme.Dark -> R.string.theme_dark
+    Theme.Midnight -> R.string.theme_midnight
+    Theme.Forest -> R.string.theme_forest
+    Theme.Plum -> R.string.theme_plum
+    Theme.Black -> R.string.theme_black
 }
 
 /**
