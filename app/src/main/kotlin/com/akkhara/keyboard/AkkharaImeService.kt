@@ -2,6 +2,7 @@ package com.akkhara.keyboard
 
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -60,7 +61,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         return KeyboardView(this, theme).also { view ->
             view.bind(engine, this)
             keyboardView = view
-            showNavigationBarIconsFor(theme, view)
+            fitNavigationBarTo(theme, view)
         }
     }
 
@@ -72,12 +73,21 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     )
 
     /**
-     * The keyboard draws its own background behind the navigation bar, so the
-     * bar's icons have to suit the theme, not the phone's light or dark mode.
+     * Makes the navigation bar part of the keyboard: the theme's background,
+     * with icons that suit the theme rather than the phone's light or dark mode.
+     * See docs/research/keyboard-themes.md, part 2.
      */
-    private fun showNavigationBarIconsFor(theme: Theme, view: View) {
+    private fun fitNavigationBarTo(theme: Theme, view: View) {
         val window = window?.window ?: return
         WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !theme.isDark
+        // From Android 15 the keyboard draws its own background behind the bar; this
+        // stops the system laying a scrim over it when three-button navigation is on.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isNavigationBarContrastEnforced = false
+        // Before Android 15 the bar has a colour of its own.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            @Suppress("DEPRECATION")
+            window.navigationBarColor = theme.palette.background
+        }
     }
 
     /**
