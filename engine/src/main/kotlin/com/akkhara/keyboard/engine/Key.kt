@@ -40,6 +40,9 @@ enum class Action {
 
     /** Leave the symbols layers for the letters of the current layout. */
     Letters,
+
+    /** Translate the text field's text, showing the translation in the translate strip. */
+    Translate,
 }
 
 /** What holding a key down should do, for the View to carry out. */

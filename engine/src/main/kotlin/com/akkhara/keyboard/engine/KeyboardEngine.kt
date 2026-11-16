@@ -38,7 +38,7 @@ class KeyboardEngine(
     /** False while typing a password, where no typed character may be shown enlarged. */
     val allowsKeyPreview: Boolean get() = !textField.isPassword
 
-    /** Whether a translation model is installed, which shows the translate strip. */
+    /** Whether a translation model is installed, which shows the translate key and the translate strip. */
     var isTranslationAvailable = false
 
     /** Whether the translate strip translates by itself when typing pauses. See GLOSSARY.md, "Translate as you type". */
@@ -63,13 +63,18 @@ class KeyboardEngine(
      * translation model, and in a password field, which is never translated.
      */
     val strip: StripState?
-        get() = if (isTranslationAvailable && translator != null && !textField.isPassword) stripState else null
+        get() = if (offersTranslation) stripState else null
+
+    /** Translation is offered with a model installed, except in a password field, which is never translated. */
+    private val offersTranslation: Boolean
+        get() = isTranslationAvailable && translator != null && !textField.isPassword
 
     /** The keys of the layer that is showing, top row first. */
     val rows: List<List<Key>>
         get() = when (layer) {
             Layer.Letters -> layoutFor(inputLanguage)
                 .let { if (shift == ShiftState.Off) it.base else it.shift }
+                .let { if (offersTranslation) it.withTranslateKey() else it }
             Layer.Symbols -> SymbolsLayout.first
             Layer.MoreSymbols -> SymbolsLayout.second
         }
@@ -161,6 +166,7 @@ class KeyboardEngine(
             Action.Symbols -> show(Layer.Symbols)
             Action.MoreSymbols -> show(Layer.MoreSymbols)
             Action.Letters -> show(Layer.Letters)
+            Action.Translate -> translate()
         }
     }
 
@@ -339,6 +345,18 @@ class KeyboardEngine(
                 val latin = text.count { it in 'A'..'Z' || it in 'a'..'z' }
                 return if (myanmar > latin) TranslationDirection.MyanmarToEnglish else TranslationDirection.EnglishToMyanmar
             }
+    }
+
+    /** Puts the translate key after the globe key, taking its width from the space bar. */
+    private fun List<List<Key>>.withTranslateKey(): List<List<Key>> {
+        val bottom = last().flatMap { key ->
+            when {
+                key is ActionKey && key.action == Action.Globe -> listOf(key, ActionKey(Action.Translate))
+                key is ActionKey && key.action == Action.Space -> listOf(key.copy(width = key.width - 1f))
+                else -> listOf(key)
+            }
+        }
+        return dropLast(1) + listOf(bottom)
     }
 
     private companion object {

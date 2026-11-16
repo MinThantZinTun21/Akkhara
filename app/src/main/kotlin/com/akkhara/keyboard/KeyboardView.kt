@@ -21,6 +21,7 @@ import com.akkhara.keyboard.engine.Hold
 import com.akkhara.keyboard.engine.KeyGrid
 import com.akkhara.keyboard.engine.KeyboardEngine
 import com.akkhara.keyboard.engine.ShiftState
+import com.akkhara.keyboard.engine.StripState
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -141,7 +142,8 @@ class KeyboardView(context: Context) : View(context) {
      */
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rowCount = engine?.rows?.size ?: 0
-        val hasStrip = engine?.strip != null
+        // The strip shows only while it has something to say, so the keyboard keeps its height otherwise.
+        val hasStrip = engine?.strip.let { it != null && it != StripState.Idle }
         var scale = 1f
         if (rowCount > 0) {
             // The strip and the keys shrink together when the screen is too short for both.
@@ -245,7 +247,7 @@ class KeyboardView(context: Context) : View(context) {
         // The comma and full stop in the bottom row are coloured with the action keys.
         is CharKey -> if (grid?.isInBottomRow(cell) == true) KeyStyle.Action else KeyStyle.Plain
         is ActionKey -> when (key.action) {
-            Action.Space, Action.Globe -> KeyStyle.Plain
+            Action.Space, Action.Globe, Action.Translate -> KeyStyle.Plain
             Action.Shift -> if (engine?.shift == ShiftState.Locked) KeyStyle.Accent else KeyStyle.Action
             Action.Enter -> if (engine?.enterAction == EnterAction.NewLine) KeyStyle.Action else KeyStyle.Accent
             Action.Backspace, Action.Symbols, Action.MoreSymbols, Action.Letters -> KeyStyle.Action
@@ -325,6 +327,8 @@ class KeyboardView(context: Context) : View(context) {
                 iconPath.lineTo(cx - half * 0.05f, cy + half * 0.35f)
             }
             Action.Enter -> enterIcon(engine?.enterAction ?: EnterAction.NewLine, cx, cy, half)
+            // a Latin A and a Myanmar letter with a two-way arrow between them
+            Action.Translate -> return drawLabel(canvas, "A⇄က", cell, smallLabelPaint)
         }
         canvas.drawPath(iconPath, iconPaint)
     }
@@ -426,7 +430,7 @@ class KeyboardView(context: Context) : View(context) {
         super.onDetachedFromWindow()
     }
 
-    /** A finger went down on the translate strip. Only its button and the translation respond. */
+    /** A finger went down on the translate strip. Only the translation responds. */
     private fun stripDown(pointerId: Int, x: Float, y: Float) {
         val strip = engine?.strip ?: return
         val target = stripPainter.targetAt(x, y, strip) ?: return
@@ -443,7 +447,6 @@ class KeyboardView(context: Context) : View(context) {
         val strip = engine?.strip ?: return
         if (target == null || stripPainter.targetAt(x, y, strip) != target) return
         when (target) {
-            StripPainter.Target.Translate -> host?.edit { translate() }
             StripPainter.Target.Replace -> host?.edit { replaceWithTranslation() }
         }
     }

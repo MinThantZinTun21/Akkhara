@@ -1,6 +1,7 @@
 package com.akkhara.keyboard.engine
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -18,20 +19,44 @@ class TranslateStripTest {
         assertNull(engine.strip)
     }
 
-    @Test
-    fun `with a translation model the strip shows above the keys, and the keys stay as they are`() {
-        engine.isTranslationAvailable = true
+    private fun hasTranslateKey() =
+        engine.rows.last().any { it is ActionKey && it.action == Action.Translate }
 
-        assertEquals(StripState.Idle, engine.strip)
+    @Test
+    fun `there is no translate key until a translation model is installed`() {
+        assertFalse(hasTranslateKey())
         assertEquals(4f, spaceWidth())
     }
 
     @Test
-    fun `there is no translate strip in a password field`() {
+    fun `with a translation model the translate key sits between the globe key and a narrower space bar`() {
+        engine.isTranslationAvailable = true
+
+        val actions = engine.rows.last().filterIsInstance<ActionKey>().map { it.action }
+        val globe = actions.indexOf(Action.Globe)
+        assertEquals(Action.Translate, actions[globe + 1])
+        assertEquals(Action.Space, actions[globe + 2])
+        assertEquals(3f, spaceWidth())
+        assertEquals(StripState.Idle, engine.strip)
+    }
+
+    @Test
+    fun `there is no translate key or strip in a password field`() {
         engine.isTranslationAvailable = true
         engine.startInput(Field(isPassword = true))
 
+        assertFalse(hasTranslateKey())
         assertNull(engine.strip)
+    }
+
+    @Test
+    fun `the translate key translates the text field`() {
+        engine.isTranslationAvailable = true
+
+        typist.tap(Action.Translate)
+
+        assertEquals(listOf(request("Good morning", TranslationDirection.EnglishToMyanmar)), translator.requests)
+        assertEquals("Good morning", editor.text)
     }
 
     private fun request(text: String, direction: TranslationDirection) = FakeTranslator.Request(text, direction)

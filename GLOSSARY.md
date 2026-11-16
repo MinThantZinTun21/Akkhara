@@ -97,7 +97,7 @@ Turning text in one input language into the other, done entirely on the phone. M
 _Avoid_: Transliteration, conversion
 
 **Translate strip**:
-The row above the keys, shown while a translation model is installed (never in a password field). Its Translate button translates the text in the text field, or only the selected part; tapping the translation puts it in place of that text.
+The row above the keys that shows the translation, or that one is being made. The translate key, beside the globe key, translates the text in the text field, or only the selected part; tapping the translation in the strip puts it in place of that text. Neither shows without a translation model, nor in a password field.
 _Avoid_: Toolbar, suggestion bar, translate panel
 
 **Translate as you type**:

@@ -13,21 +13,18 @@ import com.akkhara.keyboard.engine.StripState
 import com.akkhara.keyboard.engine.TranslationFailure
 
 /**
- * Lays out and draws the translate strip, the row above the keys, and says
- * which of its parts a touch lands on. It holds no state of its own: what the
- * strip shows comes from the engine each time it is drawn.
- *
- * Left to right: the Translate button, then the translation (tapped to put it
- * in place of the text), or what is happening instead.
+ * Lays out and draws the translate strip, the row above the keys that shows
+ * the translation (tapped to put it in place of the text) or what is
+ * happening instead. It holds no state of its own: what the strip shows comes
+ * from the engine each time it is drawn.
  */
 internal class StripPainter(context: Context, private val palette: Palette) {
 
     /** The parts of the strip a finger can press. */
-    enum class Target { Translate, Replace }
+    enum class Target { Replace }
 
     private val density = context.resources.displayMetrics.density
     private val scaledDensity = context.resources.displayMetrics.scaledDensity
-    private val translateLabel = context.getString(R.string.translate_strip_translate)
     private val translatingText = context.getString(R.string.translate_strip_translating)
     private val failedText = context.getString(R.string.translate_strip_failed)
     private val notInstalledText = context.getString(R.string.translate_strip_not_installed)
@@ -35,9 +32,7 @@ internal class StripPainter(context: Context, private val palette: Palette) {
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
-    private val buttonPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
 
-    private val translate = RectF()
     private val result = RectF()
     private val radius = 7f * density
     private val inset = 10f * density
@@ -49,40 +44,17 @@ internal class StripPainter(context: Context, private val palette: Palette) {
     fun layout(width: Float, scale: Float, edge: Float) {
         val unit = density * scale
         textPaint.textSize = TEXT_SP * scaledDensity * scale
-        buttonPaint.textSize = TEXT_SP * scaledDensity * scale
         val top = edge + GAP_DP * unit
-        val bottom = top + ROW_DP * unit
-        translate.set(edge, top, edge + BUTTON_DP * unit, bottom)
-        result.set(translate.right + GAP_DP * unit, top, width - edge, bottom)
+        result.set(edge, top, width - edge, top + ROW_DP * unit)
     }
 
     /** The part of the strip at ([x], [y]), or null if none is there. */
-    fun targetAt(x: Float, y: Float, state: StripState): Target? = when {
-        translate.contains(x, y) -> Target.Translate
-        result.contains(x, y) && state is StripState.Translated -> Target.Replace
-        else -> null
-    }
+    fun targetAt(x: Float, y: Float, state: StripState): Target? =
+        if (result.contains(x, y) && state is StripState.Translated) Target.Replace else null
 
+    /** Draws the translation, or what is happening instead. Nothing while there is nothing to say. */
     fun draw(canvas: Canvas, state: StripState, pressed: Target?) {
-        drawTranslateButton(canvas, state, pressed == Target.Translate)
-        drawResult(canvas, state, pressed == Target.Replace)
-    }
-
-    private fun drawTranslateButton(canvas: Canvas, state: StripState, isPressed: Boolean) {
-        val isBusy = state == StripState.Translating
-        fillPaint.color = if (isPressed || isBusy) palette.keyPressed else palette.accent
-        val pill = translate.height() / 2
-        canvas.drawRoundRect(translate, pill, pill, fillPaint)
-        buttonPaint.color = if (isPressed || isBusy) palette.label else palette.onAccent
-        val fullSize = buttonPaint.textSize
-        buttonPaint.shrinkToFit(translateLabel, translate.width() - inset)
-        val baseline = translate.centerY() - (buttonPaint.descent() + buttonPaint.ascent()) / 2
-        canvas.drawText(translateLabel, translate.centerX(), baseline, buttonPaint)
-        buttonPaint.textSize = fullSize
-    }
-
-    /** The translation, or what is happening instead. Nothing while there is nothing to say. */
-    private fun drawResult(canvas: Canvas, state: StripState, isPressed: Boolean) {
+        val isPressed = pressed == Target.Replace
         val (text, isTranslation) = when (state) {
             StripState.Idle -> return
             StripState.Translating -> translatingText to false
@@ -112,7 +84,6 @@ internal class StripPainter(context: Context, private val palette: Palette) {
 
     private companion object {
         const val ROW_DP = 48f
-        const val BUTTON_DP = 108f
         const val GAP_DP = 4f
         const val TEXT_SP = 15f
 
