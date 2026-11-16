@@ -21,6 +21,9 @@ class KeyboardSettings(context: Context) {
     var capitaliseSentences: Boolean by toggle("capitalise_sentences")
     var doubleSpaceFullStop: Boolean by toggle("double_space_full_stop")
 
+    /** Off until the user turns it on: each translation keeps the phone busy for a while. */
+    var translateAsYouType: Boolean by toggle("translate_as_you_type", default = false)
+
     /** The input language the keyboard was last typing, so it opens in the same one. */
     var inputLanguage: InputLanguage
         get() {
@@ -33,10 +36,10 @@ class KeyboardSettings(context: Context) {
             }
         }
 
-    /** A setting that is on until the user turns it off. */
-    private fun toggle(key: String) = object : ReadWriteProperty<Any?, Boolean> {
+    /** A setting that is [default] until the user changes it. */
+    private fun toggle(key: String, default: Boolean = true) = object : ReadWriteProperty<Any?, Boolean> {
         override fun getValue(thisRef: Any?, property: KProperty<*>): Boolean =
-            preferences.getBoolean(key, true)
+            preferences.getBoolean(key, default)
 
         override fun setValue(thisRef: Any?, property: KProperty<*>, value: Boolean) {
             preferences.edit { putBoolean(key, value) }

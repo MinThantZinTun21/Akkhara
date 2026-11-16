@@ -12,6 +12,7 @@ import android.os.Messenger
 import android.os.RemoteException
 import android.os.SystemClock
 import com.akkhara.keyboard.engine.TranslationDirection
+import com.akkhara.keyboard.engine.TranslationFailure
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_BACKEND
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_DIRECTION
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_LOAD_MS

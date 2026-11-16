@@ -90,6 +90,14 @@ class KeyboardView(context: Context) : View(context) {
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     private var grid: KeyGrid? = null
+    private val stripPainter = StripPainter(context, palette)
+
+    /** Height of the translate strip above the keys; 0 while it is closed. */
+    private var stripHeight = 0f
+
+    /** The finger on the translate strip, if any, and the part of the strip it went down on. */
+    private var stripPointer: Int? = null
+    private var stripTarget: StripPainter.Target? = null
     private val touches = LinkedHashMap<Int, Touch>() // by pointer id, oldest first
     private val callout = KeyCallout(context, palette)
 
@@ -133,15 +141,21 @@ class KeyboardView(context: Context) : View(context) {
      */
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rowCount = engine?.rows?.size ?: 0
+        val hasStrip = engine?.strip != null
+        var scale = 1f
         if (rowCount > 0) {
+            // The strip and the keys shrink together when the screen is too short for both.
             val tallest = resources.displayMetrics.heightPixels * MAX_SCREEN_SHARE - 2 * edgePadding
-            rowHeight = min(fullRowHeight, tallest / rowCount)
+            val fullHeight = rowCount * fullRowHeight + if (hasStrip) stripPainter.height(1f) else 0f
+            scale = min(1f, tallest / fullHeight)
         }
-        val scale = rowHeight / fullRowHeight
+        rowHeight = fullRowHeight * scale
+        stripHeight = if (hasStrip) stripPainter.height(scale) else 0f
         labelPaint.textSize = labelSize * scale
         smallLabelPaint.textSize = smallLabelSize * scale
         hintPaint.textSize = hintSize * scale
-        val height = (rowCount * rowHeight + 2 * edgePadding).toInt() + bottomInset
+        stripPainter.layout(MeasureSpec.getSize(widthMeasureSpec).toFloat(), scale, edgePadding)
+        val height = (stripHeight + rowCount * rowHeight + 2 * edgePadding).toInt() + bottomInset
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), height)
     }
 
@@ -171,7 +185,9 @@ class KeyboardView(context: Context) : View(context) {
      */
     private fun layoutKeys() {
         val rows = engine?.rows
-        grid = if (rows == null || width == 0) null else KeyGrid(rows, width.toFloat(), rowHeight, edgePadding, keyGap, rowGap)
+        grid = if (rows == null || width == 0) null else {
+            KeyGrid(rows, width.toFloat(), rowHeight, edgePadding, keyGap, rowGap, top = stripHeight)
+        }
     }
 
     // ---- drawing ----
@@ -181,6 +197,12 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(palette.background)
+        val engine = engine
+        val strip = engine?.strip
+        if (strip != null && stripHeight > 0f) {
+            val direction = engine.languageName(strip.direction.from) + "  →  " + engine.languageName(strip.direction.to)
+            stripPainter.draw(canvas, strip, stripTarget, direction)
+        }
         for (cell in grid?.cells.orEmpty()) drawKey(canvas, cell)
     }
 
@@ -227,7 +249,7 @@ class KeyboardView(context: Context) : View(context) {
         // The comma and full stop in the bottom row are coloured with the action keys.
         is CharKey -> if (grid?.isInBottomRow(cell) == true) KeyStyle.Action else KeyStyle.Plain
         is ActionKey -> when (key.action) {
-            Action.Space, Action.Globe -> KeyStyle.Plain
+            Action.Space, Action.Globe, Action.Translate -> KeyStyle.Plain
             Action.Shift -> if (engine?.shift == ShiftState.Locked) KeyStyle.Accent else KeyStyle.Action
             Action.Enter -> if (engine?.enterAction == EnterAction.NewLine) KeyStyle.Action else KeyStyle.Accent
             Action.Backspace, Action.Symbols, Action.MoreSymbols, Action.Letters -> KeyStyle.Action
@@ -307,6 +329,10 @@ class KeyboardView(context: Context) : View(context) {
                 iconPath.lineTo(cx - half * 0.05f, cy + half * 0.35f)
             }
             Action.Enter -> enterIcon(engine?.enterAction ?: EnterAction.NewLine, cx, cy, half)
+            Action.Translate -> {
+                // a Latin A and a Myanmar letter with a two-way arrow between them
+                return drawLabel(canvas, "A⇄က", cell, smallLabelPaint)
+            }
         }
         canvas.drawPath(iconPath, iconPaint)
     }
@@ -377,15 +403,27 @@ class KeyboardView(context: Context) : View(context) {
                 val index = event.actionIndex
                 val x = event.getX(index)
                 val y = event.getY(index)
-                grid?.cellAt(x, y)?.let { touchDown(event.getPointerId(index), Touch(it, x, y)) }
+                if (y < stripHeight) {
+                    stripDown(event.getPointerId(index), x, y)
+                } else {
+                    grid?.cellAt(x, y)?.let { touchDown(event.getPointerId(index), Touch(it, x, y)) }
+                }
             }
             MotionEvent.ACTION_MOVE ->
                 for (index in 0 until event.pointerCount) {
                     val touch = touches[event.getPointerId(index)] ?: continue
                     slide(touch, event.getX(index), event.getY(index))
                 }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> lift(event.getPointerId(event.actionIndex))
-            MotionEvent.ACTION_CANCEL -> dropAll()
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                val index = event.actionIndex
+                val pointerId = event.getPointerId(index)
+                if (pointerId == stripPointer) stripUp(event.getX(index), event.getY(index)) else lift(pointerId)
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                dropAll()
+                stripPointer = null
+                stripTarget = null
+            }
         }
         invalidate()
         return true
@@ -394,6 +432,29 @@ class KeyboardView(context: Context) : View(context) {
     override fun onDetachedFromWindow() {
         dropAll()
         super.onDetachedFromWindow()
+    }
+
+    /** A finger went down on the translate strip. Only its buttons and the translation respond. */
+    private fun stripDown(pointerId: Int, x: Float, y: Float) {
+        val strip = engine?.strip ?: return
+        val target = stripPainter.targetAt(x, y, strip) ?: return
+        stripPointer = pointerId
+        stripTarget = target
+        if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    }
+
+    /** The finger lifted from the strip: the part it went down on acts if the finger is still on it. */
+    private fun stripUp(x: Float, y: Float) {
+        val target = stripTarget
+        stripPointer = null
+        stripTarget = null
+        val strip = engine?.strip ?: return
+        if (target == null || stripPainter.targetAt(x, y, strip) != target) return
+        when (target) {
+            StripPainter.Target.Close -> host?.edit { closeStrip() }
+            StripPainter.Target.Translate -> host?.edit { translateStrip() }
+            StripPainter.Target.Insert -> host?.edit { insertTranslation() }
+        }
     }
 
     private fun touchDown(pointerId: Int, touch: Touch) {

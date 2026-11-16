@@ -124,6 +124,11 @@ fun AppScreen(
                     settings::doubleSpaceFullStop,
                     note = R.string.setting_english_only_note,
                 )
+                Toggle(
+                    R.string.setting_translate_as_you_type,
+                    settings::translateAsYouType,
+                    note = R.string.setting_translate_as_you_type_note,
+                )
             }
         }
     }

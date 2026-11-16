@@ -1,12 +1,17 @@
 package com.akkhara.keyboard
 
 import android.inputmethodservice.InputMethodService
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import com.akkhara.keyboard.engine.Conveniences
 import com.akkhara.keyboard.engine.KeyboardEngine
+import com.akkhara.keyboard.translation.ServiceTranslator
+import com.akkhara.keyboard.translation.TranslationModel
+import com.akkhara.keyboard.translation.TranslatorClient
 
 /** Hosts the keyboard View and connects the engine to the current text field. */
 class AkkharaImeService : InputMethodService(), KeyboardView.Host {
@@ -14,15 +19,36 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     private lateinit var settings: KeyboardSettings
     private lateinit var engine: KeyboardEngine
     private var keyboardView: KeyboardView? = null
+    private lateinit var translatorClient: TranslatorClient
+    private val handler = Handler(Looper.getMainLooper())
+
+    /**
+     * Tells the engine typing has paused, for translate as you type. It only
+     * touches the strip, never the text field, so it is not an [edit].
+     */
+    private val typingPaused = Runnable {
+        engine.onTypingPaused()
+        keyboardView?.onEngineChanged()
+    }
 
     override fun onCreate() {
         super.onCreate()
         settings = KeyboardSettings(this)
+        translatorClient = TranslatorClient(this)
         engine = KeyboardEngine(
             editor = InputConnectionEditor({ currentInputConnection }, { currentInputEditorInfo }),
             clock = SystemClock::uptimeMillis,
             inputLanguage = settings.inputLanguage,
+            translator = ServiceTranslator(translatorClient),
         )
+        // A translation arrives later, on its own: redraw the strip to show it.
+        engine.onStripChanged = { keyboardView?.onEngineChanged() }
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacks(typingPaused)
+        translatorClient.close()
+        super.onDestroy()
     }
 
     override fun onCreateInputView(): View =
@@ -40,6 +66,8 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     /** The keyboard is opening: this is when a changed setting takes effect. */
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        engine.isTranslationAvailable = TranslationModel.isInstalled(this)
+        engine.translateAsYouType = settings.translateAsYouType
         engine.startInput(
             info.toField(),
             Conveniences(
@@ -84,9 +112,17 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         }
         settings.inputLanguage = engine.inputLanguage
         keyboardView?.onEngineChanged()
+        // Each key pressed while the strip is open starts the wait for a pause afresh.
+        handler.removeCallbacks(typingPaused)
+        if (engine.translateAsYouType && engine.strip != null) handler.postDelayed(typingPaused, TYPING_PAUSE_MILLIS)
     }
 
     override fun showKeyboardPicker() {
         getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
+    }
+
+    private companion object {
+        /** How long typing must stop before translate as you type translates. */
+        const val TYPING_PAUSE_MILLIS = 1000L
     }
 }

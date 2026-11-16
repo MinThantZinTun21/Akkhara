@@ -1,5 +1,7 @@
 package com.akkhara.keyboard.translation
 
+import com.akkhara.keyboard.engine.TranslationFailure
+
 /**
  * The messages the keyboard process and the translator process exchange.
  * They are plain `Message`s with a `Bundle`, so nothing crosses the process
@@ -21,9 +23,6 @@ internal object TranslatorProtocol {
 
 /** Where the model runs. The faster one that works on the owner's phone is the default (#12). */
 enum class TranslatorBackend { Cpu, Gpu }
-
-/** Why a translation produced no result. */
-enum class TranslationFailure { NotInstalled, Failed }
 
 /** How long a translation took, for the debug screen. */
 data class TranslationTimings(
