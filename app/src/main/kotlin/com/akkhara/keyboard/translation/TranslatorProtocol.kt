@@ -19,6 +19,7 @@ internal object TranslatorProtocol {
     const val KEY_TEXT = "text"
     const val KEY_PROMPT = "prompt"
     const val KEY_MODEL = "model"
+    const val KEY_ASKING = "asking"
     const val KEY_OPENS = "opens"
     const val KEY_BACKEND = "backend"
     const val KEY_REASON = "reason"

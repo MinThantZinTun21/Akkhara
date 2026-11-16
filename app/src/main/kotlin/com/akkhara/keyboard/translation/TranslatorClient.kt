@@ -12,6 +12,7 @@ import android.os.Message
 import android.os.Messenger
 import android.os.RemoteException
 import com.akkhara.keyboard.engine.TranslationFailure
+import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_ASKING
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_BACKEND
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_LOAD_MS
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_MODEL
@@ -67,6 +68,7 @@ class TranslatorClient(private val context: Context) {
         text: String,
         prompt: String,
         model: File,
+        asking: Asking,
         backend: TranslatorBackend = TranslatorBackend.Cpu,
         onReply: (TranslatorReply) -> Unit,
     ) {
@@ -77,6 +79,7 @@ class TranslatorClient(private val context: Context) {
                     putString(KEY_TEXT, text)
                     putString(KEY_PROMPT, prompt)
                     putString(KEY_MODEL, model.path)
+                    putString(KEY_ASKING, asking.name)
                     putString(KEY_BACKEND, backend.name)
                 }
                 replyTo = replies

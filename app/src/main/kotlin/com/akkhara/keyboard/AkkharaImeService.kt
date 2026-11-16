@@ -44,7 +44,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
             editor = InputConnectionEditor({ currentInputConnection }, { currentInputEditorInfo }),
             clock = SystemClock::uptimeMillis,
             inputLanguage = settings.inputLanguage,
-            translator = ServiceTranslator(translatorClient) { models.inUse()?.let(models::file) },
+            translator = ServiceTranslator(translatorClient, models),
         )
         // A translation arrives later, on its own: redraw the strip to show it.
         engine.onStripChanged = { keyboardView?.onEngineChanged() }

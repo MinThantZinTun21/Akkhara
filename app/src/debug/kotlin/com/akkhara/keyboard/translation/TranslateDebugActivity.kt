@@ -104,6 +104,9 @@ class TranslateDebugActivity : ComponentActivity() {
     /** The file of the model in use, or null while there is none. */
     private fun modelFile() = models.inUse()?.let(models::file)
 
+    /** How the model in use is asked. */
+    private fun asking() = models.inUse()?.asking ?: Asking.Chat
+
     /** Translates every sample sentence in turn and lists each result with its timings. */
     private fun runSamples() {
         val model = modelFile() ?: return
@@ -116,7 +119,7 @@ class TranslateDebugActivity : ComponentActivity() {
                 return
             }
             val (sampleTask, sample) = sampleSentences[index]
-            client.translate(sample, sampleTask.defaultPrompt, model, backend) { reply ->
+            client.translate(sample, sampleTask.defaultPrompt, model, asking(), backend) { reply ->
                 result += "${index + 1}. $sample\n→ " + when (reply) {
                     is TranslatorReply.Translated -> reply.text + "\n   [" + reply.timings.describe(backend, reply.text) + "]"
                     is TranslatorReply.Failed -> "Failed: ${reply.reason}"
@@ -132,7 +135,7 @@ class TranslateDebugActivity : ComponentActivity() {
         busy = true
         result = ""
         timings = ""
-        client.translate(text, direction.defaultPrompt, model, backend) { reply ->
+        client.translate(text, direction.defaultPrompt, model, asking(), backend) { reply ->
             busy = false
             when (reply) {
                 is TranslatorReply.Translated -> {

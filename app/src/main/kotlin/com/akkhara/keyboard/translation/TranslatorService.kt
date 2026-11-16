@@ -12,6 +12,7 @@ import android.os.Messenger
 import android.os.RemoteException
 import android.os.SystemClock
 import com.akkhara.keyboard.engine.TranslationFailure
+import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_ASKING
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_BACKEND
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_LOAD_MS
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_MODEL
@@ -87,6 +88,7 @@ class TranslatorService : Service() {
     private fun translate(data: Bundle): Message {
         val text = data.getString(KEY_TEXT).orEmpty()
         val prompt = data.getString(KEY_PROMPT) ?: return failed(TranslationFailure.Failed)
+        val asking = data.getString(KEY_ASKING)?.let(Asking::valueOf) ?: Asking.Chat
         val backend = data.getString(KEY_BACKEND)?.let(TranslatorBackend::valueOf) ?: TranslatorBackend.Cpu
         val model = data.getString(KEY_MODEL)?.takeIf { File(it).isFile }
             ?: return failed(TranslationFailure.NotInstalled)
@@ -99,6 +101,7 @@ class TranslatorService : Service() {
             val config = ConversationConfig(
                 systemInstruction = Contents.of(prompt),
                 samplerConfig = SamplerConfig(topK = 1, topP = 1.0, temperature = 0.0, seed = 0),
+                extraContext = if (asking == Asking.ChatWithoutThinking) mapOf("enable_thinking" to false) else emptyMap(),
             )
             val start = SystemClock.elapsedRealtime()
             engine.createConversation(config).use { conversation ->
