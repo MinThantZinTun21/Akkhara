@@ -64,4 +64,7 @@ sealed interface Hold {
 
     /** Offer the grammar key; lifting on it checks grammar, and lifting anywhere else does nothing. */
     data object GrammarKey : Hold
+
+    /** Offer the emoji key; lifting on it opens the emoji panel, and lifting anywhere else does nothing. */
+    data object EmojiKey : Hold
 }

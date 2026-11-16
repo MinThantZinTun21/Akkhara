@@ -88,6 +88,40 @@ class EmojiTest {
         assertEquals("", editor.text)
     }
 
+    @Test
+    fun `holding the comma key on the letters offers the emoji key in both input languages`() {
+        assertEquals(Hold.EmojiKey, engine.hold(typist.charKey(",")))
+
+        typist.tap(Action.Globe)
+
+        assertEquals(Hold.EmojiKey, engine.hold(typist.charKey("၊")))
+    }
+
+    @Test
+    fun `the comma key on the symbols layers offers nothing, as the emoji key is beside it`() {
+        typist.tap(Action.Symbols)
+
+        assertEquals(Hold.None, engine.hold(typist.charKey(",")))
+    }
+
+    @Test
+    fun `lifting on the offered emoji key opens the emoji panel and types nothing`() {
+        engine.hold(typist.charKey(","))
+        engine.showEmojiPanel()
+
+        assertEquals(Layer.Emoji, engine.layer)
+        assertEquals("", editor.text)
+    }
+
+    @Test
+    fun `a tap on the comma key still types the comma`() {
+        typist.tap(",")
+        typist.tap(Action.Globe)
+        typist.tap("၊")
+
+        assertEquals(",၊", editor.text)
+    }
+
     private fun openPanel() {
         typist.tap(Action.Symbols)
         typist.tap(Action.Emoji)

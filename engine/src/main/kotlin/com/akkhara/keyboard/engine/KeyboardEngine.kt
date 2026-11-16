@@ -124,6 +124,7 @@ class KeyboardEngine(
         key is ActionKey && key.action == Action.Backspace -> Hold.Repeat
         key is CharKey && key.alternates.isNotEmpty() -> Hold.Alternates(key.alternates)
         key is ActionKey && key.action == Action.Translate && strip != null && translationSource().isEnglish -> Hold.GrammarKey
+        key is CharKey && layer == Layer.Letters && key.text == layoutFor(inputLanguage).comma -> Hold.EmojiKey
         else -> Hold.None
     }
 
@@ -134,6 +135,9 @@ class KeyboardEngine(
         afterEdit()
         onTextFieldEdited()
     }
+
+    /** The user held the comma key and lifted on the emoji key it offered. */
+    fun showEmojiPanel() = show(Layer.Emoji)
 
     /** The user tapped [emoji] in the emoji panel. It is typed as it is, whatever the input language. */
     fun typeEmoji(emoji: String) {

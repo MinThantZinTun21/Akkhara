@@ -56,9 +56,9 @@ class KeyboardView(context: Context) : View(context) {
         /** True once holding has already done the key's work, so lifting must not press it again. */
         var consumed = false
 
-        /** True once holding the translate key offers the grammar key, and whether the finger is on it. */
-        var grammarOffered = false
-        var onGrammarKey = false
+        /** The key that holding this one offers above it, once it shows, and whether the finger is on it. */
+        var offered: Hold? = null
+        var onOfferedKey = false
     }
 
     /**
@@ -559,12 +559,16 @@ class KeyboardView(context: Context) : View(context) {
                 touch.choice = AlternateChoice(hold.alternates, touch.x, touch.y)
                 callout.showAlternates(this, touch.cell, hold.alternates)
             }
-            Hold.GrammarKey -> {
-                touch.grammarOffered = true
-                callout.showAlternates(this, touch.cell, listOf(GRAMMAR_KEY_LABEL))
-            }
+            Hold.GrammarKey -> offer(touch, hold, GRAMMAR_KEY_LABEL)
+            Hold.EmojiKey -> offer(touch, hold, EMOJI_KEY_LABEL)
             Hold.None, null -> Unit
         }
+    }
+
+    /** Shows the key that [hold] offers above the held key. */
+    private fun offer(touch: Touch, hold: Hold, label: String) {
+        touch.offered = hold
+        callout.showAlternates(this, touch.cell, listOf(label))
     }
 
     /** Presses the held key now and again shortly, until the finger lifts. */
@@ -573,14 +577,14 @@ class KeyboardView(context: Context) : View(context) {
         touch.repeatTimer = Runnable { repeat(touch) }.also { postDelayed(it, REPEAT_MILLIS) }
     }
 
-    /** The finger moved. Only matters while alternates or the grammar key are showing. */
+    /** The finger moved. Only matters while alternates or an offered key are showing. */
     private fun slide(touch: Touch, x: Float, y: Float) {
         touch.x = x
         touch.y = y
-        if (touch.grammarOffered) {
-            // The grammar key floats above the translate key: the finger is on it once above the key.
-            touch.onGrammarKey = y < touch.cell.top
-            callout.select(if (touch.onGrammarKey) 0 else null)
+        if (touch.offered != null) {
+            // The offered key floats above the held key: the finger is on it once above the key.
+            touch.onOfferedKey = y < touch.cell.top
+            callout.select(if (touch.onOfferedKey) 0 else null)
             return
         }
         val choice = touch.choice ?: return
@@ -600,8 +604,12 @@ class KeyboardView(context: Context) : View(context) {
     private fun lift(pointerId: Int) {
         val touch = drop(pointerId) ?: return
         if (touch.consumed) return
-        if (touch.grammarOffered) {
-            if (touch.onGrammarKey) host?.edit { checkGrammar() }
+        val offered = touch.offered
+        if (offered != null) {
+            // Lifting anywhere but on the offered key does nothing.
+            if (touch.onOfferedKey) {
+                host?.edit { if (offered == Hold.EmojiKey) showEmojiPanel() else checkGrammar() }
+            }
             return
         }
         val key = touch.cell.key
@@ -648,6 +656,9 @@ class KeyboardView(context: Context) : View(context) {
 
         /** The grammar key, shown above the held translate key. */
         const val GRAMMAR_KEY_LABEL = "A✓"
+
+        /** The emoji key, shown above the held comma key. */
+        const val EMOJI_KEY_LABEL = "😀"
 
         /** Rows of the emoji panel's grid, above its bar. */
         const val EMOJI_GRID_ROWS = 4
