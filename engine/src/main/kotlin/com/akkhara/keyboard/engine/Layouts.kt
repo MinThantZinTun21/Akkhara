@@ -11,13 +11,17 @@ private val shiftKey = ActionKey(Action.Shift, WIDE)
 private val backspaceKey = ActionKey(Action.Backspace, WIDE)
 private val enterKey = ActionKey(Action.Enter, WIDE)
 
-/** The row under the letters, with the layout's own [comma] and [fullStop]. */
-private fun lettersBottomRow(comma: String, fullStop: String): Row = listOf(
+/** Gives the key that types [char] these [alternates]. */
+private fun Row.withAlternates(char: String, vararg alternates: String): Row =
+    map { if (it is CharKey && it.char == char) it.copy(alternates = alternates.toList()) else it }
+
+/** The row under the letters, with the layout's own [comma] and [fullStop] key. */
+private fun lettersBottomRow(comma: String, fullStop: CharKey): Row = listOf(
     ActionKey(Action.Symbols, WIDE),
     ActionKey(Action.Globe),
     CharKey(comma),
     ActionKey(Action.Space, width = 4f),
-    CharKey(fullStop),
+    fullStop,
     enterKey,
 )
 
@@ -47,7 +51,10 @@ internal object EnglishLayout : Layout {
     override val name = "English"
 
     private val digits = chars("1 2 3 4 5 6 7 8 9 0")
-    private val bottom = lettersBottomRow(",", ".")
+    private val bottom = lettersBottomRow(
+        comma = ",",
+        fullStop = CharKey(".", alternates = listOf(",", "?", "!", "'", "\"", ":", ";")),
+    )
 
     override val base: List<Row> = listOf(
         digits,
@@ -75,11 +82,21 @@ internal object EnglishLayout : Layout {
 internal object MyanmarLayout : Layout {
     override val name = "မြန်မာ"
 
-    private val bottom = lettersBottomRow("၊", "။")
+    private const val KINZI = "\u1004\u103A\u1039"
+
+    private val bottom = lettersBottomRow(
+        comma = "၊",
+        fullStop = CharKey("။", alternates = listOf("၊", "?", "!")),
+    )
+
+    /** Each Myanmar digit offers its Latin digit. */
+    private val digits: Row = "၁၂၃၄၅၆၇၈၉၀".map { digit ->
+        CharKey(digit.toString(), alternates = listOf(((digit - '၀') % 10).toString()))
+    }
 
     override val base: List<Row> = listOf(
-        chars("၁ ၂ ၃ ၄ ၅ ၆ ၇ ၈ ၉ ၀"),
-        chars("ဆ တ န မ အ ပ က င သ စ"),
+        digits,
+        chars("ဆ တ န မ အ ပ က င သ စ").withAlternates("င", KINZI),
         chars("ေ ျ ိ ် ါ ့ ြ ု ူ း"),
         listOf(shiftKey) + chars("ဖ ထ ခ လ ဘ ည ာ") + backspaceKey,
         bottom,

@@ -5,9 +5,10 @@ sealed interface Key {
     val width: Float
 }
 
-/** A key that types [char]. */
+/** A key that types [char]. Held down, it offers its [alternates]. */
 data class CharKey(
     val char: String,
+    val alternates: List<String> = emptyList(),
     override val width: Float = 1f,
 ) : Key
 
@@ -59,4 +60,10 @@ sealed interface Hold {
 
     /** Open Android's keyboard picker. */
     data object KeyboardPicker : Hold
+
+    /** Offer these characters; sliding to one and lifting types it. */
+    data class Alternates(val alternates: List<String>) : Hold
+
+    /** Keep pressing the key for as long as it is held. */
+    data object Repeat : Hold
 }

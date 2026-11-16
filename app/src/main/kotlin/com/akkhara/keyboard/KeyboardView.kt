@@ -6,8 +6,10 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import com.akkhara.keyboard.engine.Action
 import com.akkhara.keyboard.engine.ActionKey
 import com.akkhara.keyboard.engine.CharKey
@@ -16,15 +18,15 @@ import com.akkhara.keyboard.engine.InputLanguage
 import com.akkhara.keyboard.engine.Key
 import com.akkhara.keyboard.engine.KeyboardEngine
 import com.akkhara.keyboard.engine.ShiftState
+import kotlin.math.abs
 
 /**
  * Draws the layer the engine is showing and reports touches back to it.
- * It holds no typing logic: what a key does is decided by the engine.
+ * It holds no typing logic: what a key does, tapped or held, is decided by
+ * the engine.
  */
 @SuppressLint("ViewConstructor")
 class KeyboardView(context: Context) : View(context) {
-
-    private class Cell(val key: Key, val bounds: RectF)
 
     /** What the View needs from the service that hosts it. */
     interface Host {
@@ -33,6 +35,28 @@ class KeyboardView(context: Context) : View(context) {
 
         fun showKeyboardPicker()
     }
+
+    private class Cell(val key: Key, val bounds: RectF)
+
+    /** One finger on the keyboard. */
+    private class Touch(val cell: Cell, var x: Float, var y: Float) {
+        var holdTimer: Runnable? = null
+        var repeatTimer: Runnable? = null
+
+        /** Non-null once the key's alternates are showing. */
+        var alternates: List<String>? = null
+        var selectedAlternate = -1
+
+        /** Where the finger was when the alternates appeared; it must move from here to select one. */
+        var alternatesX = 0f
+        var alternatesY = 0f
+
+        /** True once holding has already done the key's work, so lifting must not press it again. */
+        var consumed = false
+    }
+
+    var hapticsEnabled = true
+    var keyPreviewEnabled = true
 
     private var engine: KeyboardEngine? = null
     private var host: Host? = null
@@ -43,10 +67,11 @@ class KeyboardView(context: Context) : View(context) {
     private val keyGap = 3f * density
     private val keyRadius = 6f * density
     private val edgePadding = 4f * density
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     private val cells = ArrayList<Cell>()
-    private val held = LinkedHashMap<Int, Cell>() // pointer id -> the key under that finger
-    private val holdTimers = HashMap<Int, Runnable>() // pointer id -> what fires if the finger stays down
+    private val touches = LinkedHashMap<Int, Touch>() // by pointer id, oldest first
+    private val bubble = KeyBubble(context, palette)
 
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -77,6 +102,8 @@ class KeyboardView(context: Context) : View(context) {
         invalidate()
     }
 
+    // ---- layout ----
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rowCount = engine?.rows?.size ?: 0
         val height = (rowCount * rowHeight + 2 * edgePadding).toInt()
@@ -87,9 +114,13 @@ class KeyboardView(context: Context) : View(context) {
         layoutKeys()
     }
 
+    /**
+     * Rebuilds the cells from the engine's rows. Fingers already down keep
+     * the key they landed on, so a layer change under a held key (shift, then
+     * a letter with the other thumb) does not lose it.
+     */
     private fun layoutKeys() {
         cells.clear()
-        dropAll()
         val rows = engine?.rows ?: return
         if (width == 0) return
         val unit = (width - 2 * edgePadding) / COLUMNS
@@ -101,31 +132,33 @@ class KeyboardView(context: Context) : View(context) {
                 val keyWidth = key.width * unit
                 cells += Cell(
                     key,
-                    RectF(
-                        x + keyGap / 2,
-                        top + keyGap,
-                        x + keyWidth - keyGap / 2,
-                        top + rowHeight - keyGap,
-                    ),
+                    RectF(x + keyGap / 2, top + keyGap, x + keyWidth - keyGap / 2, top + rowHeight - keyGap),
                 )
                 x += keyWidth
             }
         }
     }
 
+    // ---- drawing ----
+
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(palette.background)
-        labelPaint.color = palette.label
-        smallLabelPaint.color = palette.label
-        iconPaint.color = palette.label
+        val shiftActive = engine?.shift != ShiftState.Off
         for (cell in cells) {
+            val key = cell.key
+            val isActiveShift = shiftActive && key is ActionKey && key.action == Action.Shift
             keyPaint.color = when {
-                held.containsValue(cell) -> palette.keyPressed
-                cell.key is ActionKey && cell.key.action != Action.Space -> palette.actionKey
+                touches.values.any { it.cell.bounds == cell.bounds } -> palette.keyPressed
+                isActiveShift -> palette.accent
+                key is ActionKey && key.action != Action.Space -> palette.actionKey
                 else -> palette.key
             }
+            val ink = if (isActiveShift) palette.onAccent else palette.label
+            labelPaint.color = ink
+            smallLabelPaint.color = ink
+            iconPaint.color = ink
             canvas.drawRoundRect(cell.bounds, keyRadius, keyRadius, keyPaint)
-            when (val key = cell.key) {
+            when (key) {
                 is CharKey -> drawLabel(canvas, key.char, cell.bounds, labelPaint)
                 is ActionKey -> drawAction(canvas, key.action, cell.bounds)
             }
@@ -146,18 +179,18 @@ class KeyboardView(context: Context) : View(context) {
         when (action) {
             Action.Space ->
                 return drawLabel(canvas, engine?.spaceLabel.orEmpty(), bounds, smallLabelPaint)
+            Action.Symbols -> return drawLabel(canvas, "?123", bounds, smallLabelPaint)
+            Action.MoreSymbols -> return drawLabel(canvas, "=\\<", bounds, smallLabelPaint)
+            Action.Letters -> {
+                val letters = if (engine?.inputLanguage == InputLanguage.Myanmar) "ကခဂ" else "ABC"
+                return drawLabel(canvas, letters, bounds, smallLabelPaint)
+            }
             Action.Globe -> {
                 // a circle with a meridian and an equator
                 iconPath.addCircle(cx, cy, s, Path.Direction.CW)
                 iconPath.addOval(cx - s * 0.45f, cy - s, cx + s * 0.45f, cy + s, Path.Direction.CW)
                 iconPath.moveTo(cx - s, cy)
                 iconPath.lineTo(cx + s, cy)
-            }
-            Action.Symbols -> return drawLabel(canvas, "?123", bounds, smallLabelPaint)
-            Action.MoreSymbols -> return drawLabel(canvas, "=\\<", bounds, smallLabelPaint)
-            Action.Letters -> {
-                val letters = if (engine?.inputLanguage == InputLanguage.Myanmar) "ကခဂ" else "ABC"
-                return drawLabel(canvas, letters, bounds, smallLabelPaint)
             }
             Action.Shift -> {
                 // an upward arrow: outlined when off, filled for one-shot shift, underlined for shift lock
@@ -201,27 +234,28 @@ class KeyboardView(context: Context) : View(context) {
         canvas.drawPath(iconPath, iconPaint)
     }
 
+    // ---- touch ----
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 // A second finger landing commits the first, so fast two-thumb typing never drops a key.
-                releaseAll()
+                liftAll()
                 val index = event.actionIndex
-                cellAt(event.getX(index), event.getY(index))?.let {
-                    touchDown(event.getPointerId(index), it)
+                val x = event.getX(index)
+                val y = event.getY(index)
+                cellAt(x, y)?.let { touchDown(event.getPointerId(index), Touch(it, x, y)) }
+            }
+            MotionEvent.ACTION_MOVE ->
+                for (index in 0 until event.pointerCount) {
+                    val touch = touches[event.getPointerId(index)] ?: continue
+                    slide(touch, event.getX(index), event.getY(index))
                 }
-                invalidate()
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                release(event.getPointerId(event.actionIndex))
-                invalidate()
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                dropAll()
-                invalidate()
-            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> lift(event.getPointerId(event.actionIndex))
+            MotionEvent.ACTION_CANCEL -> dropAll()
         }
+        invalidate()
         return true
     }
 
@@ -230,44 +264,85 @@ class KeyboardView(context: Context) : View(context) {
         super.onDetachedFromWindow()
     }
 
-    private fun touchDown(pointerId: Int, cell: Cell) {
-        held[pointerId] = cell
-        val timer = Runnable { onHeld(pointerId, cell) }
-        holdTimers[pointerId] = timer
-        postDelayed(timer, HOLD_MILLIS)
+    private fun touchDown(pointerId: Int, touch: Touch) {
+        val cell = touch.cell
+        touches[pointerId] = touch
+        if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (keyPreviewEnabled && cell.key is CharKey) bubble.showPreview(this, cell.bounds, cell.key.char)
+        touch.holdTimer = Runnable { onHeld(pointerId, touch) }.also { postDelayed(it, HOLD_MILLIS) }
     }
 
-    /** The finger has stayed on [cell] long enough to count as holding it. */
-    private fun onHeld(pointerId: Int, cell: Cell) {
-        holdTimers.remove(pointerId)
-        when (engine?.hold(cell.key)) {
+    /** The finger has stayed on the key long enough to count as holding it. */
+    private fun onHeld(pointerId: Int, touch: Touch) {
+        touch.holdTimer = null
+        when (val hold = engine?.hold(touch.cell.key)) {
             Hold.KeyboardPicker -> {
                 drop(pointerId)
                 invalidate()
                 host?.showKeyboardPicker()
             }
+            Hold.Repeat -> {
+                touch.consumed = true
+                repeat(touch)
+            }
+            is Hold.Alternates -> {
+                touch.alternates = hold.alternates
+                touch.alternatesX = touch.x
+                touch.alternatesY = touch.y
+                bubble.showAlternates(this, touch.cell.bounds, hold.alternates)
+            }
             Hold.None, null -> Unit
         }
     }
 
-    private fun releaseAll() {
-        for (pointerId in held.keys.toList()) release(pointerId)
+    /** Presses the held key now and again shortly, until the finger lifts. */
+    private fun repeat(touch: Touch) {
+        host?.edit { press(touch.cell.key) }
+        touch.repeatTimer = Runnable { repeat(touch) }.also { postDelayed(it, REPEAT_MILLIS) }
     }
 
-    /** The finger lifted: the key under it is pressed. */
-    private fun release(pointerId: Int) {
-        val cell = drop(pointerId) ?: return
-        host?.edit { press(cell.key) }
+    /** The finger moved. Only matters while alternates are showing. */
+    private fun slide(touch: Touch, x: Float, y: Float) {
+        touch.x = x
+        touch.y = y
+        val alternates = touch.alternates ?: return
+        if (touch.selectedAlternate < 0) {
+            val moved = maxOf(abs(x - touch.alternatesX), abs(y - touch.alternatesY))
+            if (moved < touchSlop) return // lifting without sliding types the key's own character
+        }
+        val index = ((x - bubble.left) / bubble.cellWidth).toInt().coerceIn(0, alternates.lastIndex)
+        touch.selectedAlternate = index
+        bubble.select(index)
     }
 
-    /** Forgets the finger without pressing anything. */
-    private fun drop(pointerId: Int): Cell? {
-        holdTimers.remove(pointerId)?.let(::removeCallbacks)
-        return held.remove(pointerId)
+    private fun liftAll() {
+        for (pointerId in touches.keys.toList()) lift(pointerId)
+    }
+
+    /** The finger lifted: the key under it, or the alternate it slid to, is typed. */
+    private fun lift(pointerId: Int) {
+        val touch = drop(pointerId) ?: return
+        if (touch.consumed) return
+        val key = touch.cell.key
+        val alternate = touch.alternates?.getOrNull(touch.selectedAlternate)
+        if (alternate != null && key is CharKey) {
+            host?.edit { pressAlternate(key, alternate) }
+        } else {
+            host?.edit { press(key) }
+        }
+    }
+
+    /** Forgets the finger without typing anything. */
+    private fun drop(pointerId: Int): Touch? {
+        val touch = touches.remove(pointerId) ?: return null
+        touch.holdTimer?.let(::removeCallbacks)
+        touch.repeatTimer?.let(::removeCallbacks)
+        bubble.dismiss()
+        return touch
     }
 
     private fun dropAll() {
-        for (pointerId in held.keys.toList()) drop(pointerId)
+        for (pointerId in touches.keys.toList()) drop(pointerId)
     }
 
     /** The key under a touch; a touch in the gap between keys goes to the nearest key in that row. */
@@ -291,5 +366,8 @@ class KeyboardView(context: Context) : View(context) {
 
         /** How long a finger must stay down to count as holding the key. */
         const val HOLD_MILLIS = 350L
+
+        /** Time between presses of a held, repeating key. */
+        const val REPEAT_MILLIS = 60L
     }
 }

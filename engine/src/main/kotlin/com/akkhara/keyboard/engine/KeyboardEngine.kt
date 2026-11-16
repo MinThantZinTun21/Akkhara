@@ -38,7 +38,15 @@ class KeyboardEngine(
     /** What holding [key] down should do. Holding never types or changes state by itself. */
     fun hold(key: Key): Hold = when {
         key is ActionKey && key.action == Action.Globe -> Hold.KeyboardPicker
+        key is ActionKey && key.action == Action.Backspace -> Hold.Repeat
+        key is CharKey && key.alternates.isNotEmpty() -> Hold.Alternates(key.alternates)
         else -> Hold.None
+    }
+
+    /** The user held [key], slid to [alternate] and lifted. */
+    fun pressAlternate(key: CharKey, alternate: String) {
+        require(alternate in key.alternates) { "'${key.char}' does not offer '$alternate'" }
+        type(alternate)
     }
 
     fun press(key: Key) {
