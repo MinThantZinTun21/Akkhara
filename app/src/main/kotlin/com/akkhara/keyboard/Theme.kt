@@ -1,17 +1,20 @@
 package com.akkhara.keyboard
 
+import androidx.annotation.StringRes
+
 /**
- * A look the user can pick for the keyboard: one fixed [palette], light or
- * dark, in the classic or the trending [group]. See GLOSSARY.md, "Theme". The
+ * A look the user can pick for the keyboard: its name, one fixed [palette],
+ * light or dark, in the classic or the trending [group]. See GLOSSARY.md, "Theme". The
  * list is built into the app, in the order the picker shows it; ThemesTest
  * holds every theme to the palette's contrast floors.
  *
  * The trending themes' colours come from docs/research/trending-film-themes.md.
  * Their names are Akkhara's own: never a title, character or studio.
  */
-enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = Group.Classic) {
-    /** Grey and white with a green accent; what following the system draws by day. */
+enum class Theme(@StringRes val nameRes: Int, val isDark: Boolean, val palette: Palette, val group: Group) {
+    /** Grey and white with a green accent; what following the system draws in light mode. */
     Light(
+        nameRes = R.string.theme_light,
         isDark = false,
         Palette(
             background = 0xFFE6E9E3.toInt(),
@@ -25,10 +28,12 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             accent = 0xFF2E6B34.toInt(),
             onAccent = 0xFFFFFFFF.toInt(),
         ),
+        group = Group.Classic,
     ),
 
     /** Warm beige. */
     Sand(
+        nameRes = R.string.theme_sand,
         isDark = false,
         Palette(
             background = 0xFFEDE4D3.toInt(),
@@ -42,10 +47,12 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             accent = 0xFF8A5A00.toInt(),
             onAccent = 0xFFFFFFFF.toInt(),
         ),
+        group = Group.Classic,
     ),
 
     /** Soft pink. */
     Rose(
+        nameRes = R.string.theme_rose,
         isDark = false,
         Palette(
             background = 0xFFF4DCE0.toInt(),
@@ -59,10 +66,12 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             accent = 0xFFA8324E.toInt(),
             onAccent = 0xFFFFFFFF.toInt(),
         ),
+        group = Group.Classic,
     ),
 
     /** Pale blue. */
     Sky(
+        nameRes = R.string.theme_sky,
         isDark = false,
         Palette(
             background = 0xFFD9E8F5.toInt(),
@@ -76,10 +85,12 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             accent = 0xFF1F5F99.toInt(),
             onAccent = 0xFFFFFFFF.toInt(),
         ),
+        group = Group.Classic,
     ),
 
     /** Pale purple. */
     Lavender(
+        nameRes = R.string.theme_lavender,
         isDark = false,
         Palette(
             background = 0xFFE6DFF5.toInt(),
@@ -93,10 +104,12 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             accent = 0xFF5B3FA8.toInt(),
             onAccent = 0xFFFFFFFF.toInt(),
         ),
+        group = Group.Classic,
     ),
 
     /** Near-black grey with a pale green accent; what following the system draws in dark mode. */
     Dark(
+        nameRes = R.string.theme_dark,
         isDark = true,
         Palette(
             background = 0xFF1F1F1F.toInt(),
@@ -110,10 +123,12 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             accent = 0xFFA5D6A0.toInt(),
             onAccent = 0xFF0E2A12.toInt(),
         ),
+        group = Group.Classic,
     ),
 
     /** Deep navy. */
     Midnight(
+        nameRes = R.string.theme_midnight,
         isDark = true,
         Palette(
             background = 0xFF0F1626.toInt(),
@@ -127,10 +142,12 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             accent = 0xFF8AB4F8.toInt(),
             onAccent = 0xFF0A1F3D.toInt(),
         ),
+        group = Group.Classic,
     ),
 
     /** Deep green. */
     Forest(
+        nameRes = R.string.theme_forest,
         isDark = true,
         Palette(
             background = 0xFF0F1F17.toInt(),
@@ -144,10 +161,12 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             accent = 0xFF7FD99A.toInt(),
             onAccent = 0xFF07301A.toInt(),
         ),
+        group = Group.Classic,
     ),
 
     /** Dark purple. */
     Plum(
+        nameRes = R.string.theme_plum,
         isDark = true,
         Palette(
             background = 0xFF1E1424.toInt(),
@@ -161,10 +180,12 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             accent = 0xFFD6A4F5.toInt(),
             onAccent = 0xFF2E0F45.toInt(),
         ),
+        group = Group.Classic,
     ),
 
     /** Pure black with white labels: the strongest contrast, and the least light from an OLED screen. */
     Black(
+        nameRes = R.string.theme_black,
         isDark = true,
         Palette(
             background = 0xFF000000.toInt(),
@@ -178,10 +199,12 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             accent = 0xFFFFFFFF.toInt(),
             onAccent = 0xFF000000.toInt(),
         ),
+        group = Group.Classic,
     ),
 
     /** Olive moss with an olive-gold accent. */
     Moss(
+        nameRes = R.string.theme_moss,
         isDark = false,
         Palette(
             background = 0xFFD9DCAE.toInt(),
@@ -200,6 +223,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Pale mint with pastel-pink action keys and a magenta accent. */
     Prism(
+        nameRes = R.string.theme_prism,
         isDark = false,
         Palette(
             background = 0xFFDDF2EA.toInt(),
@@ -218,6 +242,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Butter yellow with denim-blue action keys and accent. */
     Marquee(
+        nameRes = R.string.theme_marquee,
         isDark = false,
         Palette(
             background = 0xFFF2DE8A.toInt(),
@@ -236,6 +261,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Apricot saffron with a deep vermilion accent. */
     Saffron(
+        nameRes = R.string.theme_saffron,
         isDark = false,
         Palette(
             background = 0xFFF6D4A2.toInt(),
@@ -254,6 +280,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Pale jade with a rouge-red accent. */
     Jade(
+        nameRes = R.string.theme_jade,
         isDark = false,
         Palette(
             background = 0xFFC4DFD0.toInt(),
@@ -272,6 +299,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Sepia paper with tropical-teal action keys and accent. */
     Sonata(
+        nameRes = R.string.theme_sonata,
         isDark = false,
         Palette(
             background = 0xFFD6BF9C.toInt(),
@@ -290,6 +318,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Spotlight peach with a curtain-violet accent. */
     Encore(
+        nameRes = R.string.theme_encore,
         isDark = false,
         Palette(
             background = 0xFFFAD0BD.toInt(),
@@ -308,6 +337,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** White keys, toy-blue action keys and a toy-red enter key. */
     Crayon(
+        nameRes = R.string.theme_crayon,
         isDark = false,
         Palette(
             background = 0xFFF2F2F4.toInt(),
@@ -326,6 +356,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Sage stone with earthy action keys and a sky-blue accent. */
     Wander(
+        nameRes = R.string.theme_wander,
         isDark = false,
         Palette(
             background = 0xFFCBCFC0.toInt(),
@@ -344,6 +375,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Clear water blue with a deep pond-green accent. */
     Pond(
+        nameRes = R.string.theme_pond,
         isDark = false,
         Palette(
             background = 0xFFBEE3E6.toInt(),
@@ -362,6 +394,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Ash slate with an electric-cyan accent. */
     Cinder(
+        nameRes = R.string.theme_cinder,
         isDark = true,
         Palette(
             background = 0xFF19232B.toInt(),
@@ -380,6 +413,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Sooty sepia night with gas-lamp amber. */
     Lamplight(
+        nameRes = R.string.theme_lamplight,
         isDark = true,
         Palette(
             background = 0xFF221B0F.toInt(),
@@ -398,6 +432,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Near-black magenta with a hot-pink accent. */
     Neon(
+        nameRes = R.string.theme_neon,
         isDark = true,
         Palette(
             background = 0xFF140812.toInt(),
@@ -416,6 +451,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Moonlit deep sea with a moon-cream accent. */
     Lagoon(
+        nameRes = R.string.theme_lagoon,
         isDark = true,
         Palette(
             background = 0xFF0A2B33.toInt(),
@@ -434,6 +470,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Deep indigo space with star gold. */
     Comet(
+        nameRes = R.string.theme_comet,
         isDark = true,
         Palette(
             background = 0xFF18154A.toInt(),
@@ -452,6 +489,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Wet clay and terracotta. */
     Umber(
+        nameRes = R.string.theme_umber,
         isDark = true,
         Palette(
             background = 0xFF341C18.toInt(),
@@ -470,6 +508,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Witchy violet with teal action keys and a magenta accent. */
     Potion(
+        nameRes = R.string.theme_potion,
         isDark = true,
         Palette(
             background = 0xFF2C1236.toInt(),
@@ -488,6 +527,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Night olive with firefly-lime light and blood-red action keys. */
     Lumen(
+        nameRes = R.string.theme_lumen,
         isDark = true,
         Palette(
             background = 0xFF17170D.toInt(),
@@ -506,6 +546,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Dark oxblood with a warning-red accent. */
     Nightshift(
+        nameRes = R.string.theme_nightshift,
         isDark = true,
         Palette(
             background = 0xFF241015.toInt(),
@@ -524,6 +565,7 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
 
     /** Deep blue with an energy-orange accent. */
     Blaze(
+        nameRes = R.string.theme_blaze,
         isDark = true,
         Palette(
             background = 0xFF101C38.toInt(),
@@ -542,7 +584,10 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
     ;
 
     /** Where a theme sits in the picker. See GLOSSARY.md, "Classic theme" and "Trending theme". */
-    enum class Group { Classic, Trending }
+    enum class Group(@StringRes val nameRes: Int) {
+        Classic(R.string.theme_group_classic),
+        Trending(R.string.theme_group_trending),
+    }
 
     companion object {
         /**

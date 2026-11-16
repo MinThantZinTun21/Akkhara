@@ -29,8 +29,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -130,6 +130,15 @@ fun AppScreen(
                 onClick = onChooseKeyboard,
             )
 
+            // The theme comes before Try it, so a newly picked theme can be tried right below it.
+            SectionTitle(R.string.theme_title)
+            Text(
+                stringResource(R.string.theme_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ThemePicker(settings)
+
             SectionTitle(R.string.try_title)
             // Typed text is never saved, not even across a rotation (docs/adr/0002-no-network-permission.md).
             var trial by remember { mutableStateOf("") }
@@ -167,14 +176,6 @@ fun AppScreen(
                 )
             }
 
-            SectionTitle(R.string.theme_title)
-            Text(
-                stringResource(R.string.theme_note),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            ThemePicker(settings)
-
             ModelsSection(models, onDownloadModel, onImportModel, onCancelDownload, onRemoveModel)
 
             SectionTitle(R.string.prompts_title)
@@ -205,7 +206,7 @@ private fun ThemePicker(settings: KeyboardSettings) {
         ThemeGrid(listOf(null), chosen, choose)
         Theme.Group.entries.forEach { group ->
             Text(
-                stringResource(group.nameRes()),
+                stringResource(group.nameRes),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -239,7 +240,8 @@ private const val THEME_COLUMNS = 3
 @Composable
 private fun ThemeCard(theme: Theme?, isChosen: Boolean, onChoose: () -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(12.dp)
-    val outline = if (isChosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+    val colours = MaterialTheme.colorScheme
+    val (outline, nameColour) = if (isChosen) colours.primary to colours.primary else colours.outlineVariant to colours.onSurface
     Column(
         modifier = modifier
             .selectable(selected = isChosen, role = Role.RadioButton, onClick = onChoose)
@@ -254,7 +256,7 @@ private fun ThemeCard(theme: Theme?, isChosen: Boolean, onChoose: () -> Unit, mo
                 .border(if (isChosen) 3.dp else 1.dp, outline, shape),
         ) {
             if (theme == null) {
-                // Following the system is Light by day and Dark by night, so it shows half of each.
+                // Following the system is Light in light mode and Dark in dark mode, so it shows half of each.
                 KeysPreview(Theme.Light.palette, letters = listOf("a"), modifier = Modifier.weight(1f))
                 KeysPreview(Theme.Dark.palette, letters = listOf("က"), modifier = Modifier.weight(1f))
             } else {
@@ -262,9 +264,9 @@ private fun ThemeCard(theme: Theme?, isChosen: Boolean, onChoose: () -> Unit, mo
             }
         }
         Text(
-            text = (if (isChosen) "\u2713 " else "") + stringResource(theme.nameRes()),
+            text = (if (isChosen) "\u2713 " else "") + stringResource(theme?.nameRes ?: R.string.theme_follow_system),
             style = MaterialTheme.typography.labelLarge,
-            color = if (isChosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            color = nameColour,
             maxLines = 1,
         )
     }
@@ -302,46 +304,6 @@ private fun PreviewKey(colour: Color, modifier: Modifier = Modifier, label: @Com
         modifier = modifier.height(24.dp).background(colour, RoundedCornerShape(5.dp)),
         contentAlignment = Alignment.Center,
     ) { label() }
-}
-
-/** The name the app shows for a choice of theme; null is following the system. */
-private fun Theme?.nameRes(): Int = when (this) {
-    null -> R.string.theme_follow_system
-    Theme.Light -> R.string.theme_light
-    Theme.Sand -> R.string.theme_sand
-    Theme.Rose -> R.string.theme_rose
-    Theme.Sky -> R.string.theme_sky
-    Theme.Lavender -> R.string.theme_lavender
-    Theme.Dark -> R.string.theme_dark
-    Theme.Midnight -> R.string.theme_midnight
-    Theme.Forest -> R.string.theme_forest
-    Theme.Plum -> R.string.theme_plum
-    Theme.Black -> R.string.theme_black
-    Theme.Moss -> R.string.theme_moss
-    Theme.Prism -> R.string.theme_prism
-    Theme.Marquee -> R.string.theme_marquee
-    Theme.Saffron -> R.string.theme_saffron
-    Theme.Jade -> R.string.theme_jade
-    Theme.Sonata -> R.string.theme_sonata
-    Theme.Encore -> R.string.theme_encore
-    Theme.Crayon -> R.string.theme_crayon
-    Theme.Wander -> R.string.theme_wander
-    Theme.Pond -> R.string.theme_pond
-    Theme.Cinder -> R.string.theme_cinder
-    Theme.Lamplight -> R.string.theme_lamplight
-    Theme.Neon -> R.string.theme_neon
-    Theme.Lagoon -> R.string.theme_lagoon
-    Theme.Comet -> R.string.theme_comet
-    Theme.Umber -> R.string.theme_umber
-    Theme.Potion -> R.string.theme_potion
-    Theme.Lumen -> R.string.theme_lumen
-    Theme.Nightshift -> R.string.theme_nightshift
-    Theme.Blaze -> R.string.theme_blaze
-}
-
-private fun Theme.Group.nameRes(): Int = when (this) {
-    Theme.Group.Classic -> R.string.theme_group_classic
-    Theme.Group.Trending -> R.string.theme_group_trending
 }
 
 /**

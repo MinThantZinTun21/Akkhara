@@ -27,6 +27,7 @@ class ThemesTest {
             classic.map { it.name },
         )
         assertEquals(listOf(false, true), classic.map { it.isDark }.distinct())
+        assertEquals(5, classic.count { it.isDark })
     }
 
     @Test
@@ -41,6 +42,7 @@ class ThemesTest {
         )
         assertTrue(trending.all { it.group == Theme.Group.Trending })
         assertEquals(listOf(false, true), trending.map { it.isDark }.distinct())
+        assertEquals(10, trending.count { it.isDark })
     }
 
     @Test
@@ -50,7 +52,7 @@ class ThemesTest {
 
     @Test
     fun `Black has a pure black background`() {
-        assertEquals(BLACK, Theme.valueOf("Black").palette.background)
+        assertEquals(BLACK, Theme.Black.palette.background)
     }
 
     @Test
