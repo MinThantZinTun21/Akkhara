@@ -9,9 +9,6 @@ class AlternatesTest {
     private val engine = KeyboardEngine(editor, clock, inputLanguage = InputLanguage.Myanmar)
     private val typist = Typist(engine)
 
-    private fun codePoints(text: String): String =
-        text.map { "%04X".format(it.code) }.joinToString(" ")
-
     /** Holds the key labelled [label], slides to [alternate] and lifts. */
     private fun chooseAlternate(label: String, alternate: String) {
         val key = typist.charKey(label)
@@ -54,9 +51,9 @@ class AlternatesTest {
 
     @Test
     fun `kinzi is an alternate of nga and sits above the consonant typed next`() {
-        typist.reach("အ")
+        typist.tapThroughShift("အ")
         chooseAlternate("င", "င်္")
-        typist.reach("ဂ", "လ", "ိ", "ပ", "်")
+        typist.tapThroughShift("ဂ", "လ", "ိ", "ပ", "်")
 
         // အင်္ဂလိပ်
         assertEquals(
@@ -67,9 +64,9 @@ class AlternatesTest {
 
     @Test
     fun `kinzi chosen after an e-vowel still ends up in canonical order`() {
-        typist.reach("ေ")
+        typist.tapThroughShift("ေ")
         chooseAlternate("င", "င်္")
-        typist.reach("ဂ")
+        typist.tapThroughShift("ဂ")
 
         assertEquals(codePoints("င်္ဂေ"), codePoints(editor.text))
     }
@@ -80,7 +77,7 @@ class AlternatesTest {
         fun collect() {
             withAlternates += engine.rows.flatten()
                 .filter { engine.hold(it) is Hold.Alternates }
-                .map { (it as CharKey).char }
+                .map { (it as CharKey).text }
         }
         repeat(2) {
             collect()                       // base layer

@@ -18,7 +18,7 @@ class Typist(private val engine: KeyboardEngine) {
      * Taps each key in [labels], going through a one-shot shift for any key
      * that is on the shift layer.
      */
-    fun reach(vararg labels: String) = labels.forEach { label ->
+    fun tapThroughShift(vararg labels: String) = labels.forEach { label ->
         if (label !in labels()) tap(Action.Shift)
         tap(label)
     }
@@ -31,10 +31,7 @@ class Typist(private val engine: KeyboardEngine) {
         if (c == ' ') {
             tap(Action.Space)
         } else {
-            val key = visibleKeys().filterIsInstance<CharKey>()
-                .firstOrNull { it.char.equals(c.toString(), ignoreCase = true) }
-                ?: error("No key '$c' on the showing layer: ${labels()}")
-            engine.press(key)
+            engine.press(charKey(c.toString(), ignoreCase = true))
         }
     }
 
@@ -43,18 +40,18 @@ class Typist(private val engine: KeyboardEngine) {
         if (c == ' ') tap(Action.Space) else tap(c.toString())
     }
 
-    fun charKey(label: String): CharKey =
-        visibleKeys().filterIsInstance<CharKey>().firstOrNull { it.char == label }
+    fun charKey(label: String, ignoreCase: Boolean = false): CharKey =
+        visibleKeys().filterIsInstance<CharKey>().firstOrNull { it.text.equals(label, ignoreCase) }
             ?: error("No key '$label' on the showing layer: ${labels()}")
 
     fun actionKey(action: Action): ActionKey =
         visibleKeys().filterIsInstance<ActionKey>().firstOrNull { it.action == action }
             ?: error("No $action key on the showing layer")
 
-    fun labels(): List<String> = visibleKeys().filterIsInstance<CharKey>().map { it.char }
+    fun labels(): List<String> = visibleKeys().filterIsInstance<CharKey>().map { it.text }
 
     fun rowLabels(): List<String> = engine.rows.map { row ->
-        row.filterIsInstance<CharKey>().joinToString(" ") { it.char }
+        row.filterIsInstance<CharKey>().joinToString(" ") { it.text }
     }
 
     private fun visibleKeys(): List<Key> = engine.rows.flatten()

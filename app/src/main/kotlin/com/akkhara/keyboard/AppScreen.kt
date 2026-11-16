@@ -30,7 +30,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import kotlin.reflect.KMutableProperty0
 
 /** Follows the system light or dark setting with two fixed schemes, as the keyboard does. */
 @Composable
@@ -45,22 +45,20 @@ fun AkkharaTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors, content = content)
 }
 
+// The accent is the keyboard's own, so the screen and the keyboard look like one app.
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF00695C),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFF9EF2E4),
-    onPrimaryContainer = Color(0xFF00201C),
+    primary = Color(Palette.Light.accent),
+    onPrimary = Color(Palette.Light.onAccent),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF80CBC4),
-    onPrimary = Color(0xFF003731),
-    primaryContainer = Color(0xFF00504A),
-    onPrimaryContainer = Color(0xFF9EF2E4),
+    primary = Color(Palette.Dark.accent),
+    onPrimary = Color(Palette.Dark.onAccent),
 )
 
+/** The app's one screen: setup, a place to try the keyboard, and the settings. */
 @Composable
-fun SetupScreen(
+fun AppScreen(
     setup: Setup,
     settings: KeyboardSettings,
     onOpenKeyboardSettings: () -> Unit,
@@ -97,7 +95,8 @@ fun SetupScreen(
             )
 
             SectionTitle(R.string.try_title)
-            var trial by rememberSaveable { mutableStateOf("") }
+            // Typed text is never saved, not even across a rotation (docs/adr/0002-no-network-permission.md).
+            var trial by remember { mutableStateOf("") }
             OutlinedTextField(
                 value = trial,
                 onValueChange = { trial = it },
@@ -113,28 +112,17 @@ fun SetupScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Column {
+                Toggle(R.string.setting_haptic_feedback, settings::hapticFeedback)
+                Toggle(R.string.setting_key_preview, settings::keyPreview, note = R.string.setting_key_preview_note)
                 Toggle(
-                    title = R.string.setting_haptic_feedback,
-                    read = { settings.hapticFeedback },
-                    write = { settings.hapticFeedback = it },
-                )
-                Toggle(
-                    title = R.string.setting_key_preview,
-                    note = R.string.setting_key_preview_note,
-                    read = { settings.keyPreview },
-                    write = { settings.keyPreview = it },
-                )
-                Toggle(
-                    title = R.string.setting_automatic_capitalisation,
+                    R.string.setting_capitalise_sentences,
+                    settings::capitaliseSentences,
                     note = R.string.setting_english_only_note,
-                    read = { settings.automaticCapitalisation },
-                    write = { settings.automaticCapitalisation = it },
                 )
                 Toggle(
-                    title = R.string.setting_double_space_full_stop,
+                    R.string.setting_double_space_full_stop,
+                    settings::doubleSpaceFullStop,
                     note = R.string.setting_english_only_note,
-                    read = { settings.doubleSpaceFullStop },
-                    write = { settings.doubleSpaceFullStop = it },
                 )
             }
         }
@@ -181,15 +169,14 @@ private fun SetupStep(
     }
 }
 
-/** A setting that is either on or off. The whole row is the switch. */
+/** A [setting] that is either on or off. The whole row is the switch. */
 @Composable
 private fun Toggle(
     title: Int,
-    read: () -> Boolean,
-    write: (Boolean) -> Unit,
+    setting: KMutableProperty0<Boolean>,
     note: Int? = null,
 ) {
-    var isOn by remember { mutableStateOf(read()) }
+    var isOn by remember { mutableStateOf(setting.get()) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -199,7 +186,7 @@ private fun Toggle(
                 role = Role.Switch,
                 onValueChange = {
                     isOn = it
-                    write(it)
+                    setting.set(it)
                 },
             )
             .padding(vertical = 8.dp),

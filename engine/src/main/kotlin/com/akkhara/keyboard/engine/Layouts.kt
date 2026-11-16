@@ -11,9 +11,11 @@ private val shiftKey = ActionKey(Action.Shift, WIDE)
 private val backspaceKey = ActionKey(Action.Backspace, WIDE)
 private val enterKey = ActionKey(Action.Enter, WIDE)
 
-/** Gives the key that types [char] these [alternates]. */
-private fun Row.withAlternates(char: String, vararg alternates: String): Row =
-    map { if (it is CharKey && it.char == char) it.copy(alternates = alternates.toList()) else it }
+private val latinDigits = chars("1 2 3 4 5 6 7 8 9 0")
+
+/** Gives the key that types [text] these [alternates]. */
+private fun Row.withAlternates(text: String, vararg alternates: String): Row =
+    map { if (it is CharKey && it.text == text) it.copy(alternates = alternates.toList()) else it }
 
 /** The row under the letters, with the layout's own [comma] and [fullStop] key. */
 private fun lettersBottomRow(comma: String, fullStop: CharKey): Row = listOf(
@@ -40,6 +42,9 @@ internal interface Layout {
 
     /** The layout's name in its own language, shown on the space bar. */
     val name: String
+
+    /** A few of the layout's letters, shown on the key that comes back to it from the symbols layers. */
+    val lettersLabel: String
 }
 
 internal fun layoutFor(language: InputLanguage): Layout = when (language) {
@@ -49,15 +54,15 @@ internal fun layoutFor(language: InputLanguage): Layout = when (language) {
 
 internal object EnglishLayout : Layout {
     override val name = "English"
+    override val lettersLabel = "ABC"
 
-    private val digits = chars("1 2 3 4 5 6 7 8 9 0")
     private val bottom = lettersBottomRow(
         comma = ",",
         fullStop = CharKey(".", alternates = listOf(",", "?", "!", "'", "\"", ":", ";")),
     )
 
     override val base: List<Row> = listOf(
-        digits,
+        latinDigits,
         chars("q w e r t y u i o p"),
         chars("a s d f g h j k l"),
         listOf(shiftKey) + chars("z x c v b n m") + backspaceKey,
@@ -65,7 +70,7 @@ internal object EnglishLayout : Layout {
     )
 
     override val shift: List<Row> = listOf(
-        digits,
+        latinDigits,
         chars("Q W E R T Y U I O P"),
         chars("A S D F G H J K L"),
         listOf(shiftKey) + chars("Z X C V B N M") + backspaceKey,
@@ -81,8 +86,7 @@ internal object EnglishLayout : Layout {
  */
 internal object MyanmarLayout : Layout {
     override val name = "မြန်မာ"
-
-    private const val KINZI = "\u1004\u103A\u1039"
+    override val lettersLabel = "ကခဂ"
 
     private val bottom = lettersBottomRow(
         comma = "၊",
@@ -114,7 +118,7 @@ internal object MyanmarLayout : Layout {
 /** The two layers of digits and punctuation shared by every layout. */
 internal object SymbolsLayout {
     val first: List<Row> = listOf(
-        chars("1 2 3 4 5 6 7 8 9 0"),
+        latinDigits,
         chars("@ # $ % & - + ( ) /"),
         chars("* \" ' : ; ! ? _ = ~"),
         listOf(ActionKey(Action.MoreSymbols, WIDE)) + chars("\\ | < > [ ] ^") + backspaceKey,

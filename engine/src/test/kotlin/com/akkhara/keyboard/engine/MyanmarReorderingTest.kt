@@ -17,12 +17,9 @@ class MyanmarReorderingTest {
     private fun assertTyping(keys: String, expected: String) {
         val fresh = FakeEditor()
         val freshTypist = Typist(KeyboardEngine(fresh, FakeClock(), inputLanguage = InputLanguage.Myanmar))
-        freshTypist.reach(*keys.split(' ').toTypedArray())
+        freshTypist.tapThroughShift(*keys.split(' ').toTypedArray())
         assertEquals("typing $keys", codePoints(expected), codePoints(fresh.text))
     }
-
-    private fun codePoints(text: String): String =
-        text.map { "%04X".format(it.code) }.joinToString(" ")
 
     // --- ေ in visual order ---
 
@@ -90,7 +87,7 @@ class MyanmarReorderingTest {
         val existing = FakeEditor("ကု") // ကု
         val laterTypist = Typist(KeyboardEngine(existing, clock, inputLanguage = InputLanguage.Myanmar))
 
-        laterTypist.reach("န", "ု", "ိ")
+        laterTypist.tapThroughShift("န", "ု", "ိ")
 
         assertEquals(codePoints("ကုနို"), codePoints(existing.text))
     }
@@ -101,17 +98,17 @@ class MyanmarReorderingTest {
         existing.moveCursorTo(1)
         val laterTypist = Typist(KeyboardEngine(existing, clock, inputLanguage = InputLanguage.Myanmar))
 
-        laterTypist.reach("ိ")
+        laterTypist.tapThroughShift("ိ")
 
         assertEquals(codePoints("ကို"), codePoints(existing.text))
     }
 
     @Test
     fun `reordering gives the same result after the cursor has moved away and back`() {
-        typist.reach("ေ", "က")
+        typist.tapThroughShift("ေ", "က")
         editor.moveCursorTo(0)
         editor.moveCursorTo(editor.text.length)
-        typist.reach("ျ")
+        typist.tapThroughShift("ျ")
 
         assertEquals(codePoints("ကျေ"), codePoints(editor.text))
     }
@@ -162,7 +159,7 @@ class MyanmarReorderingTest {
 
     @Test
     fun `backspace deletes one mark, not the whole syllable`() {
-        typist.reach("က", "ိ", "ု")
+        typist.tapThroughShift("က", "ိ", "ု")
         typist.tap(Action.Backspace)
 
         assertEquals(codePoints("ကိ"), codePoints(editor.text))
@@ -170,7 +167,7 @@ class MyanmarReorderingTest {
 
     @Test
     fun `backspace on a lone e-vowel leaves nothing invisible behind`() {
-        typist.reach("က", "ေ")
+        typist.tapThroughShift("က", "ေ")
         typist.tap(Action.Backspace)
 
         assertEquals(codePoints("က"), codePoints(editor.text))
@@ -178,7 +175,7 @@ class MyanmarReorderingTest {
 
     @Test
     fun `backspacing over marks typed ahead of their consonant leaves nothing invisible behind`() {
-        typist.reach("ေ", "ြ")
+        typist.tapThroughShift("ေ", "ြ")
         typist.tap(Action.Backspace, times = 2)
 
         assertEquals("", editor.text)
@@ -188,7 +185,7 @@ class MyanmarReorderingTest {
 
     @Test
     fun `typing something else after a lone e-vowel leaves nothing invisible behind`() {
-        typist.reach("ေ")
+        typist.tapThroughShift("ေ")
         typist.tap(Action.Space)
 
         assertEquals(codePoints("ေ "), codePoints(editor.text))
@@ -196,7 +193,7 @@ class MyanmarReorderingTest {
 
     @Test
     fun `switching to English after a lone e-vowel leaves nothing invisible behind`() {
-        typist.reach("ေ")
+        typist.tapThroughShift("ေ")
         typist.tap(Action.Globe)
         typist.tap("a")
 
@@ -205,8 +202,33 @@ class MyanmarReorderingTest {
 
     @Test
     fun `a Myanmar digit after a lone e-vowel leaves nothing invisible behind`() {
-        typist.reach("ေ", "၁")
+        typist.tapThroughShift("ေ", "၁")
 
         assertEquals(codePoints("ေ၁"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `a virama typed between a lone e-vowel and its consonant leaves nothing invisible behind`() {
+        typist.tapThroughShift("ေ", "္", "က")
+
+        assertEquals(codePoints("က္ေ"), codePoints(editor.text))
+    }
+
+    @Test
+    fun `enter that performs the field's action leaves nothing invisible behind`() {
+        engine.startInput(Field(enterAction = EnterAction.Send))
+        typist.tapThroughShift("ေ")
+        typist.tap(Action.Enter)
+
+        assertEquals(codePoints("ေ"), codePoints(editor.text))
+        assertEquals(1, editor.enterActionsPerformed)
+    }
+
+    @Test
+    fun `closing the keyboard after a lone e-vowel leaves nothing invisible behind`() {
+        typist.tapThroughShift("ေ")
+        engine.finishInput()
+
+        assertEquals(codePoints("ေ"), codePoints(editor.text))
     }
 }

@@ -47,6 +47,9 @@ class KeyboardEngine(
     /** The name of the current input language, for the space bar. */
     val spaceLabel: String get() = layoutFor(inputLanguage).name
 
+    /** A few letters of the current input language, for the key that leaves the symbols layers. */
+    val lettersLabel: String get() = layoutFor(inputLanguage).lettersLabel
+
     /**
      * Typing is starting in [field]. The input language carries over from the
      * last text field; the layer and shift do not.
@@ -59,6 +62,9 @@ class KeyboardEngine(
         lastShiftTap = null
         updateAutomaticCapital()
     }
+
+    /** Typing in the current text field is over, as when the keyboard closes. */
+    fun finishInput() = finishSyllable()
 
     /** The cursor went somewhere the keyboard did not put it. */
     fun onCursorMoved() = updateAutomaticCapital()
@@ -73,21 +79,19 @@ class KeyboardEngine(
 
     /** The user held [key], slid to [alternate] and lifted. */
     fun pressAlternate(key: CharKey, alternate: String) {
-        require(alternate in key.alternates) { "'${key.char}' does not offer '$alternate'" }
+        require(alternate in key.alternates) { "'${key.text}' does not offer '$alternate'" }
         type(alternate)
         afterEdit()
     }
 
     fun press(key: Key) {
-        if (key is ActionKey && key.action == Action.Shift) {
-            tapShift()
-            return
-        }
         when (key) {
-            is CharKey -> type(key.char)
+            is CharKey -> type(key.text)
             is ActionKey -> perform(key.action)
         }
-        afterEdit()
+        // A tap on shift is the user's own choice of shift, so it is left as they set it.
+        val isShift = key is ActionKey && key.action == Action.Shift
+        if (!isShift) afterEdit()
     }
 
     private fun afterEdit() {
@@ -134,7 +138,21 @@ class KeyboardEngine(
     }
 
     private fun enter() {
-        if (textField.enterAction == EnterAction.NewLine) insert("\n") else editor.performEnterAction()
+        if (textField.enterAction == EnterAction.NewLine) {
+            insert("\n")
+        } else {
+            finishSyllable()
+            editor.performEnterAction()
+        }
+    }
+
+    /** Leaves nothing invisible in the text when a Myanmar syllable is left unfinished. */
+    private fun finishSyllable() {
+        val edit = MyanmarReordering.finish(editor.textBeforeCursor(MyanmarReordering.WINDOW))
+        if (edit.delete > 0) {
+            editor.deleteBeforeCursor(edit.delete)
+            editor.commit(edit.insert)
+        }
     }
 
     private fun tapShift() {
@@ -187,9 +205,10 @@ class KeyboardEngine(
         setShift(ShiftState.Off)
     }
 
+    /** Every visit to another layer starts from, and comes back to, the base layer. */
     private fun show(target: Layer) {
         layer = target
-        if (shift == ShiftState.OneShot) setShift(ShiftState.Off)
+        setShift(ShiftState.Off)
     }
 
     private fun backspace() {

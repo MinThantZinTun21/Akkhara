@@ -83,16 +83,17 @@ class LayersTest {
     }
 
     @Test
-    fun `shift lock survives a visit to the symbols layer`() {
+    fun `returning from the symbols layer shows the base layer even after shift lock`() {
         typist.tap(Action.Shift)
         clock.advance(100)
         typist.tap(Action.Shift)
         typist.tap(Action.Symbols)
         typist.tap("1")
         typist.tap(Action.Letters)
-        typist.tap("A")
+        typist.tap("a")
 
-        assertEquals("1A", editor.text)
+        assertEquals(ShiftState.Off, engine.shift)
+        assertEquals("1a", editor.text)
     }
 
     @Test

@@ -43,7 +43,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         engine.startInput(
             info.toField(),
             Conveniences(
-                capitaliseSentences = settings.automaticCapitalisation,
+                capitaliseSentences = settings.capitaliseSentences,
                 doubleSpaceFullStop = settings.doubleSpaceFullStop,
             ),
         )
@@ -52,6 +52,11 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
             keyPreviewEnabled = settings.keyPreview
             onEngineChanged()
         }
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        edit { finishInput() }
+        super.onFinishInputView(finishingInput)
     }
 
     override fun onUpdateSelection(

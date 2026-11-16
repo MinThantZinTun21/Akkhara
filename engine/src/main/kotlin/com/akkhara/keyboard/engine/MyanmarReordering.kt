@@ -3,6 +3,9 @@ package com.akkhara.keyboard.engine
 /** A change to make at the cursor: delete [delete] UTF-16 units before it, then insert [insert]. */
 internal data class Edit(val delete: Int, val insert: String)
 
+/** Kinzi: nga, asat and virama, drawn as a small mark above the consonant that follows. */
+internal const val KINZI = "\u1004\u103A\u1039"
+
 /**
  * Puts the syllable being typed into canonical order.
  *
@@ -25,7 +28,6 @@ internal object MyanmarReordering {
     private const val ASAT = '်'
     private const val VIRAMA = '္'
     private const val DOT_BELOW = '့'
-    private const val KINZI = "င်္"
 
     /** The edit that types [typed] after [before]. */
     fun type(before: String, typed: String): Edit = when {
@@ -34,6 +36,12 @@ internal object MyanmarReordering {
         typed.length == 1 && isMark(typed[0]) -> typeMark(before, typed[0])
         else -> typeOther(before, typed)
     }
+
+    /**
+     * The edit to make when typing stops with [before] at the cursor: it takes
+     * away the zero-width space of an e-vowel whose consonant never came.
+     */
+    fun finish(before: String): Edit = typeOther(before, "")
 
     /** How many UTF-16 units one press of backspace deletes from the end of [before]. */
     fun backspace(before: String): Int {
@@ -48,11 +56,11 @@ internal object MyanmarReordering {
 
     /** A consonant, independent vowel or kinzi. */
     private fun typeBase(before: String, typed: String): Edit {
-        val cluster = before.substring(clusterStart(before))
-        val syllable = parse(cluster)
-        if (syllable != null && syllable.head.endsWith(VIRAMA)) {
-            // The syllable is waiting for a stacked consonant.
-            return replace(cluster, syllable.head + typed + syllable.marks)
+        val text = before.substring(syllableStart(before))
+        val syllable = parse(text)
+        if (syllable != null && syllable.head.length > 1 && syllable.head.endsWith(VIRAMA)) {
+            // A consonant or kinzi is waiting for the consonant that goes with its virama.
+            return replace(text, syllable.head + typed + syllable.marks)
         }
         val waiting = marksWaitingForBase(before)
         if (waiting != null) {
@@ -63,9 +71,9 @@ internal object MyanmarReordering {
     }
 
     private fun typeMark(before: String, mark: Char): Edit {
-        val cluster = before.substring(clusterStart(before))
-        val syllable = parse(cluster) ?: return Edit(0, mark.toString())
-        return replace(cluster, syllable.with(mark))
+        val text = before.substring(syllableStart(before))
+        val syllable = parse(text) ?: return Edit(0, mark.toString())
+        return replace(text, syllable.with(mark))
     }
 
     /** Anything that is not part of a Myanmar syllable: it ends whatever was being typed. */
@@ -75,10 +83,10 @@ internal object MyanmarReordering {
         return Edit(waiting.length + 1, waiting + typed)
     }
 
-    /** The edit that turns [cluster], which ends at the cursor, into [reordered]. */
-    private fun replace(cluster: String, reordered: String): Edit {
-        val unchanged = cluster.commonPrefixWith(reordered).length
-        return Edit(cluster.length - unchanged, reordered.substring(unchanged))
+    /** The edit that turns [text], which ends at the cursor, into [reordered]. */
+    private fun replace(text: String, reordered: String): Edit {
+        val unchanged = text.commonPrefixWith(reordered).length
+        return Edit(text.length - unchanged, reordered.substring(unchanged))
     }
 
     /**
@@ -94,7 +102,7 @@ internal object MyanmarReordering {
     }
 
     /** Where the syllable that ends at the end of [text] begins. */
-    private fun clusterStart(text: String): Int {
+    private fun syllableStart(text: String): Int {
         var i = text.length
         while (i > 0) {
             val c = text[i - 1]
@@ -132,30 +140,30 @@ internal object MyanmarReordering {
         }
     }
 
-    /** Null when [cluster] is not shaped like a syllable, in which case it is left alone. */
-    private fun parse(cluster: String): Syllable? {
+    /** Null when [text] is not shaped like a syllable, in which case it is left alone. */
+    private fun parse(text: String): Syllable? {
         var i = 0
-        if (cluster.startsWith(KINZI)) {
+        if (text.startsWith(KINZI)) {
             i = KINZI.length
-            if (i < cluster.length && isBase(cluster[i])) i++ else return syllable(cluster, i)
-        } else if (cluster.isNotEmpty() && isBase(cluster[0])) {
+            if (i < text.length && isBase(text[i])) i++ else return syllable(text, i)
+        } else if (text.isNotEmpty() && isBase(text[0])) {
             i = 1
         }
         val hasBase = i > 0
-        if (hasBase && i + 1 < cluster.length && cluster[i] == ASAT && sitsAfterAsat(cluster[i + 1])) {
+        if (hasBase && i + 1 < text.length && text[i] == ASAT && sitsAfterAsat(text[i + 1])) {
             i++ // an asat directly on the consonant, as in ယောက်ျား
         }
-        while (i < cluster.length && cluster[i] == VIRAMA) {
+        while (i < text.length && text[i] == VIRAMA) {
             i++
-            if (i < cluster.length && isBase(cluster[i])) i++ else break
+            if (i < text.length && isBase(text[i])) i++ else break
         }
-        return syllable(cluster, i)
+        return syllable(text, i)
     }
 
-    private fun syllable(cluster: String, headLength: Int): Syllable? {
-        val marks = cluster.substring(headLength)
+    private fun syllable(text: String, headLength: Int): Syllable? {
+        val marks = text.substring(headLength)
         val allOrderable = marks.all { isMark(it) && it != VIRAMA }
-        return if (allOrderable) Syllable(cluster.substring(0, headLength), marks) else null
+        return if (allOrderable) Syllable(text.substring(0, headLength), marks) else null
     }
 
     /** Consonants, independent vowels and great sa: anything a mark can attach to. */

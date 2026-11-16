@@ -23,7 +23,7 @@
         tools:targetApi="s">
 
         <activity
-            android:name=".SetupActivity"
+            android:name=".AppActivity"
             android:exported="true"
             android:theme="@style/Theme.Akkhara"
             android:windowSoftInputMode="adjustResize">

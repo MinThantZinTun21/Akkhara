@@ -20,7 +20,7 @@ import androidx.compose.runtime.setValue
  * Setup happens in Android's own screens, so its two steps are read back from
  * Android whenever they may have changed rather than remembered here.
  */
-class SetupActivity : ComponentActivity() {
+class AppActivity : ComponentActivity() {
 
     private var setup by mutableStateOf(Setup(isEnabled = false, isSelected = false))
 
@@ -34,7 +34,7 @@ class SetupActivity : ComponentActivity() {
         val settings = KeyboardSettings(this)
         setContent {
             AkkharaTheme {
-                SetupScreen(
+                AppScreen(
                     setup = setup,
                     settings = settings,
                     onOpenKeyboardSettings = { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) },

@@ -18,7 +18,7 @@ class KeyboardSettings(context: Context) {
 
     var hapticFeedback: Boolean by toggle("haptic_feedback")
     var keyPreview: Boolean by toggle("key_preview")
-    var automaticCapitalisation: Boolean by toggle("automatic_capitalisation")
+    var capitaliseSentences: Boolean by toggle("capitalise_sentences")
     var doubleSpaceFullStop: Boolean by toggle("double_space_full_stop")
 
     /** The input language the keyboard was last typing, so it opens in the same one. */

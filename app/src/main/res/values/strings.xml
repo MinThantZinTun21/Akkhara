@@ -20,7 +20,7 @@
     <string name="setting_haptic_feedback">Vibrate on key press</string>
     <string name="setting_key_preview">Show key preview</string>
     <string name="setting_key_preview_note">Never shown while typing a password.</string>
-    <string name="setting_automatic_capitalisation">Capitalise the start of a sentence</string>
+    <string name="setting_capitalise_sentences">Capitalise the start of a sentence</string>
     <string name="setting_double_space_full_stop">Double space types a full stop</string>
     <string name="setting_english_only_note">English only.</string>
 </resources>

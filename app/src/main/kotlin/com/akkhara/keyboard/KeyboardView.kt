@@ -6,7 +6,6 @@ import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.RectF
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -15,11 +14,11 @@ import android.view.ViewConfiguration
 import android.view.WindowInsets
 import com.akkhara.keyboard.engine.Action
 import com.akkhara.keyboard.engine.ActionKey
+import com.akkhara.keyboard.engine.Cell
 import com.akkhara.keyboard.engine.CharKey
 import com.akkhara.keyboard.engine.EnterAction
 import com.akkhara.keyboard.engine.Hold
-import com.akkhara.keyboard.engine.InputLanguage
-import com.akkhara.keyboard.engine.Key
+import com.akkhara.keyboard.engine.KeyGrid
 import com.akkhara.keyboard.engine.KeyboardEngine
 import com.akkhara.keyboard.engine.ShiftState
 import kotlin.math.abs
@@ -27,8 +26,8 @@ import kotlin.math.min
 
 /**
  * Draws the layer the engine is showing and reports touches back to it.
- * It holds no typing logic: what a key does, tapped or held, is decided by
- * the engine.
+ * It holds no typing logic and no layout logic: what a key does, tapped or
+ * held, is decided by the engine, and where each key sits by [KeyGrid].
  */
 @SuppressLint("ViewConstructor")
 class KeyboardView(context: Context) : View(context) {
@@ -41,23 +40,25 @@ class KeyboardView(context: Context) : View(context) {
         fun showKeyboardPicker()
     }
 
-    private class Cell(val key: Key, val bounds: RectF)
-
     /** One finger on the keyboard. */
     private class Touch(val cell: Cell, var x: Float, var y: Float) {
         var holdTimer: Runnable? = null
         var repeatTimer: Runnable? = null
 
         /** Non-null once the key's alternates are showing. */
-        var alternates: List<String>? = null
-        var selectedAlternate = -1
-
-        /** Where the finger was when the alternates appeared; it must move from here to select one. */
-        var alternatesX = 0f
-        var alternatesY = 0f
+        var choice: AlternateChoice? = null
 
         /** True once holding has already done the key's work, so lifting must not press it again. */
         var consumed = false
+    }
+
+    /**
+     * The alternates on offer for a held key. [startX] and [startY] are where
+     * the finger was when they appeared.
+     */
+    private class AlternateChoice(val alternates: List<String>, val startX: Float, val startY: Float) {
+        /** Null until the finger slides: lifting without sliding types the key's own character. */
+        var selected: Int? = null
     }
 
     var hapticsEnabled = true
@@ -87,9 +88,9 @@ class KeyboardView(context: Context) : View(context) {
     private val edgePadding = 4f * density
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
-    private val cells = ArrayList<Cell>()
+    private var grid: KeyGrid? = null
     private val touches = LinkedHashMap<Int, Touch>() // by pointer id, oldest first
-    private val bubble = KeyBubble(context, palette)
+    private val callout = KeyCallout(context, palette)
 
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val labelSize = 22f * resources.displayMetrics.scaledDensity
@@ -158,28 +159,13 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     /**
-     * Rebuilds the cells from the engine's rows. Fingers already down keep
-     * the key they landed on, so a layer change under a held key (shift, then
-     * a letter with the other thumb) does not lose it.
+     * Lays the engine's rows out afresh. Fingers already down keep the key
+     * they landed on, so a layer change under a held key (shift, then a
+     * letter with the other thumb) does not lose it.
      */
     private fun layoutKeys() {
-        cells.clear()
-        val rows = engine?.rows ?: return
-        if (width == 0) return
-        val unit = (width - 2 * edgePadding) / COLUMNS
-        rows.forEachIndexed { rowIndex, row ->
-            val rowWidth = row.sumOf { it.width.toDouble() }.toFloat() * unit
-            var x = (width - rowWidth) / 2f
-            val top = edgePadding + rowIndex * rowHeight
-            for (key in row) {
-                val keyWidth = key.width * unit
-                cells += Cell(
-                    key,
-                    RectF(x + keyGap / 2, top + keyGap, x + keyWidth - keyGap / 2, top + rowHeight - keyGap),
-                )
-                x += keyWidth
-            }
-        }
+        val rows = engine?.rows
+        grid = if (rows == null || width == 0) null else KeyGrid(rows, width.toFloat(), rowHeight, edgePadding, keyGap)
     }
 
     // ---- drawing ----
@@ -187,11 +173,11 @@ class KeyboardView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(palette.background)
         val shiftActive = engine?.shift != ShiftState.Off
-        for (cell in cells) {
+        for (cell in grid?.cells.orEmpty()) {
             val key = cell.key
             val isActiveShift = shiftActive && key is ActionKey && key.action == Action.Shift
             keyPaint.color = when {
-                touches.values.any { it.cell.bounds == cell.bounds } -> palette.keyPressed
+                touches.values.any { it.cell.isAt(cell) } -> palette.keyPressed
                 isActiveShift -> palette.accent
                 key is ActionKey && key.action != Action.Space -> palette.actionKey
                 else -> palette.key
@@ -200,116 +186,124 @@ class KeyboardView(context: Context) : View(context) {
             labelPaint.color = ink
             smallLabelPaint.color = ink
             iconPaint.color = ink
-            canvas.drawRoundRect(cell.bounds, keyRadius, keyRadius, keyPaint)
+            canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom, keyRadius, keyRadius, keyPaint)
             when (key) {
-                is CharKey -> drawLabel(canvas, key.char, cell.bounds, labelPaint)
-                is ActionKey -> drawAction(canvas, key.action, cell.bounds)
+                is CharKey -> drawLabel(canvas, key.text, cell, labelPaint)
+                is ActionKey -> drawAction(canvas, key.action, cell)
             }
         }
     }
 
-    private fun drawLabel(canvas: Canvas, text: String, bounds: RectF, paint: Paint) {
-        val baseline = bounds.centerY() - (paint.descent() + paint.ascent()) / 2
-        canvas.drawText(text, bounds.centerX(), baseline, paint)
+    private fun drawLabel(canvas: Canvas, text: String, cell: Cell, paint: Paint) {
+        val baseline = (cell.top + cell.bottom) / 2 - (paint.descent() + paint.ascent()) / 2
+        canvas.drawText(text, cell.centerX, baseline, paint)
     }
 
-    private fun drawAction(canvas: Canvas, action: Action, bounds: RectF) {
-        val cx = bounds.centerX()
-        val cy = bounds.centerY()
-        val s = 9f * density * (rowHeight / fullRowHeight) // half the icon's size
+    private fun drawAction(canvas: Canvas, action: Action, cell: Cell) {
+        val cx = cell.centerX
+        val cy = (cell.top + cell.bottom) / 2
+        val half = 9f * density * (rowHeight / fullRowHeight) // half the picture's size
         iconPath.rewind()
         iconPaint.style = Paint.Style.STROKE
         when (action) {
             Action.Space ->
-                return drawLabel(canvas, engine?.spaceLabel.orEmpty(), bounds, smallLabelPaint)
-            Action.Symbols -> return drawLabel(canvas, "?123", bounds, smallLabelPaint)
-            Action.MoreSymbols -> return drawLabel(canvas, "=\\<", bounds, smallLabelPaint)
-            Action.Letters -> {
-                val letters = if (engine?.inputLanguage == InputLanguage.Myanmar) "ကခဂ" else "ABC"
-                return drawLabel(canvas, letters, bounds, smallLabelPaint)
-            }
+                return drawLabel(canvas, engine?.spaceLabel.orEmpty(), cell, smallLabelPaint)
+            Action.Symbols -> return drawLabel(canvas, "?123", cell, smallLabelPaint)
+            Action.MoreSymbols -> return drawLabel(canvas, "=\\<", cell, smallLabelPaint)
+            Action.Letters ->
+                return drawLabel(canvas, engine?.lettersLabel.orEmpty(), cell, smallLabelPaint)
             Action.Globe -> {
                 // a circle with a meridian and an equator
-                iconPath.addCircle(cx, cy, s, Path.Direction.CW)
-                iconPath.addOval(cx - s * 0.45f, cy - s, cx + s * 0.45f, cy + s, Path.Direction.CW)
-                iconPath.moveTo(cx - s, cy)
-                iconPath.lineTo(cx + s, cy)
+                iconPath.addCircle(cx, cy, half, Path.Direction.CW)
+                iconPath.addOval(cx - half * 0.45f, cy - half, cx + half * 0.45f, cy + half, Path.Direction.CW)
+                iconPath.moveTo(cx - half, cy)
+                iconPath.lineTo(cx + half, cy)
             }
             Action.Shift -> {
                 // an upward arrow: outlined when off, filled for one-shot shift, underlined for shift lock
                 val shift = engine?.shift ?: ShiftState.Off
-                iconPath.moveTo(cx, cy - s)
-                iconPath.lineTo(cx + s, cy)
-                iconPath.lineTo(cx + s * 0.45f, cy)
-                iconPath.lineTo(cx + s * 0.45f, cy + s * 0.7f)
-                iconPath.lineTo(cx - s * 0.45f, cy + s * 0.7f)
-                iconPath.lineTo(cx - s * 0.45f, cy)
-                iconPath.lineTo(cx - s, cy)
+                iconPath.moveTo(cx, cy - half)
+                iconPath.lineTo(cx + half, cy)
+                iconPath.lineTo(cx + half * 0.45f, cy)
+                iconPath.lineTo(cx + half * 0.45f, cy + half * 0.7f)
+                iconPath.lineTo(cx - half * 0.45f, cy + half * 0.7f)
+                iconPath.lineTo(cx - half * 0.45f, cy)
+                iconPath.lineTo(cx - half, cy)
                 iconPath.close()
                 if (shift != ShiftState.Off) iconPaint.style = Paint.Style.FILL_AND_STROKE
                 if (shift == ShiftState.Locked) {
-                    canvas.drawLine(cx - s * 0.6f, cy + s * 1.15f, cx + s * 0.6f, cy + s * 1.15f, iconPaint)
+                    canvas.drawLine(cx - half * 0.6f, cy + half * 1.15f, cx + half * 0.6f, cy + half * 1.15f, iconPaint)
                 }
             }
             Action.Backspace -> {
                 // a left-pointing tag with a cross in it
-                iconPath.moveTo(cx - s * 1.3f, cy)
-                iconPath.lineTo(cx - s * 0.5f, cy - s * 0.8f)
-                iconPath.lineTo(cx + s * 1.2f, cy - s * 0.8f)
-                iconPath.lineTo(cx + s * 1.2f, cy + s * 0.8f)
-                iconPath.lineTo(cx - s * 0.5f, cy + s * 0.8f)
+                iconPath.moveTo(cx - half * 1.3f, cy)
+                iconPath.lineTo(cx - half * 0.5f, cy - half * 0.8f)
+                iconPath.lineTo(cx + half * 1.2f, cy - half * 0.8f)
+                iconPath.lineTo(cx + half * 1.2f, cy + half * 0.8f)
+                iconPath.lineTo(cx - half * 0.5f, cy + half * 0.8f)
                 iconPath.close()
-                iconPath.moveTo(cx - s * 0.05f, cy - s * 0.35f)
-                iconPath.lineTo(cx + s * 0.65f, cy + s * 0.35f)
-                iconPath.moveTo(cx + s * 0.65f, cy - s * 0.35f)
-                iconPath.lineTo(cx - s * 0.05f, cy + s * 0.35f)
+                iconPath.moveTo(cx - half * 0.05f, cy - half * 0.35f)
+                iconPath.lineTo(cx + half * 0.65f, cy + half * 0.35f)
+                iconPath.moveTo(cx + half * 0.65f, cy - half * 0.35f)
+                iconPath.lineTo(cx - half * 0.05f, cy + half * 0.35f)
             }
-            Action.Enter -> enterIcon(engine?.enterAction ?: EnterAction.NewLine, cx, cy, s)
+            Action.Enter -> enterIcon(engine?.enterAction ?: EnterAction.NewLine, cx, cy, half)
         }
         canvas.drawPath(iconPath, iconPaint)
     }
 
     /** Adds to [iconPath] the picture of what enter does in this text field. */
-    private fun enterIcon(action: EnterAction, cx: Float, cy: Float, s: Float) {
+    private fun enterIcon(action: EnterAction, cx: Float, cy: Float, half: Float) {
         when (action) {
             EnterAction.NewLine -> {
                 // down, then left, with an arrow head
-                iconPath.moveTo(cx + s, cy - s * 0.7f)
-                iconPath.lineTo(cx + s, cy + s * 0.3f)
-                iconPath.lineTo(cx - s, cy + s * 0.3f)
-                iconPath.moveTo(cx - s * 0.4f, cy - s * 0.3f)
-                iconPath.lineTo(cx - s, cy + s * 0.3f)
-                iconPath.lineTo(cx - s * 0.4f, cy + s * 0.9f)
+                iconPath.moveTo(cx + half, cy - half * 0.7f)
+                iconPath.lineTo(cx + half, cy + half * 0.3f)
+                iconPath.lineTo(cx - half, cy + half * 0.3f)
+                iconPath.moveTo(cx - half * 0.4f, cy - half * 0.3f)
+                iconPath.lineTo(cx - half, cy + half * 0.3f)
+                iconPath.lineTo(cx - half * 0.4f, cy + half * 0.9f)
             }
             EnterAction.Search -> {
                 // a magnifying glass
-                iconPath.addCircle(cx - s * 0.2f, cy - s * 0.2f, s * 0.7f, Path.Direction.CW)
-                iconPath.moveTo(cx + s * 0.3f, cy + s * 0.3f)
-                iconPath.lineTo(cx + s, cy + s)
+                iconPath.addCircle(cx - half * 0.2f, cy - half * 0.2f, half * 0.7f, Path.Direction.CW)
+                iconPath.moveTo(cx + half * 0.3f, cy + half * 0.3f)
+                iconPath.lineTo(cx + half, cy + half)
             }
             EnterAction.Send -> {
                 // a paper plane pointing right
-                iconPath.moveTo(cx - s, cy - s * 0.8f)
-                iconPath.lineTo(cx + s, cy)
-                iconPath.lineTo(cx - s, cy + s * 0.8f)
-                iconPath.lineTo(cx - s * 0.6f, cy)
+                iconPath.moveTo(cx - half, cy - half * 0.8f)
+                iconPath.lineTo(cx + half, cy)
+                iconPath.lineTo(cx - half, cy + half * 0.8f)
+                iconPath.lineTo(cx - half * 0.6f, cy)
                 iconPath.close()
-                iconPath.moveTo(cx - s * 0.6f, cy)
-                iconPath.lineTo(cx + s, cy)
+                iconPath.moveTo(cx - half * 0.6f, cy)
+                iconPath.lineTo(cx + half, cy)
             }
-            EnterAction.Go, EnterAction.Next -> {
+            EnterAction.Go -> {
                 // an arrow pointing right
-                iconPath.moveTo(cx - s, cy)
-                iconPath.lineTo(cx + s, cy)
-                iconPath.moveTo(cx + s * 0.3f, cy - s * 0.7f)
-                iconPath.lineTo(cx + s, cy)
-                iconPath.lineTo(cx + s * 0.3f, cy + s * 0.7f)
+                iconPath.moveTo(cx - half, cy)
+                iconPath.lineTo(cx + half, cy)
+                iconPath.moveTo(cx + half * 0.3f, cy - half * 0.7f)
+                iconPath.lineTo(cx + half, cy)
+                iconPath.lineTo(cx + half * 0.3f, cy + half * 0.7f)
+            }
+            EnterAction.Next -> {
+                // an arrow pointing right at a bar: on to the next text field
+                iconPath.moveTo(cx - half, cy)
+                iconPath.lineTo(cx + half * 0.6f, cy)
+                iconPath.moveTo(cx - half * 0.1f, cy - half * 0.7f)
+                iconPath.lineTo(cx + half * 0.6f, cy)
+                iconPath.lineTo(cx - half * 0.1f, cy + half * 0.7f)
+                iconPath.moveTo(cx + half, cy - half * 0.8f)
+                iconPath.lineTo(cx + half, cy + half * 0.8f)
             }
             EnterAction.Done -> {
                 // a tick
-                iconPath.moveTo(cx - s, cy)
-                iconPath.lineTo(cx - s * 0.3f, cy + s * 0.7f)
-                iconPath.lineTo(cx + s, cy - s * 0.7f)
+                iconPath.moveTo(cx - half, cy)
+                iconPath.lineTo(cx - half * 0.3f, cy + half * 0.7f)
+                iconPath.lineTo(cx + half, cy - half * 0.7f)
             }
         }
     }
@@ -325,7 +319,7 @@ class KeyboardView(context: Context) : View(context) {
                 val index = event.actionIndex
                 val x = event.getX(index)
                 val y = event.getY(index)
-                cellAt(x, y)?.let { touchDown(event.getPointerId(index), Touch(it, x, y)) }
+                grid?.cellAt(x, y)?.let { touchDown(event.getPointerId(index), Touch(it, x, y)) }
             }
             MotionEvent.ACTION_MOVE ->
                 for (index in 0 until event.pointerCount) {
@@ -348,7 +342,8 @@ class KeyboardView(context: Context) : View(context) {
         val cell = touch.cell
         touches[pointerId] = touch
         if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-        if (showsKeyPreview && cell.key is CharKey) bubble.showPreview(this, cell.bounds, cell.key.char)
+        val key = cell.key
+        if (showsKeyPreview && key is CharKey) callout.showPreview(this, cell, key.text)
         touch.holdTimer = Runnable { onHeld(pointerId, touch) }.also { postDelayed(it, HOLD_MILLIS) }
     }
 
@@ -366,10 +361,8 @@ class KeyboardView(context: Context) : View(context) {
                 repeat(touch)
             }
             is Hold.Alternates -> {
-                touch.alternates = hold.alternates
-                touch.alternatesX = touch.x
-                touch.alternatesY = touch.y
-                bubble.showAlternates(this, touch.cell.bounds, hold.alternates)
+                touch.choice = AlternateChoice(hold.alternates, touch.x, touch.y)
+                callout.showAlternates(this, touch.cell, hold.alternates)
             }
             Hold.None, null -> Unit
         }
@@ -385,14 +378,13 @@ class KeyboardView(context: Context) : View(context) {
     private fun slide(touch: Touch, x: Float, y: Float) {
         touch.x = x
         touch.y = y
-        val alternates = touch.alternates ?: return
-        if (touch.selectedAlternate < 0) {
-            val moved = maxOf(abs(x - touch.alternatesX), abs(y - touch.alternatesY))
-            if (moved < touchSlop) return // lifting without sliding types the key's own character
+        val choice = touch.choice ?: return
+        if (choice.selected == null) {
+            val moved = maxOf(abs(x - choice.startX), abs(y - choice.startY))
+            if (moved < touchSlop) return
         }
-        val index = ((x - bubble.left) / bubble.cellWidth).toInt().coerceIn(0, alternates.lastIndex)
-        touch.selectedAlternate = index
-        bubble.select(index)
+        choice.selected = callout.alternateAt(x)
+        callout.select(choice.selected)
     }
 
     private fun liftAll() {
@@ -404,7 +396,7 @@ class KeyboardView(context: Context) : View(context) {
         val touch = drop(pointerId) ?: return
         if (touch.consumed) return
         val key = touch.cell.key
-        val alternate = touch.alternates?.getOrNull(touch.selectedAlternate)
+        val alternate = touch.choice?.let { choice -> choice.selected?.let(choice.alternates::get) }
         if (alternate != null && key is CharKey) {
             host?.edit { pressAlternate(key, alternate) }
         } else {
@@ -417,7 +409,7 @@ class KeyboardView(context: Context) : View(context) {
         val touch = touches.remove(pointerId) ?: return null
         touch.holdTimer?.let(::removeCallbacks)
         touch.repeatTimer?.let(::removeCallbacks)
-        bubble.dismiss()
+        callout.dismiss()
         return touch
     }
 
@@ -425,25 +417,7 @@ class KeyboardView(context: Context) : View(context) {
         for (pointerId in touches.keys.toList()) drop(pointerId)
     }
 
-    /** The key under a touch; a touch in the gap between keys goes to the nearest key in that row. */
-    private fun cellAt(x: Float, y: Float): Cell? {
-        val rowIndex = ((y - edgePadding) / rowHeight).toInt()
-        val rowTop = edgePadding + rowIndex * rowHeight
-        return cells
-            .filter { it.bounds.centerY() > rowTop && it.bounds.centerY() < rowTop + rowHeight }
-            .minByOrNull { cell ->
-                when {
-                    x < cell.bounds.left -> cell.bounds.left - x
-                    x > cell.bounds.right -> x - cell.bounds.right
-                    else -> 0f
-                }
-            }
-    }
-
     private companion object {
-        /** Width of the keyboard in ordinary character keys. */
-        const val COLUMNS = 10f
-
         /** Height of a row of keys where the screen has room for it. */
         const val FULL_ROW_DP = 54f
 
