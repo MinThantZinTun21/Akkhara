@@ -3,15 +3,17 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-      The app asks for no Android permission, and never INTERNET: see
-      docs/adr/0002-no-network-permission.md. The line below strips INTERNET
-      from the merged manifest, so no library can bring it in either. (The only
-      permission in the built app is the app-private one AndroidX declares for
-      its own internal broadcasts.)
+      The network is used for one thing only: the model download service
+      downloading one of Akkhara's listed translation models, over Wi-Fi
+      (docs/adr/0004 and 0005). No other code may use it: no analytics, crash
+      reports, cloud features or update checks (docs/adr/0002).
     -->
-    <uses-permission
-        android:name="android.permission.INTERNET"
-        tools:node="remove" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- The download runs in the background as a foreground service, shown in a notification. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"
@@ -54,6 +56,11 @@
             android:name=".translation.TranslatorService"
             android:exported="false"
             android:process=":translator" />
+
+        <service
+            android:name=".translation.ModelDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- The GPU backend of the translation model uses OpenCL where the phone has it. -->
         <uses-native-library

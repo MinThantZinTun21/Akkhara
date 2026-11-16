@@ -1,5 +1,12 @@
 package com.akkhara.keyboard
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.text.format.Formatter
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,8 +51,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import android.text.format.Formatter
+import androidx.core.content.ContextCompat
 import com.akkhara.keyboard.engine.ModelTask
+import com.akkhara.keyboard.translation.DownloadState
+import com.akkhara.keyboard.translation.ModelDownloadService
+import com.akkhara.keyboard.translation.ModelDownloads
 import com.akkhara.keyboard.translation.ModelShelf
 import com.akkhara.keyboard.translation.TranslationModel
 import kotlin.reflect.KMutableProperty0
@@ -73,6 +85,8 @@ fun AppScreen(
     models: ModelShelf,
     onOpenKeyboardSettings: () -> Unit,
     onChooseKeyboard: () -> Unit,
+    onDownloadModel: (TranslationModel) -> Unit,
+    onCancelDownload: () -> Unit,
     onRemoveModel: (TranslationModel) -> Unit,
 ) {
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { insets ->
@@ -142,7 +156,7 @@ fun AppScreen(
                 )
             }
 
-            ModelsSection(models, onRemoveModel)
+            ModelsSection(models, onDownloadModel, onCancelDownload, onRemoveModel)
 
             SectionTitle(R.string.prompts_title)
             Text(
@@ -160,11 +174,27 @@ fun AppScreen(
  * is on the phone, and a choice of the model in use among those that are.
  */
 @Composable
-private fun ModelsSection(models: ModelShelf, onRemove: (TranslationModel) -> Unit) {
+private fun ModelsSection(
+    models: ModelShelf,
+    onDownload: (TranslationModel) -> Unit,
+    onCancelDownload: () -> Unit,
+    onRemove: (TranslationModel) -> Unit,
+) {
+    val context = LocalContext.current
+    val download = ModelDownloads.state
     // What is on the phone is read from the files, and read again after each change.
     var shelf by remember { mutableStateOf(ShelfView(models)) }
+    LaunchedEffect(download is DownloadState.Running) { shelf = ShelfView(models) }
+    var downloading by remember { mutableStateOf<TranslationModel?>(null) }
+    // The download runs whether or not notifications are allowed; asking only lets its progress show.
+    var askedFor by remember { mutableStateOf<TranslationModel?>(null) }
+    val askForNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        askedFor?.let(onDownload)
+        askedFor = null
+    }
     var removing by remember { mutableStateOf<TranslationModel?>(null) }
     val (all, onPhone, inUse) = shelf
+    val running = download as? DownloadState.Running
 
     SectionTitle(R.string.models_title)
     Text(
@@ -175,25 +205,60 @@ private fun ModelsSection(models: ModelShelf, onRemove: (TranslationModel) -> Un
     Column {
         all.forEach { model ->
             val isOnPhone = model in onPhone
+            val isRunning = running?.model == model
+            val status = when {
+                isRunning -> ModelDownloadService.progressText(context, running.step, running.bytes, running.total)
+                download is DownloadState.Failed && download.model == model ->
+                    ModelDownloadService.failureText(context, download.reason, model)
+                model == inUse -> stringResource(R.string.model_in_use)
+                isOnPhone -> stringResource(R.string.model_on_phone)
+                else -> stringResource(R.string.model_not_downloaded)
+            }
             ModelRow(
                 model = model,
-                status = stringResource(
-                    when {
-                        model == inUse -> R.string.model_in_use
-                        isOnPhone -> R.string.model_on_phone
-                        else -> R.string.model_not_downloaded
-                    },
-                ),
+                status = status,
                 isInUse = model == inUse,
                 isOnPhone = isOnPhone,
+                progress = running?.takeIf { isRunning && it.step != DownloadState.Step.WaitingForWifi }
+                    ?.let { it.bytes.toFloat() / it.total },
                 onUse = {
                     models.use(model)
                     shelf = ShelfView(models)
                 },
             ) {
-                if (isOnPhone) TextButton(onClick = { removing = model }) { Text(stringResource(R.string.model_remove)) }
+                when {
+                    isRunning -> TextButton(onClick = onCancelDownload) { Text(stringResource(R.string.cancel)) }
+                    isOnPhone -> TextButton(onClick = { removing = model }) { Text(stringResource(R.string.model_remove)) }
+                    model.source != null -> TextButton(
+                        onClick = { downloading = model },
+                        // One download at a time.
+                        enabled = running == null,
+                    ) { Text(stringResource(R.string.model_download)) }
+                }
             }
         }
+    }
+
+    downloading?.let { model ->
+        AlertDialog(
+            onDismissRequest = { downloading = null },
+            title = { Text(stringResource(R.string.model_download_title, model.name)) },
+            text = { Text(stringResource(R.string.model_download_body, fileSize(model.sizeBytes))) },
+            confirmButton = {
+                TextButton(onClick = {
+                    downloading = null
+                    if (needsNotificationPermission(context)) {
+                        askedFor = model
+                        askForNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        onDownload(model)
+                    }
+                }) { Text(stringResource(R.string.model_download)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { downloading = null }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
     }
 
     removing?.let { model ->
@@ -225,6 +290,10 @@ private fun ModelsSection(models: ModelShelf, onRemove: (TranslationModel) -> Un
     }
 }
 
+private fun needsNotificationPermission(context: Context) =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+
 /** What the models section shows, read from [ModelShelf] in one go. */
 private data class ShelfView(
     val all: List<TranslationModel>,
@@ -238,35 +307,39 @@ private data class ShelfView(
     )
 }
 
-/** One translation model: a choice of it as the model in use, its size and state, and [action]. */
+/** One translation model: a choice of it as the model in use, its size and state, [action], and the download's [progress]. */
 @Composable
 private fun ModelRow(
     model: TranslationModel,
     status: String,
     isInUse: Boolean,
     isOnPhone: Boolean,
+    progress: Float?,
     onUse: () -> Unit,
     action: @Composable () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .selectable(selected = isInUse, enabled = isOnPhone, role = Role.RadioButton, onClick = onUse)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = isInUse, onClick = null, enabled = isOnPhone)
-        Spacer(Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(model.name, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                stringResource(R.string.model_status, fileSize(model.sizeBytes), status),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .selectable(selected = isInUse, enabled = isOnPhone, role = Role.RadioButton, onClick = onUse)
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(selected = isInUse, onClick = null, enabled = isOnPhone)
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(model.name, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    stringResource(R.string.model_status, fileSize(model.sizeBytes), status),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            action()
         }
-        action()
+        if (progress != null) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
     }
 }
 

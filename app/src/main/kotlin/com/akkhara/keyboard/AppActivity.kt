@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.akkhara.keyboard.translation.ModelDownloadService
 import com.akkhara.keyboard.translation.ModelShelf
 import com.akkhara.keyboard.translation.TranslatorClient
 
@@ -45,6 +46,8 @@ class AppActivity : ComponentActivity() {
                     models = models,
                     onOpenKeyboardSettings = { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) },
                     onChooseKeyboard = { inputMethodManager().showInputMethodPicker() },
+                    onDownloadModel = { ModelDownloadService.download(this, it) },
+                    onCancelDownload = { ModelDownloadService.cancel(this) },
                     onRemoveModel = { model ->
                         // The translator lets go of the file first, so its space is freed at once.
                         translator.unload()
