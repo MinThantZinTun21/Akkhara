@@ -14,6 +14,15 @@ class Typist(private val engine: KeyboardEngine) {
         engine.press(actionKey(action))
     }
 
+    /**
+     * Taps each key in [labels], going through a one-shot shift for any key
+     * that is on the shift layer.
+     */
+    fun reach(vararg labels: String) = labels.forEach { label ->
+        if (label !in labels()) tap(Action.Shift)
+        tap(label)
+    }
+
     /** Taps each character of [text] as its own key; a space taps the space bar. */
     fun type(text: String) = text.forEach { c ->
         if (c == ' ') tap(Action.Space) else tap(c.toString())

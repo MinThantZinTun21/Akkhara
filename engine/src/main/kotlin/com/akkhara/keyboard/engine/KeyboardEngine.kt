@@ -49,14 +49,22 @@ class KeyboardEngine(
     }
 
     private fun type(text: String) {
-        editor.commit(text)
+        insert(text)
         if (shift == ShiftState.OneShot) shift = ShiftState.Off
+    }
+
+    /** Puts [text] into the text field, reordering the Myanmar syllable at the cursor if need be. */
+    private fun insert(text: String) {
+        val before = editor.textBeforeCursor(MyanmarReordering.WINDOW)
+        val edit = MyanmarReordering.type(before, text)
+        if (edit.delete > 0) editor.deleteBeforeCursor(edit.delete)
+        editor.commit(edit.insert)
     }
 
     private fun perform(action: Action) {
         when (action) {
-            Action.Space -> editor.commit(" ")
-            Action.Enter -> editor.commit("\n")
+            Action.Space -> insert(" ")
+            Action.Enter -> insert("\n")
             Action.Backspace -> backspace()
             Action.Shift -> tapShift()
             Action.Globe -> switchInputLanguage()
@@ -95,11 +103,8 @@ class KeyboardEngine(
 
     private fun backspace() {
         if (editor.deleteSelection()) return
-        val before = editor.textBeforeCursor(2)
-        if (before.isEmpty()) return
-        val endsWithSurrogatePair = before.length == 2 &&
-            Character.isSurrogatePair(before[0], before[1])
-        editor.deleteBeforeCursor(if (endsWithSurrogatePair) 2 else 1)
+        val units = MyanmarReordering.backspace(editor.textBeforeCursor(2))
+        if (units > 0) editor.deleteBeforeCursor(units)
     }
 
     private companion object {
