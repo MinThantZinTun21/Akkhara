@@ -1,9 +1,9 @@
 package com.akkhara.keyboard.translation
 
-import com.akkhara.keyboard.engine.TranslationDirection
+import com.akkhara.keyboard.engine.ModelTask
 
 /** Fixed sentences for judging the translation model (#12). Debug builds only. */
-internal val sampleSentences: List<Pair<TranslationDirection, String>> =
+internal val sampleSentences: List<Pair<ModelTask, String>> =
     listOf(
         "မင်္ဂလာပါ။ နေကောင်းလား။",
         "ဒီနေ့ ညနေ ငါးနာရီမှာ တွေ့ကြရအောင်။",
@@ -15,7 +15,7 @@ internal val sampleSentences: List<Pair<TranslationDirection, String>> =
         "ဆရာဝန်နဲ့ ချိန်းထားတာကို နောက်ကျနေပြီ။",
         "အမေ့ကို ဖုန်းဆက်ဖို့ မမေ့ပါနဲ့။",
         "ဒီအစည်းအဝေးကို နောက်အပတ်အထိ ရွှေ့လို့ရမလား။",
-    ).map { TranslationDirection.MyanmarToEnglish to it } +
+    ).map { ModelTask.MyanmarToEnglish to it } +
         listOf(
             "Good morning! Did you sleep well?",
             "I will send you the report by Friday.",
@@ -27,4 +27,4 @@ internal val sampleSentences: List<Pair<TranslationDirection, String>> =
             "Can you help me carry these boxes?",
             "We need to buy a birthday present for Mya Mya.",
             "The train leaves at seven thirty in the morning.",
-        ).map { TranslationDirection.EnglishToMyanmar to it }
+        ).map { ModelTask.EnglishToMyanmar to it }

@@ -280,8 +280,8 @@ class KeyboardEngine(
         }
         stripState = StripState.Translating
         val request = ++stripRequest
-        translator.translate(source.text, source.direction) { result ->
-            if (request != stripRequest) return@translate
+        translator.run(source.text, source.task.defaultPrompt) { result ->
+            if (request != stripRequest) return@run
             translatedSource = source
             stripState = when {
                 // The text changed while this ran: the translation is of older text.
@@ -339,11 +339,12 @@ class KeyboardEngine(
 
     /** Text to translate: the selection, or the text field's text with [before] units before the cursor and [after] after it. */
     private data class TranslationSource(val text: String, val isSelection: Boolean, val before: Int, val after: Int) {
-        val direction: TranslationDirection
+        /** Myanmar text becomes English, and anything else becomes Myanmar. */
+        val task: ModelTask
             get() {
                 val myanmar = text.count { it in '\u1000'..'\u109F' }
                 val latin = text.count { it in 'A'..'Z' || it in 'a'..'z' }
-                return if (myanmar > latin) TranslationDirection.MyanmarToEnglish else TranslationDirection.EnglishToMyanmar
+                return if (myanmar > latin) ModelTask.MyanmarToEnglish else ModelTask.EnglishToMyanmar
             }
     }
 

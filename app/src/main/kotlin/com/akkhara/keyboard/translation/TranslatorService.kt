@@ -11,10 +11,9 @@ import android.os.Message
 import android.os.Messenger
 import android.os.RemoteException
 import android.os.SystemClock
-import com.akkhara.keyboard.engine.TranslationDirection
 import com.akkhara.keyboard.engine.TranslationFailure
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_BACKEND
-import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_DIRECTION
+import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_PROMPT
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_LOAD_MS
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_REASON
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_TEXT
@@ -76,7 +75,7 @@ class TranslatorService : Service() {
 
     private fun translate(data: Bundle): Message {
         val text = data.getString(KEY_TEXT).orEmpty()
-        val direction = TranslationDirection.valueOf(data.getString(KEY_DIRECTION) ?: return failed(TranslationFailure.Failed))
+        val prompt = data.getString(KEY_PROMPT) ?: return failed(TranslationFailure.Failed)
         val backend = data.getString(KEY_BACKEND)?.let(TranslatorBackend::valueOf) ?: TranslatorBackend.Cpu
         val model = TranslationModel.file(this)
         if (!model.isFile) return failed(TranslationFailure.NotInstalled)
@@ -87,7 +86,7 @@ class TranslatorService : Service() {
             val loadMs = SystemClock.elapsedRealtime() - loadStart
 
             val config = ConversationConfig(
-                systemInstruction = Contents.of(TranslationPrompt.systemInstruction(direction)),
+                systemInstruction = Contents.of(prompt),
                 samplerConfig = SamplerConfig(topK = 1, topP = 1.0, temperature = 0.0, seed = 0),
             )
             val start = SystemClock.elapsedRealtime()

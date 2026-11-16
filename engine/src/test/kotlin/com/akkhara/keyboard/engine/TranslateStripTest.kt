@@ -55,11 +55,11 @@ class TranslateStripTest {
 
         typist.tap(Action.Translate)
 
-        assertEquals(listOf(request("Good morning", TranslationDirection.EnglishToMyanmar)), translator.requests)
+        assertEquals(listOf(request("Good morning", ModelTask.EnglishToMyanmar)), translator.requests)
         assertEquals("Good morning", editor.text)
     }
 
-    private fun request(text: String, direction: TranslationDirection) = FakeTranslator.Request(text, direction)
+    private fun request(text: String, task: ModelTask) = FakeTranslator.Request(text, task.defaultPrompt)
 
     @Test
     fun `Translate translates everything in the text field, wherever the cursor is`() {
@@ -68,7 +68,7 @@ class TranslateStripTest {
 
         engine.translate()
 
-        assertEquals(listOf(request("Good morning", TranslationDirection.EnglishToMyanmar)), translator.requests)
+        assertEquals(listOf(request("Good morning", ModelTask.EnglishToMyanmar)), translator.requests)
         assertEquals(StripState.Translating, engine.strip)
     }
 
@@ -80,7 +80,7 @@ class TranslateStripTest {
 
         engine.translate()
 
-        assertEquals(listOf(request("မင်္ဂလာပါ", TranslationDirection.MyanmarToEnglish)), translator.requests)
+        assertEquals(listOf(request("မင်္ဂလာပါ", ModelTask.MyanmarToEnglish)), translator.requests)
     }
 
     @Test
@@ -106,7 +106,7 @@ class TranslateStripTest {
         translator.answer("နံနက်")
         engine.replaceWithTranslation()
 
-        assertEquals(listOf(request("morning", TranslationDirection.EnglishToMyanmar)), translator.requests)
+        assertEquals(listOf(request("morning", ModelTask.EnglishToMyanmar)), translator.requests)
         assertEquals("Good နံနက်", editor.text)
     }
 

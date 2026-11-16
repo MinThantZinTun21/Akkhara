@@ -11,10 +11,9 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.RemoteException
-import com.akkhara.keyboard.engine.TranslationDirection
 import com.akkhara.keyboard.engine.TranslationFailure
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_BACKEND
-import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_DIRECTION
+import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_PROMPT
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_LOAD_MS
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_REASON
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_TEXT
@@ -57,10 +56,10 @@ class TranslatorClient(private val context: Context) {
         }
     }
 
-    /** Translates [text]. A request made while another is in flight replaces its callback. */
+    /** Gives the model [text] with [prompt] as its instruction. A request made while another is in flight replaces its callback. */
     fun translate(
         text: String,
-        direction: TranslationDirection,
+        prompt: String,
         backend: TranslatorBackend = TranslatorBackend.Cpu,
         onReply: (TranslatorReply) -> Unit,
     ) {
@@ -68,7 +67,7 @@ class TranslatorClient(private val context: Context) {
         val request = Message.obtain(null, TranslatorProtocol.MSG_TRANSLATE).apply {
             data = Bundle().apply {
                 putString(KEY_TEXT, text)
-                putString(KEY_DIRECTION, direction.name)
+                putString(KEY_PROMPT, prompt)
                 putString(KEY_BACKEND, backend.name)
             }
             replyTo = replies

@@ -1,12 +1,12 @@
 package com.akkhara.keyboard.engine
 
 /**
- * Translates text on the phone. The engine asks; the app answers, usually
- * later and always on the thread the engine runs on.
+ * Runs the translation model on the phone. The engine asks; the app answers,
+ * usually later and always on the thread the engine runs on.
  */
 interface Translator {
-    /** Translates [text] in [direction] and calls [onResult] exactly once. */
-    fun translate(text: String, direction: TranslationDirection, onResult: (TranslationResult) -> Unit)
+    /** Gives the model [text] with [prompt] as its instruction, and calls [onResult] exactly once with the reply. */
+    fun run(text: String, prompt: String, onResult: (TranslationResult) -> Unit)
 }
 
 sealed interface TranslationResult {

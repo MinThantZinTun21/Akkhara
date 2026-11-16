@@ -28,7 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.akkhara.keyboard.AkkharaTheme
-import com.akkhara.keyboard.engine.TranslationDirection
+import com.akkhara.keyboard.engine.ModelTask
 import java.util.Locale
 
 /**
@@ -40,7 +40,7 @@ class TranslateDebugActivity : ComponentActivity() {
     private lateinit var client: TranslatorClient
 
     private var text by mutableStateOf("")
-    private var direction by mutableStateOf(TranslationDirection.MyanmarToEnglish)
+    private var direction by mutableStateOf(ModelTask.MyanmarToEnglish)
     private var backend by mutableStateOf(TranslatorBackend.Cpu)
     private var busy by mutableStateOf(false)
     private var result by mutableStateOf("")
@@ -72,8 +72,8 @@ class TranslateDebugActivity : ComponentActivity() {
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TranslationDirection.entries.forEach {
-                    FilterChip(direction == it, onClick = { direction = it }, label = { Text("${it.from} → ${it.to}") })
+                ModelTask.entries.forEach {
+                    FilterChip(direction == it, onClick = { direction = it }, label = { Text(it.name) })
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -109,8 +109,8 @@ class TranslateDebugActivity : ComponentActivity() {
                 busy = false
                 return
             }
-            val (sampleDirection, sample) = sampleSentences[index]
-            client.translate(sample, sampleDirection, backend) { reply ->
+            val (sampleTask, sample) = sampleSentences[index]
+            client.translate(sample, sampleTask.defaultPrompt, backend) { reply ->
                 result += "${index + 1}. $sample\n→ " + when (reply) {
                     is TranslatorReply.Translated -> reply.text + "\n   [" + reply.timings.describe(backend, reply.text) + "]"
                     is TranslatorReply.Failed -> "Failed: ${reply.reason}"
@@ -125,7 +125,7 @@ class TranslateDebugActivity : ComponentActivity() {
         busy = true
         result = ""
         timings = ""
-        client.translate(text, direction, backend) { reply ->
+        client.translate(text, direction.defaultPrompt, backend) { reply ->
             busy = false
             when (reply) {
                 is TranslatorReply.Translated -> {

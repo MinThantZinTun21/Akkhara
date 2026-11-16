@@ -14,7 +14,7 @@ internal object TranslatorProtocol {
     const val MSG_FAILED = 11
 
     const val KEY_TEXT = "text"
-    const val KEY_DIRECTION = "direction"
+    const val KEY_PROMPT = "prompt"
     const val KEY_BACKEND = "backend"
     const val KEY_REASON = "reason"
     const val KEY_LOAD_MS = "load_ms"
