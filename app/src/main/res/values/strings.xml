@@ -40,7 +40,25 @@
     <string name="theme_group_classic">Classic</string>
     <string name="theme_group_trending">Trending</string>
     <string name="theme_moss">Moss</string>
+    <string name="theme_prism">Prism</string>
+    <string name="theme_marquee">Marquee</string>
+    <string name="theme_saffron">Saffron</string>
+    <string name="theme_jade">Jade</string>
+    <string name="theme_sonata">Sonata</string>
+    <string name="theme_encore">Encore</string>
+    <string name="theme_crayon">Crayon</string>
+    <string name="theme_wander">Wander</string>
+    <string name="theme_pond">Pond</string>
     <string name="theme_cinder">Cinder</string>
+    <string name="theme_lamplight">Lamplight</string>
+    <string name="theme_neon">Neon</string>
+    <string name="theme_lagoon">Lagoon</string>
+    <string name="theme_comet">Comet</string>
+    <string name="theme_umber">Umber</string>
+    <string name="theme_potion">Potion</string>
+    <string name="theme_lumen">Lumen</string>
+    <string name="theme_nightshift">Nightshift</string>
+    <string name="theme_blaze">Blaze</string>
     <string name="setting_translate_as_you_type_note">When you pause typing, the translation above the keys updates by itself. Your text changes only when you tap the translation.</string>
 
     <string name="models_title">Translation models</string>

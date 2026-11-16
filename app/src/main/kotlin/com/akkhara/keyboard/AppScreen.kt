@@ -318,7 +318,25 @@ private fun Theme?.nameRes(): Int = when (this) {
     Theme.Plum -> R.string.theme_plum
     Theme.Black -> R.string.theme_black
     Theme.Moss -> R.string.theme_moss
+    Theme.Prism -> R.string.theme_prism
+    Theme.Marquee -> R.string.theme_marquee
+    Theme.Saffron -> R.string.theme_saffron
+    Theme.Jade -> R.string.theme_jade
+    Theme.Sonata -> R.string.theme_sonata
+    Theme.Encore -> R.string.theme_encore
+    Theme.Crayon -> R.string.theme_crayon
+    Theme.Wander -> R.string.theme_wander
+    Theme.Pond -> R.string.theme_pond
     Theme.Cinder -> R.string.theme_cinder
+    Theme.Lamplight -> R.string.theme_lamplight
+    Theme.Neon -> R.string.theme_neon
+    Theme.Lagoon -> R.string.theme_lagoon
+    Theme.Comet -> R.string.theme_comet
+    Theme.Umber -> R.string.theme_umber
+    Theme.Potion -> R.string.theme_potion
+    Theme.Lumen -> R.string.theme_lumen
+    Theme.Nightshift -> R.string.theme_nightshift
+    Theme.Blaze -> R.string.theme_blaze
 }
 
 private fun Theme.Group.nameRes(): Int = when (this) {

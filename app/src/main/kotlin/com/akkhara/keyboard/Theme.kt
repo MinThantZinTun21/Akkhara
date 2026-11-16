@@ -198,6 +198,168 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
         group = Group.Trending,
     ),
 
+    /** Pale mint with pastel-pink action keys and a magenta accent. */
+    Prism(
+        isDark = false,
+        Palette(
+            background = 0xFFDDF2EA.toInt(),
+            key = 0xFFFBFFFD.toInt(),
+            keyPressed = 0xFFA9D6C8.toInt(),
+            actionKey = 0xFFF3D3EC.toInt(),
+            label = 0xFF1C1A2B.toInt(),
+            actionLabel = 0xFF6A0F4E.toInt(),
+            hint = 0xFF545066.toInt(),
+            callout = 0xFFFBFFFD.toInt(),
+            accent = 0xFFA3166A.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Butter yellow with denim-blue action keys and accent. */
+    Marquee(
+        isDark = false,
+        Palette(
+            background = 0xFFF2DE8A.toInt(),
+            key = 0xFFFFFBE6.toInt(),
+            keyPressed = 0xFFDDC56A.toInt(),
+            actionKey = 0xFFC9D6EE.toInt(),
+            label = 0xFF2A2410.toInt(),
+            actionLabel = 0xFF1D3566.toInt(),
+            hint = 0xFF615A3A.toInt(),
+            callout = 0xFFFFFBE6.toInt(),
+            accent = 0xFF2C4A8C.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Apricot saffron with a deep vermilion accent. */
+    Saffron(
+        isDark = false,
+        Palette(
+            background = 0xFFF6D4A2.toInt(),
+            key = 0xFFFFF8EE.toInt(),
+            keyPressed = 0xFFE3B57A.toInt(),
+            actionKey = 0xFFF0BE84.toInt(),
+            label = 0xFF2B1A0C.toInt(),
+            actionLabel = 0xFF5A220C.toInt(),
+            hint = 0xFF6A5038.toInt(),
+            callout = 0xFFFFF8EE.toInt(),
+            accent = 0xFF9E2B12.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Pale jade with a rouge-red accent. */
+    Jade(
+        isDark = false,
+        Palette(
+            background = 0xFFC4DFD0.toInt(),
+            key = 0xFFF3FAF6.toInt(),
+            keyPressed = 0xFF9CC4AF.toInt(),
+            actionKey = 0xFFAED3BF.toInt(),
+            label = 0xFF132A20.toInt(),
+            actionLabel = 0xFF0F3F2A.toInt(),
+            hint = 0xFF455E52.toInt(),
+            callout = 0xFFF3FAF6.toInt(),
+            accent = 0xFFA3243B.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Sepia paper with tropical-teal action keys and accent. */
+    Sonata(
+        isDark = false,
+        Palette(
+            background = 0xFFD6BF9C.toInt(),
+            key = 0xFFFBF4E8.toInt(),
+            keyPressed = 0xFFBFA47A.toInt(),
+            actionKey = 0xFFB9CFC8.toInt(),
+            label = 0xFF2B1F12.toInt(),
+            actionLabel = 0xFF163F42.toInt(),
+            hint = 0xFF5E5038.toInt(),
+            callout = 0xFFFBF4E8.toInt(),
+            accent = 0xFF1F5A5E.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Spotlight peach with a curtain-violet accent. */
+    Encore(
+        isDark = false,
+        Palette(
+            background = 0xFFFAD0BD.toInt(),
+            key = 0xFFFFF6F1.toInt(),
+            keyPressed = 0xFFE8AE95.toInt(),
+            actionKey = 0xFFF2BBA6.toInt(),
+            label = 0xFF2C1A16.toInt(),
+            actionLabel = 0xFF4C1F5E.toInt(),
+            hint = 0xFF6A4F48.toInt(),
+            callout = 0xFFFFF6F1.toInt(),
+            accent = 0xFF5E2A8A.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** White keys, toy-blue action keys and a toy-red enter key. */
+    Crayon(
+        isDark = false,
+        Palette(
+            background = 0xFFF2F2F4.toInt(),
+            key = 0xFFFFFFFF.toInt(),
+            keyPressed = 0xFFC5C8D0.toInt(),
+            actionKey = 0xFF2B5FC1.toInt(),
+            label = 0xFF1C1C1C.toInt(),
+            actionLabel = 0xFFFFFFFF.toInt(),
+            hint = 0xFF565A60.toInt(),
+            callout = 0xFFFFFFFF.toInt(),
+            accent = 0xFFC62828.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Sage stone with earthy action keys and a sky-blue accent. */
+    Wander(
+        isDark = false,
+        Palette(
+            background = 0xFFCBCFC0.toInt(),
+            key = 0xFFF5F6F0.toInt(),
+            keyPressed = 0xFFA9AE9A.toInt(),
+            actionKey = 0xFFDCCFB0.toInt(),
+            label = 0xFF1E211A.toInt(),
+            actionLabel = 0xFF4A3A14.toInt(),
+            hint = 0xFF50554A.toInt(),
+            callout = 0xFFF5F6F0.toInt(),
+            accent = 0xFF345E8C.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Clear water blue with a deep pond-green accent. */
+    Pond(
+        isDark = false,
+        Palette(
+            background = 0xFFBEE3E6.toInt(),
+            key = 0xFFF2FBFB.toInt(),
+            keyPressed = 0xFF93C8CD.toInt(),
+            actionKey = 0xFFA6D6D9.toInt(),
+            label = 0xFF112A2D.toInt(),
+            actionLabel = 0xFF0B4048.toInt(),
+            hint = 0xFF3F5D60.toInt(),
+            callout = 0xFFF2FBFB.toInt(),
+            accent = 0xFF0E6A5C.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
     /** Ash slate with an electric-cyan accent. */
     Cinder(
         isDark = true,
@@ -212,6 +374,168 @@ enum class Theme(val isDark: Boolean, val palette: Palette, val group: Group = G
             callout = 0xFF3E454C.toInt(),
             accent = 0xFF45CFF5.toInt(),
             onAccent = 0xFF04262F.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Sooty sepia night with gas-lamp amber. */
+    Lamplight(
+        isDark = true,
+        Palette(
+            background = 0xFF221B0F.toInt(),
+            key = 0xFF362C1B.toInt(),
+            keyPressed = 0xFF584A30.toInt(),
+            actionKey = 0xFF45381F.toInt(),
+            label = 0xFFF3E9D8.toInt(),
+            actionLabel = 0xFFF5DDB0.toInt(),
+            hint = 0xFFCBBDA4.toInt(),
+            callout = 0xFF463A25.toInt(),
+            accent = 0xFFE9A93A.toInt(),
+            onAccent = 0xFF2A1A00.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Near-black magenta with a hot-pink accent. */
+    Neon(
+        isDark = true,
+        Palette(
+            background = 0xFF140812.toInt(),
+            key = 0xFF2C1328.toInt(),
+            keyPressed = 0xFF5A2D52.toInt(),
+            actionKey = 0xFF4C1240.toInt(),
+            label = 0xFFF9E9F4.toInt(),
+            actionLabel = 0xFFFFD3EC.toInt(),
+            hint = 0xFFD8BCD0.toInt(),
+            callout = 0xFF3E1D38.toInt(),
+            accent = 0xFFFF4FA8.toInt(),
+            onAccent = 0xFF3A0020.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Moonlit deep sea with a moon-cream accent. */
+    Lagoon(
+        isDark = true,
+        Palette(
+            background = 0xFF0A2B33.toInt(),
+            key = 0xFF15404A.toInt(),
+            keyPressed = 0xFF2B5E6A.toInt(),
+            actionKey = 0xFF12494F.toInt(),
+            label = 0xFFE3F6F7.toInt(),
+            actionLabel = 0xFFCFF2EE.toInt(),
+            hint = 0xFFACCBCE.toInt(),
+            callout = 0xFF1F5059.toInt(),
+            accent = 0xFFF4E3A3.toInt(),
+            onAccent = 0xFF2A2300.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Deep indigo space with star gold. */
+    Comet(
+        isDark = true,
+        Palette(
+            background = 0xFF18154A.toInt(),
+            key = 0xFF2A2666.toInt(),
+            keyPressed = 0xFF4A4590.toInt(),
+            actionKey = 0xFF332A72.toInt(),
+            label = 0xFFEEEBFF.toInt(),
+            actionLabel = 0xFFFFE9A8.toInt(),
+            hint = 0xFFC3BEE6.toInt(),
+            callout = 0xFF3A3580.toInt(),
+            accent = 0xFFFFCC33.toInt(),
+            onAccent = 0xFF2B1E00.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Wet clay and terracotta. */
+    Umber(
+        isDark = true,
+        Palette(
+            background = 0xFF341C18.toInt(),
+            key = 0xFF4D2F28.toInt(),
+            keyPressed = 0xFF70493E.toInt(),
+            actionKey = 0xFF5C2F24.toInt(),
+            label = 0xFFF4E4DA.toInt(),
+            actionLabel = 0xFFF8D2BC.toInt(),
+            hint = 0xFFD0B9AB.toInt(),
+            callout = 0xFF5C3C33.toInt(),
+            accent = 0xFFE38A57.toInt(),
+            onAccent = 0xFF2B1103.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Witchy violet with teal action keys and a magenta accent. */
+    Potion(
+        isDark = true,
+        Palette(
+            background = 0xFF2C1236.toInt(),
+            key = 0xFF42214F.toInt(),
+            keyPressed = 0xFF653A75.toInt(),
+            actionKey = 0xFF1F3B3A.toInt(),
+            label = 0xFFF7ECFA.toInt(),
+            actionLabel = 0xFFC9F2EC.toInt(),
+            hint = 0xFFD6C0DD.toInt(),
+            callout = 0xFF54305F.toInt(),
+            accent = 0xFFE25AC8.toInt(),
+            onAccent = 0xFF2A0326.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Night olive with firefly-lime light and blood-red action keys. */
+    Lumen(
+        isDark = true,
+        Palette(
+            background = 0xFF17170D.toInt(),
+            key = 0xFF2A2A1C.toInt(),
+            keyPressed = 0xFF484833.toInt(),
+            actionKey = 0xFF3A1F22.toInt(),
+            label = 0xFFEFF1E2.toInt(),
+            actionLabel = 0xFFF6D6D6.toInt(),
+            hint = 0xFFC3C5AF.toInt(),
+            callout = 0xFF35352A.toInt(),
+            accent = 0xFFCBEA5E.toInt(),
+            onAccent = 0xFF1E2A00.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Dark oxblood with a warning-red accent. */
+    Nightshift(
+        isDark = true,
+        Palette(
+            background = 0xFF241015.toInt(),
+            key = 0xFF3A1E25.toInt(),
+            keyPressed = 0xFF63404A.toInt(),
+            actionKey = 0xFF4A1A24.toInt(),
+            label = 0xFFF7E9EC.toInt(),
+            actionLabel = 0xFFFFD0D6.toInt(),
+            hint = 0xFFD1B7BD.toInt(),
+            callout = 0xFF472A32.toInt(),
+            accent = 0xFFF0585E.toInt(),
+            onAccent = 0xFF2B0003.toInt(),
+        ),
+        group = Group.Trending,
+    ),
+
+    /** Deep blue with an energy-orange accent. */
+    Blaze(
+        isDark = true,
+        Palette(
+            background = 0xFF101C38.toInt(),
+            key = 0xFF1E2C52.toInt(),
+            keyPressed = 0xFF3A4C7C.toInt(),
+            actionKey = 0xFF3A2414.toInt(),
+            label = 0xFFEAF0FF.toInt(),
+            actionLabel = 0xFFFFD9B8.toInt(),
+            hint = 0xFFB8C4E0.toInt(),
+            callout = 0xFF2A3A66.toInt(),
+            accent = 0xFFFF8A2A.toInt(),
+            onAccent = 0xFF2B1000.toInt(),
         ),
         group = Group.Trending,
     ),

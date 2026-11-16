@@ -32,7 +32,13 @@ class ThemesTest {
     @Test
     fun `the trending themes follow the classic ones, the light ones first`() {
         val trending = Theme.entries.dropWhile { it.group == Theme.Group.Classic }
-        assertEquals(listOf("Moss", "Cinder"), trending.map { it.name })
+        assertEquals(
+            listOf(
+                "Moss", "Prism", "Marquee", "Saffron", "Jade", "Sonata", "Encore", "Crayon", "Wander", "Pond",
+                "Cinder", "Lamplight", "Neon", "Lagoon", "Comet", "Umber", "Potion", "Lumen", "Nightshift", "Blaze",
+            ),
+            trending.map { it.name },
+        )
         assertTrue(trending.all { it.group == Theme.Group.Trending })
         assertEquals(listOf(false, true), trending.map { it.isDark }.distinct())
     }
