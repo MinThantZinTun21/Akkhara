@@ -109,20 +109,24 @@ Which language is translated into which. Myanmar text becomes English, and anyth
 _Avoid_: Language pair, mode
 
 **Grammar check**:
-Correcting the grammar of English text, done on the phone by the translation model. Holding the translate key on English text offers the grammar key; the correction shows in the translate strip and replaces the text only when tapped. When nothing needs correcting, the strip says so.
+Correcting the grammar of English text, done on the phone by the model in use, or, when that model translates only, by the smallest model on the phone that can check grammar. Holding the translate key on English text offers the grammar key; the correction shows in the translate strip and replaces the text only when tapped. When nothing needs correcting, the strip says so.
 _Avoid_: Spell check, autocorrect, proofreading
 
 **Grammar key**:
-The key that appears above the translate key while it is held on English text, and starts a grammar check when the finger lifts on it.
+The key that appears above the translate key while it is held on English text, and starts a grammar check when the finger lifts on it. It is not offered while no model on the phone can check grammar.
 _Avoid_: Popup, grammar button
 
 **Prompt**:
-The instruction the translation model is given for a task: one for each translation direction, and one for the grammar check. Each starts as Akkhara's default; the user may rewrite it in settings or reset it to the default.
+The instruction the translation model is given for a task: one for each translation direction, and one for the grammar check. Each starts as Akkhara's default; the user may rewrite it in settings or reset it to the default. A model that translates only always uses its maker's own instruction instead.
 _Avoid_: System prompt, template, instructions
 
 **Translation model**:
-The file that does the translating, and the grammar check. Akkhara offers a short, fixed list of them (Gemma 4 E2B and Gemma 4 E4B), each downloaded in the Akkhara app, and the user may also import a model file they already have. Several may be on the phone at once; until one is, translation is unavailable.
+The file that does the translating, and the grammar check. Akkhara offers a short, fixed list of them (eight, from Qwen3.5 0.8B to Gemma 4 E4B, smallest first), each downloaded in the Akkhara app, and the user may also import a model file they already have. Several may be on the phone at once; until one is, translation is unavailable.
 _Avoid_: Language pack, dictionary, AI
+
+**Translates only**:
+Said of a translation model that cannot check grammar, such as Hy-MT2. While it is the model in use, another model on the phone checks grammar, and the app shows which.
+_Avoid_: Translation-only model, limited model
 
 **Model in use**:
 The one translation model on the phone that the keyboard translates and checks grammar with. The user picks it in the Akkhara app; the first model on the phone is put in use by itself.
