@@ -8,6 +8,7 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.text.TextUtils
+import androidx.core.graphics.withTranslation
 import com.akkhara.keyboard.engine.StripState
 import com.akkhara.keyboard.engine.TranslationFailure
 
@@ -106,10 +107,7 @@ internal class StripPainter(context: Context, private val palette: Palette) {
             .setEllipsize(TextUtils.TruncateAt.END)
             .setIncludePad(false)
             .build()
-        canvas.save()
-        canvas.translate(result.left + inset, result.centerY() - layout.height / 2f)
-        layout.draw(canvas)
-        canvas.restore()
+        canvas.withTranslation(result.left + inset, result.centerY() - layout.height / 2f) { layout.draw(this) }
     }
 
     private companion object {
