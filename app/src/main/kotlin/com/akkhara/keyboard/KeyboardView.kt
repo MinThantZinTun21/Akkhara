@@ -7,6 +7,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.os.Build
+import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
@@ -200,7 +201,10 @@ class KeyboardView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(palette.background)
         val strip = engine?.strip
-        if (strip != null && stripHeight > 0f) stripPainter.draw(canvas, strip, stripTarget)
+        if (strip != null && stripHeight > 0f) {
+            val moving = stripPainter.draw(canvas, strip, stripTarget, SystemClock.uptimeMillis())
+            if (moving) postInvalidateOnAnimation()
+        }
         for (cell in grid?.cells.orEmpty()) drawKey(canvas, cell)
     }
 
