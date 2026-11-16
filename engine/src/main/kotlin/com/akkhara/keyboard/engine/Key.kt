@@ -23,6 +23,9 @@ enum class Action {
     Enter,
     Space,
 
+    /** Switch the input language. */
+    Globe,
+
     /** Show the first symbols layer. */
     Symbols,
 
@@ -44,4 +47,16 @@ enum class ShiftState {
 
     /** The shift layer shows until the user turns it off. */
     Locked,
+}
+
+/** The language the keyboard is typing. Exactly one is active at a time. */
+enum class InputLanguage { English, Myanmar }
+
+/** What holding a key down should do, for the View to carry out. */
+sealed interface Hold {
+    /** Nothing special: the key behaves as it does for a tap. */
+    data object None : Hold
+
+    /** Open Android's keyboard picker. */
+    data object KeyboardPicker : Hold
 }

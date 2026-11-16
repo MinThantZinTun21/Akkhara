@@ -11,32 +11,86 @@ private val shiftKey = ActionKey(Action.Shift, WIDE)
 private val backspaceKey = ActionKey(Action.Backspace, WIDE)
 private val enterKey = ActionKey(Action.Enter, WIDE)
 
-/** The row under the letters or symbols; [first] is the key that changes layer. */
-private fun bottomRow(first: Action): Row = listOf(
-    ActionKey(first, WIDE),
+/** The row under the letters, with the layout's own [comma] and [fullStop]. */
+private fun lettersBottomRow(comma: String, fullStop: String): Row = listOf(
+    ActionKey(Action.Symbols, WIDE),
+    ActionKey(Action.Globe),
+    CharKey(comma),
+    ActionKey(Action.Space, width = 4f),
+    CharKey(fullStop),
+    enterKey,
+)
+
+private val symbolsBottomRow: Row = listOf(
+    ActionKey(Action.Letters, WIDE),
     CharKey(","),
     ActionKey(Action.Space, width = 5f),
     CharKey("."),
     enterKey,
 )
 
-internal object EnglishLayout {
-    private val digits = chars("1 2 3 4 5 6 7 8 9 0")
+/** The keys of one input language: its base layer and its shift layer. */
+internal interface Layout {
+    val base: List<Row>
+    val shift: List<Row>
 
-    val base: List<Row> = listOf(
+    /** The layout's name in its own language, shown on the space bar. */
+    val name: String
+}
+
+internal fun layoutFor(language: InputLanguage): Layout = when (language) {
+    InputLanguage.English -> EnglishLayout
+    InputLanguage.Myanmar -> MyanmarLayout
+}
+
+internal object EnglishLayout : Layout {
+    override val name = "English"
+
+    private val digits = chars("1 2 3 4 5 6 7 8 9 0")
+    private val bottom = lettersBottomRow(",", ".")
+
+    override val base: List<Row> = listOf(
         digits,
         chars("q w e r t y u i o p"),
         chars("a s d f g h j k l"),
         listOf(shiftKey) + chars("z x c v b n m") + backspaceKey,
-        bottomRow(Action.Symbols),
+        bottom,
     )
 
-    val shift: List<Row> = listOf(
+    override val shift: List<Row> = listOf(
         digits,
         chars("Q W E R T Y U I O P"),
         chars("A S D F G H J K L"),
         listOf(shiftKey) + chars("Z X C V B N M") + backspaceKey,
-        bottomRow(Action.Symbols),
+        bottom,
+    )
+}
+
+/**
+ * The standard Unicode Myanmar layout (Myanmar3), with the same key positions
+ * as other phone keyboards. The standard layout has more keys than fit in ten
+ * columns, so the letters left over sit on the shift layer's number row, with
+ * ရ in its standard place above ၇.
+ */
+internal object MyanmarLayout : Layout {
+    override val name = "မြန်မာ"
+
+    private val bottom = lettersBottomRow("၊", "။")
+
+    override val base: List<Row> = listOf(
+        chars("၁ ၂ ၃ ၄ ၅ ၆ ၇ ၈ ၉ ၀"),
+        chars("ဆ တ န မ အ ပ က င သ စ"),
+        chars("ေ ျ ိ ် ါ ့ ြ ု ူ း"),
+        listOf(shiftKey) + chars("ဖ ထ ခ လ ဘ ည ာ") + backspaceKey,
+        bottom,
+    )
+
+    override val shift: List<Row> = listOf(
+        chars("ဍ ဎ ဋ ဟ ဧ ဩ ရ ဪ ၏ ?"),
+        chars("ဈ ဝ ဣ ၎ ဤ ၌ ဥ ၍ ဿ ဏ"),
+        chars("ဗ ှ ီ ္ ွ ံ ဲ ဒ ဓ ဂ"),
+        listOf(shiftKey) + chars("ဇ ဌ ဃ ဠ ယ ဉ ဦ") + backspaceKey,
+        bottom,
     )
 }
 
@@ -47,7 +101,7 @@ internal object SymbolsLayout {
         chars("@ # $ % & - + ( ) /"),
         chars("* \" ' : ; ! ? _ = ~"),
         listOf(ActionKey(Action.MoreSymbols, WIDE)) + chars("\\ | < > [ ] ^") + backspaceKey,
-        bottomRow(Action.Letters),
+        symbolsBottomRow,
     )
 
     val second: List<Row> = listOf(
@@ -55,6 +109,6 @@ internal object SymbolsLayout {
         chars("£ ¢ € ¥ ₩ ₹ ฿ { } §"),
         chars("© ® ™ ✓ « » ‹ › … ¡"),
         listOf(ActionKey(Action.Symbols, WIDE)) + chars("‘ ’ “ ” — – ·") + backspaceKey,
-        bottomRow(Action.Letters),
+        symbolsBottomRow,
     )
 }

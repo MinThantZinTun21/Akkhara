@@ -11,6 +11,8 @@ import android.view.View
 import com.akkhara.keyboard.engine.Action
 import com.akkhara.keyboard.engine.ActionKey
 import com.akkhara.keyboard.engine.CharKey
+import com.akkhara.keyboard.engine.Hold
+import com.akkhara.keyboard.engine.InputLanguage
 import com.akkhara.keyboard.engine.Key
 import com.akkhara.keyboard.engine.KeyboardEngine
 import com.akkhara.keyboard.engine.ShiftState
@@ -24,8 +26,16 @@ class KeyboardView(context: Context) : View(context) {
 
     private class Cell(val key: Key, val bounds: RectF)
 
+    /** What the View needs from the service that hosts it. */
+    interface Host {
+        /** Runs [work] on the engine as one edit of the text field, then redraws. */
+        fun edit(work: KeyboardEngine.() -> Unit)
+
+        fun showKeyboardPicker()
+    }
+
     private var engine: KeyboardEngine? = null
-    private var dispatch: ((KeyboardEngine.() -> Unit) -> Unit)? = null
+    private var host: Host? = null
 
     private val palette = Palette.Light
     private val density = resources.displayMetrics.density
@@ -36,6 +46,7 @@ class KeyboardView(context: Context) : View(context) {
 
     private val cells = ArrayList<Cell>()
     private val held = LinkedHashMap<Int, Cell>() // pointer id -> the key under that finger
+    private val holdTimers = HashMap<Int, Runnable>() // pointer id -> what fires if the finger stays down
 
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -54,9 +65,9 @@ class KeyboardView(context: Context) : View(context) {
     }
     private val iconPath = Path()
 
-    fun bind(engine: KeyboardEngine, dispatch: ((KeyboardEngine.() -> Unit) -> Unit)) {
+    fun bind(engine: KeyboardEngine, host: Host) {
         this.engine = engine
-        this.dispatch = dispatch
+        this.host = host
         onEngineChanged()
     }
 
@@ -78,7 +89,7 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun layoutKeys() {
         cells.clear()
-        held.clear()
+        dropAll()
         val rows = engine?.rows ?: return
         if (width == 0) return
         val unit = (width - 2 * edgePadding) / COLUMNS
@@ -133,10 +144,21 @@ class KeyboardView(context: Context) : View(context) {
         iconPath.rewind()
         iconPaint.style = Paint.Style.STROKE
         when (action) {
-            Action.Space -> return
+            Action.Space ->
+                return drawLabel(canvas, engine?.spaceLabel.orEmpty(), bounds, smallLabelPaint)
+            Action.Globe -> {
+                // a circle with a meridian and an equator
+                iconPath.addCircle(cx, cy, s, Path.Direction.CW)
+                iconPath.addOval(cx - s * 0.45f, cy - s, cx + s * 0.45f, cy + s, Path.Direction.CW)
+                iconPath.moveTo(cx - s, cy)
+                iconPath.lineTo(cx + s, cy)
+            }
             Action.Symbols -> return drawLabel(canvas, "?123", bounds, smallLabelPaint)
             Action.MoreSymbols -> return drawLabel(canvas, "=\\<", bounds, smallLabelPaint)
-            Action.Letters -> return drawLabel(canvas, "ABC", bounds, smallLabelPaint)
+            Action.Letters -> {
+                val letters = if (engine?.inputLanguage == InputLanguage.Myanmar) "ကခဂ" else "ABC"
+                return drawLabel(canvas, letters, bounds, smallLabelPaint)
+            }
             Action.Shift -> {
                 // an upward arrow: outlined when off, filled for one-shot shift, underlined for shift lock
                 val shift = engine?.shift ?: ShiftState.Off
@@ -187,7 +209,7 @@ class KeyboardView(context: Context) : View(context) {
                 releaseAll()
                 val index = event.actionIndex
                 cellAt(event.getX(index), event.getY(index))?.let {
-                    held[event.getPointerId(index)] = it
+                    touchDown(event.getPointerId(index), it)
                 }
                 invalidate()
             }
@@ -196,20 +218,56 @@ class KeyboardView(context: Context) : View(context) {
                 invalidate()
             }
             MotionEvent.ACTION_CANCEL -> {
-                held.clear()
+                dropAll()
                 invalidate()
             }
         }
         return true
     }
 
+    override fun onDetachedFromWindow() {
+        dropAll()
+        super.onDetachedFromWindow()
+    }
+
+    private fun touchDown(pointerId: Int, cell: Cell) {
+        held[pointerId] = cell
+        val timer = Runnable { onHeld(pointerId, cell) }
+        holdTimers[pointerId] = timer
+        postDelayed(timer, HOLD_MILLIS)
+    }
+
+    /** The finger has stayed on [cell] long enough to count as holding it. */
+    private fun onHeld(pointerId: Int, cell: Cell) {
+        holdTimers.remove(pointerId)
+        when (engine?.hold(cell.key)) {
+            Hold.KeyboardPicker -> {
+                drop(pointerId)
+                invalidate()
+                host?.showKeyboardPicker()
+            }
+            Hold.None, null -> Unit
+        }
+    }
+
     private fun releaseAll() {
         for (pointerId in held.keys.toList()) release(pointerId)
     }
 
+    /** The finger lifted: the key under it is pressed. */
     private fun release(pointerId: Int) {
-        val cell = held.remove(pointerId) ?: return
-        dispatch?.invoke { press(cell.key) }
+        val cell = drop(pointerId) ?: return
+        host?.edit { press(cell.key) }
+    }
+
+    /** Forgets the finger without pressing anything. */
+    private fun drop(pointerId: Int): Cell? {
+        holdTimers.remove(pointerId)?.let(::removeCallbacks)
+        return held.remove(pointerId)
+    }
+
+    private fun dropAll() {
+        for (pointerId in held.keys.toList()) drop(pointerId)
     }
 
     /** The key under a touch; a touch in the gap between keys goes to the nearest key in that row. */
@@ -230,5 +288,8 @@ class KeyboardView(context: Context) : View(context) {
     private companion object {
         /** Width of the keyboard in ordinary character keys. */
         const val COLUMNS = 10f
+
+        /** How long a finger must stay down to count as holding the key. */
+        const val HOLD_MILLIS = 350L
     }
 }

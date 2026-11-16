@@ -10,7 +10,11 @@ package com.akkhara.keyboard.engine
 class KeyboardEngine(
     private val editor: Editor,
     private val clock: () -> Long = { System.nanoTime() / 1_000_000 },
+    inputLanguage: InputLanguage = InputLanguage.English,
 ) {
+    var inputLanguage: InputLanguage = inputLanguage
+        private set
+
     var layer: Layer = Layer.Letters
         private set
 
@@ -23,10 +27,19 @@ class KeyboardEngine(
     /** The keys of the layer that is showing, top row first. */
     val rows: List<List<Key>>
         get() = when (layer) {
-            Layer.Letters -> if (shift == ShiftState.Off) EnglishLayout.base else EnglishLayout.shift
+            Layer.Letters -> layoutFor(inputLanguage).let { if (shift == ShiftState.Off) it.base else it.shift }
             Layer.Symbols -> SymbolsLayout.first
             Layer.MoreSymbols -> SymbolsLayout.second
         }
+
+    /** The name of the current input language, for the space bar. */
+    val spaceLabel: String get() = layoutFor(inputLanguage).name
+
+    /** What holding [key] down should do. Holding never types or changes state by itself. */
+    fun hold(key: Key): Hold = when {
+        key is ActionKey && key.action == Action.Globe -> Hold.KeyboardPicker
+        else -> Hold.None
+    }
 
     fun press(key: Key) {
         when (key) {
@@ -46,6 +59,7 @@ class KeyboardEngine(
             Action.Enter -> editor.commit("\n")
             Action.Backspace -> backspace()
             Action.Shift -> tapShift()
+            Action.Globe -> switchInputLanguage()
             Action.Symbols -> show(Layer.Symbols)
             Action.MoreSymbols -> show(Layer.MoreSymbols)
             Action.Letters -> show(Layer.Letters)
@@ -63,6 +77,15 @@ class KeyboardEngine(
                 if (now - oneShotSince <= DOUBLE_TAP_MILLIS) ShiftState.Locked else ShiftState.Off
             ShiftState.Locked -> ShiftState.Off
         }
+    }
+
+    private fun switchInputLanguage() {
+        inputLanguage = when (inputLanguage) {
+            InputLanguage.English -> InputLanguage.Myanmar
+            InputLanguage.Myanmar -> InputLanguage.English
+        }
+        layer = Layer.Letters
+        shift = ShiftState.Off
     }
 
     private fun show(target: Layer) {
