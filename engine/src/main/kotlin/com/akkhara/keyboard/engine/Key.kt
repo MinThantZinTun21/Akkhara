@@ -40,6 +40,12 @@ enum class Action {
 
     /** Leave the symbols layers for the letters of the current layout. */
     Letters,
+
+    /** Translate the text field's text, showing the translation in the translate strip. */
+    Translate,
+
+    /** Show the emoji panel. */
+    Emoji,
 }
 
 /** What holding a key down should do, for the View to carry out. */
@@ -55,4 +61,10 @@ sealed interface Hold {
 
     /** Keep pressing the key for as long as it is held. */
     data object Repeat : Hold
+
+    /** Offer the grammar key; lifting on it checks grammar, and lifting anywhere else does nothing. */
+    data object GrammarKey : Hold
+
+    /** Offer the emoji key; lifting on it opens the emoji panel, and lifting anywhere else does nothing. */
+    data object EmojiKey : Hold
 }

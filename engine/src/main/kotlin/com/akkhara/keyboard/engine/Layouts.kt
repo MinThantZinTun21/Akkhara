@@ -30,7 +30,8 @@ private fun lettersBottomRow(comma: String, fullStop: CharKey): Row = listOf(
 private val symbolsBottomRow: Row = listOf(
     ActionKey(Action.Letters, WIDE),
     CharKey(","),
-    ActionKey(Action.Space, width = 5f),
+    ActionKey(Action.Emoji),
+    ActionKey(Action.Space, width = 4f),
     CharKey("."),
     enterKey,
 )
@@ -48,6 +49,9 @@ internal interface Layout {
 
     /** Shown on the key that opens the symbols layers, in the layout's own digits. */
     val symbolsLabel: String
+
+    /** What the layout's comma key types. Held down, that key offers the emoji key. */
+    val comma: String
 }
 
 internal fun layoutFor(language: InputLanguage): Layout = when (language) {
@@ -59,9 +63,10 @@ internal object EnglishLayout : Layout {
     override val name = "English"
     override val lettersLabel = "ABC"
     override val symbolsLabel = "?123"
+    override val comma = ","
 
     private val bottom = lettersBottomRow(
-        comma = ",",
+        comma = comma,
         fullStop = CharKey(".", alternates = listOf(",", "?", "!", "'", "\"", ":", ";")),
     )
 
@@ -93,8 +98,10 @@ internal object MyanmarLayout : Layout {
     override val lettersLabel = "ကခဂ"
     override val symbolsLabel = "?၁၂၃"
 
+    override val comma = "၊"
+
     private val bottom = lettersBottomRow(
-        comma = "၊",
+        comma = comma,
         fullStop = CharKey("။", alternates = listOf("၊", "?", "!")),
     )
 
@@ -138,4 +145,9 @@ internal object SymbolsLayout {
         listOf(ActionKey(Action.Symbols, WIDE)) + chars("‘ ’ “ ” — – ·") + backspaceKey,
         symbolsBottomRow,
     )
+}
+
+/** The keys of the emoji panel's bar, either side of its category tabs. */
+internal object EmojiPanelLayout {
+    val bar: List<Row> = listOf(listOf(ActionKey(Action.Letters, WIDE), backspaceKey))
 }

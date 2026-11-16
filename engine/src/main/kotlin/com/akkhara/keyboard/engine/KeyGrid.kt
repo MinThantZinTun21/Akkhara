@@ -26,6 +26,8 @@ data class Cell(
  * portrait and landscape. Rows narrower than the keyboard are centred.
  * [padding] is the empty band along each edge of the keyboard, [gap] the
  * space between neighbouring keys in a row and [rowGap] the space between rows.
+ * [top] is how far down the keyboard the first row starts, leaving room above
+ * it for the translate strip.
  */
 class KeyGrid(
     rows: List<List<Key>>,
@@ -34,16 +36,17 @@ class KeyGrid(
     private val padding: Float,
     gap: Float,
     rowGap: Float,
+    private val top: Float = 0f,
 ) {
     private val rows: List<List<Cell>> = run {
         val unit = (width - 2 * padding) / COLUMNS
         rows.mapIndexed { rowIndex, row ->
             val rowWidth = row.sumOf { it.width.toDouble() }.toFloat() * unit
             var x = (width - rowWidth) / 2f
-            val top = padding + rowIndex * rowHeight
+            val rowTop = top + padding + rowIndex * rowHeight
             row.map { key ->
                 val keyWidth = key.width * unit
-                Cell(key, x + gap / 2, top + rowGap / 2, x + keyWidth - gap / 2, top + rowHeight - rowGap / 2)
+                Cell(key, x + gap / 2, rowTop + rowGap / 2, x + keyWidth - gap / 2, rowTop + rowHeight - rowGap / 2)
                     .also { x += keyWidth }
             }
         }
@@ -63,8 +66,8 @@ class KeyGrid(
      * keyboard is lost. Null only above or below the keyboard.
      */
     fun cellAt(x: Float, y: Float): Cell? {
-        if (rows.isEmpty() || y < 0f || y > height) return null
-        val rowIndex = floor((y - padding) / rowHeight).toInt().coerceIn(0, rows.lastIndex)
+        if (rows.isEmpty() || y < top || y > top + height) return null
+        val rowIndex = floor((y - top - padding) / rowHeight).toInt().coerceIn(0, rows.lastIndex)
         return rows[rowIndex].minByOrNull { cell ->
             when {
                 x < cell.left -> cell.left - x

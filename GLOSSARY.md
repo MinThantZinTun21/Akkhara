@@ -89,3 +89,97 @@ _Avoid_: Subscript, conjunct, pat sint
 
 **Kinzi**:
 The sequence `င်္`, drawn as a small mark above the following consonant.
+
+### Translation
+
+**Translation**:
+Turning text in one input language into the other, done entirely on the phone. Myanmar text becomes English and English text becomes Myanmar.
+_Avoid_: Transliteration, conversion
+
+**Translate strip**:
+The row above the keys that shows the translation or the grammar check's correction, or that one is being made. The translate key, beside the globe key, translates the text in the text field, or only the selected part; tapping the result in the strip puts it in place of that text. Neither shows without a translation model, nor in a password field.
+_Avoid_: Toolbar, suggestion bar, translate panel
+
+**Translate as you type**:
+The setting that makes the translate strip translate by itself when the user pauses typing, instead of waiting for a tap on Translate. The text changes only when the user taps the translation. Off unless the user turns it on.
+_Avoid_: Auto translate, live translation, instant translate
+
+**Translation direction**:
+Which language is translated into which. Myanmar text becomes English, and anything else becomes Myanmar, whichever input language is showing.
+_Avoid_: Language pair, mode
+
+**Grammar check**:
+Correcting the grammar of English text, done on the phone by the model in use, or, when that model translates only, by the smallest model on the phone that can check grammar. Holding the translate key on English text offers the grammar key; the correction shows in the translate strip and replaces the text only when tapped. When nothing needs correcting, the strip says so.
+_Avoid_: Spell check, autocorrect, proofreading
+
+**Grammar key**:
+The key that appears above the translate key while it is held on English text, and starts a grammar check when the finger lifts on it. It is not offered while no model on the phone can check grammar.
+_Avoid_: Popup, grammar button
+
+**Prompt**:
+The instruction the translation model is given for a task: one for each translation direction, and one for the grammar check. Each starts as Akkhara's default; the user may rewrite it in settings or reset it to the default. A model that translates only always uses its maker's own instruction instead.
+_Avoid_: System prompt, template, instructions
+
+**Translation model**:
+The file that does the translating, and the grammar check. Akkhara offers a short, fixed list of them (eight, from Qwen3.5 0.8B to Gemma 4 E4B, smallest first), each downloaded in the Akkhara app, and the user may also import a model file they already have. Several may be on the phone at once; until one is, translation is unavailable.
+_Avoid_: Language pack, dictionary, AI
+
+**Translates only**:
+Said of a translation model that cannot check grammar, such as Hy-MT2. While it is the model in use, another model on the phone checks grammar, and the app shows which.
+_Avoid_: Translation-only model, limited model
+
+**Model in use**:
+The one translation model on the phone that the keyboard translates with, and checks grammar with unless it translates only. The user picks it in the Akkhara app; the first model on the phone is put in use by itself.
+_Avoid_: Active model, default model, selected model
+
+**Remove**:
+Deleting a translation model from the phone to free its space. Removing the model in use puts another model on the phone in use, if there is one.
+_Avoid_: Uninstall, delete (for this meaning)
+
+**Model download**:
+Fetching one of Akkhara's listed translation models from the internet inside the Akkhara app, one at a time. It runs in the background, shown in a notification, and is the app's only use of the network.
+_Avoid_: Update, sync, install
+
+**Import**:
+Choosing a translation model file with Android's file picker so the Akkhara app keeps its own copy.
+_Avoid_: Install, sideload
+
+### Emoji
+
+**Emoji panel**:
+What takes the place of the keys to choose an emoji: one grid that scrolls through every emoji category, above a bar with a key back to the letters, a tab for each category, and backspace. It offers every emoji the phone can draw.
+_Avoid_: Emoji keyboard, emoji picker, emoji layer
+
+**Emoji key**:
+The key that opens the emoji panel: on the symbols layers, and offered above the comma key while the comma key is held.
+_Avoid_: Smiley key, emoji button
+
+**Emoji category**:
+One of the groups Unicode puts emoji in, such as Smileys & people or Flags, each with its own tab in the emoji panel.
+_Avoid_: Emoji page, section
+
+**Recent emoji**:
+The emoji chosen since the keyboard last started, shown first in the emoji panel. They are never stored, so they are gone when Android restarts the keyboard.
+_Avoid_: History, favourites, frequently used
+
+**Skin tone**:
+One of the five versions of an emoji showing a person in a different skin colour. Holding such an emoji in the emoji panel offers them; a tap types the emoji without a skin tone.
+_Avoid_: Skin colour, variant, modifier
+
+### Themes
+
+**Theme**:
+The set of colours the keyboard is drawn in: its background, keys and labels, the translate strip and the emoji panel. Akkhara has a fixed list of thirty: ten classic themes and twenty trending themes. The user picks one in the Akkhara app. A theme changes colours only, never the shape or place of a key.
+_Avoid_: Skin, style, colour scheme, palette (for what the user picks)
+
+**Classic theme**:
+One of Akkhara's first ten themes, five light and five dark, among them Light and Dark.
+_Avoid_: Default theme, basic theme
+
+**Trending theme**:
+One of twenty themes whose colours are inspired by films, animation and cartoons that were popular when Akkhara made it. Its name is Akkhara's own, never a title, character or studio, and it has no pictures.
+_Avoid_: Movie theme, film theme, cartoon theme, seasonal theme
+
+**Follow system**:
+The choice in place until the user picks a theme: the keyboard is drawn in the Light theme while the phone is in light mode and in the Dark theme while it is in dark mode.
+_Avoid_: Auto, default theme, dynamic colour

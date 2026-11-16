@@ -12,8 +12,8 @@ android {
         applicationId = "com.akkhara.keyboard"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     compileOptions {
@@ -40,4 +40,6 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.activity.compose)
     implementation(libs.core.ktx)
+    implementation(libs.litertlm.android)
+    testImplementation(libs.junit)
 }

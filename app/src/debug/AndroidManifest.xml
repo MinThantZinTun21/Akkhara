@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+          Debug builds only: a screen for measuring the translation model
+          (#12). Start it with
+          adb shell am start -n com.akkhara.keyboard/.translation.TranslateDebugActivity
+        -->
+        <activity
+            android:name=".translation.TranslateDebugActivity"
+            android:exported="true"
+            android:label="Translate (debug)"
+            android:theme="@style/Theme.Akkhara"
+            android:windowSoftInputMode="adjustResize" />
+    </application>
+
+</manifest>
