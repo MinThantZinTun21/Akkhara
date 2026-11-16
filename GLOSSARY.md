@@ -30,6 +30,10 @@ _Avoid_: Button
 An extra character offered when a key is held down, such as the Latin digit on a Myanmar digit key.
 _Avoid_: Popup character, long-press character, accent
 
+**Hint**:
+The small character in the corner of a key that shows the alternate the key offers, such as the Latin digit on each key of the Myanmar top row.
+_Avoid_: Secondary label, superscript
+
 **Key preview**:
 The enlarged copy of a character shown above a key while it is pressed.
 _Avoid_: Popup, bubble, tooltip
@@ -39,7 +43,7 @@ The key that switches the input language. Held down, it opens Android's keyboard
 _Avoid_: Language key, switch key
 
 **One-shot shift**:
-The shift layer shown for exactly one typed character, after which the base layer returns.
+The shift layer shown for one key press that types, after which the base layer returns.
 _Avoid_: Temporary shift
 
 **Shift lock**:
