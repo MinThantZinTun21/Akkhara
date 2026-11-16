@@ -165,8 +165,16 @@ _Avoid_: Skin colour, variant, modifier
 ### Themes
 
 **Theme**:
-The set of colours the keyboard is drawn in: its background, keys and labels, the translate strip and the emoji panel. Akkhara has a fixed list of ten, five light and five dark, and the user picks one in the Akkhara app. A theme changes colours only, never the shape or place of a key.
+The set of colours the keyboard is drawn in: its background, keys and labels, the translate strip and the emoji panel. Akkhara has a fixed list of thirty: ten classic themes and twenty trending themes. The user picks one in the Akkhara app. A theme changes colours only, never the shape or place of a key.
 _Avoid_: Skin, style, colour scheme, palette (for what the user picks)
+
+**Classic theme**:
+One of Akkhara's first ten themes, five light and five dark, among them Light and Dark.
+_Avoid_: Default theme, basic theme
+
+**Trending theme**:
+One of twenty themes whose colours are inspired by films, animation and cartoons that were popular when Akkhara made it. Its name is Akkhara's own, never a title, character or studio, and it has no pictures.
+_Avoid_: Movie theme, film theme, cartoon theme, seasonal theme
 
 **Follow system**:
 The choice in place until the user picks a theme: the keyboard is drawn in the Light theme while the phone is in light mode and in the Dark theme while it is in dark mode.
