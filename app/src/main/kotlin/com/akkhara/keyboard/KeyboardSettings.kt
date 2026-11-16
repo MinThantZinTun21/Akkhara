@@ -26,6 +26,16 @@ class KeyboardSettings(context: Context) {
     /** Off until the user turns it on: each translation keeps the phone busy for a while. */
     var translateAsYouType: Boolean by toggle("translate_as_you_type", default = false)
 
+    /** The theme the user picked, or null while the keyboard follows the system. See GLOSSARY.md, "Theme". */
+    var theme: Theme?
+        get() {
+            val name = preferences.getString(KEY_THEME, null)
+            return Theme.entries.firstOrNull { it.name == name }
+        }
+        set(value) {
+            preferences.edit { if (value == null) remove(KEY_THEME) else putString(KEY_THEME, value.name) }
+        }
+
     /** The input language the keyboard was last typing, so it opens in the same one. */
     var inputLanguage: InputLanguage
         get() {
@@ -67,5 +77,6 @@ class KeyboardSettings(context: Context) {
 
     private companion object {
         const val KEY_INPUT_LANGUAGE = "input_language"
+        const val KEY_THEME = "theme"
     }
 }

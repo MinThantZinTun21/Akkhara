@@ -2,7 +2,6 @@ package com.akkhara.keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
@@ -35,7 +34,7 @@ import kotlin.math.min
  * held, is decided by the engine, and where each key sits by [KeyGrid].
  */
 @SuppressLint("ViewConstructor")
-class KeyboardView(context: Context) : View(context) {
+class KeyboardView(context: Context, val theme: Theme) : View(context) {
 
     /** What the View needs from the service that hosts it. */
     interface Host {
@@ -80,10 +79,8 @@ class KeyboardView(context: Context) : View(context) {
         get() = keyPreviewEnabled && engine?.allowsKeyPreview == true
     private var host: Host? = null
 
-    // The service builds a new View when the system setting changes, so this is read once.
-    private val palette = Palette.forSystem(
-        resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES,
-    )
+    // The service builds a new View when the theme to show changes, so this never changes.
+    private val palette = theme.palette
     private val density = resources.displayMetrics.density
     private val fullRowHeight = FULL_ROW_DP * density
 

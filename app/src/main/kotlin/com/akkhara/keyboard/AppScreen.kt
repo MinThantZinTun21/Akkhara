@@ -9,8 +9,11 @@ import android.provider.OpenableColumns
 import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,12 +21,15 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -48,11 +54,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.akkhara.keyboard.engine.ModelTask
 import com.akkhara.keyboard.translation.DownloadState
@@ -70,13 +78,13 @@ fun AkkharaTheme(content: @Composable () -> Unit) {
 
 // The accent is the keyboard's own, so the screen and the keyboard look like one app.
 private val LightColors = lightColorScheme(
-    primary = Color(Palette.Light.accent),
-    onPrimary = Color(Palette.Light.onAccent),
+    primary = Color(Theme.Light.palette.accent),
+    onPrimary = Color(Theme.Light.palette.onAccent),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(Palette.Dark.accent),
-    onPrimary = Color(Palette.Dark.onAccent),
+    primary = Color(Theme.Dark.palette.accent),
+    onPrimary = Color(Theme.Dark.palette.onAccent),
 )
 
 /** The app's one screen: setup, a place to try the keyboard, and the settings. */
@@ -159,6 +167,14 @@ fun AppScreen(
                 )
             }
 
+            SectionTitle(R.string.theme_title)
+            Text(
+                stringResource(R.string.theme_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ThemePicker(settings)
+
             ModelsSection(models, onDownloadModel, onImportModel, onCancelDownload, onRemoveModel)
 
             SectionTitle(R.string.prompts_title)
@@ -170,6 +186,114 @@ fun AppScreen(
             ModelTask.entries.forEach { task -> PromptField(task, settings) }
         }
     }
+}
+
+/**
+ * The choice of theme: a grid of small previews, one for following the system
+ * and one for each theme. See GLOSSARY.md, "Theme".
+ */
+@Composable
+private fun ThemePicker(settings: KeyboardSettings) {
+    var chosen by remember { mutableStateOf(settings.theme) }
+    // Null is following the system, which comes first as it is what a new install does.
+    val choices: List<Theme?> = listOf(null) + Theme.entries
+    Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        choices.chunked(THEME_COLUMNS).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { theme ->
+                    ThemeCard(
+                        theme = theme,
+                        isChosen = theme == chosen,
+                        onChoose = {
+                            chosen = theme
+                            settings.theme = theme
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                // A short last row keeps its cards the width of the others.
+                repeat(THEME_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+private const val THEME_COLUMNS = 3
+
+/** One choice in the [ThemePicker]: a few keys in the theme's colours, and its name. */
+@Composable
+private fun ThemeCard(theme: Theme?, isChosen: Boolean, onChoose: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(12.dp)
+    val outline = if (isChosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+    Column(
+        modifier = modifier
+            .selectable(selected = isChosen, role = Role.RadioButton, onClick = onChoose)
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .border(if (isChosen) 3.dp else 1.dp, outline, shape),
+        ) {
+            if (theme == null) {
+                // Following the system is Light by day and Dark by night, so it shows half of each.
+                KeysPreview(Theme.Light.palette, letters = listOf("a"), modifier = Modifier.weight(1f))
+                KeysPreview(Theme.Dark.palette, letters = listOf("က"), modifier = Modifier.weight(1f))
+            } else {
+                KeysPreview(theme.palette, letters = listOf("a", "က", "b"), modifier = Modifier.weight(1f))
+            }
+        }
+        Text(
+            text = (if (isChosen) "\u2713 " else "") + stringResource(theme.nameRes()),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (isChosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+        )
+    }
+}
+
+/** A corner of the keyboard as [palette] draws it: letter keys, an action key and the enter key. */
+@Composable
+private fun KeysPreview(palette: Palette, letters: List<String>, modifier: Modifier = Modifier) {
+    val gap = Arrangement.spacedBy(4.dp)
+    Column(
+        modifier = modifier.background(Color(palette.background)).padding(8.dp),
+        verticalArrangement = gap,
+    ) {
+        Row(horizontalArrangement = gap) {
+            letters.forEach { letter ->
+                PreviewKey(Color(palette.key), Modifier.weight(1f)) {
+                    Text(letter, color = Color(palette.label), fontSize = 13.sp, lineHeight = 16.sp)
+                }
+            }
+        }
+        Row(horizontalArrangement = gap) {
+            PreviewKey(Color(palette.actionKey), Modifier.weight(1f)) {
+                Text("12", color = Color(palette.actionLabel), fontSize = 11.sp, lineHeight = 16.sp)
+            }
+            PreviewKey(Color(palette.accent), Modifier.weight(1f)) {
+                Text("\u2713", color = Color(palette.onAccent), fontSize = 11.sp, lineHeight = 16.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviewKey(colour: Color, modifier: Modifier = Modifier, label: @Composable () -> Unit) {
+    Box(
+        modifier = modifier.height(24.dp).background(colour, RoundedCornerShape(5.dp)),
+        contentAlignment = Alignment.Center,
+    ) { label() }
+}
+
+/** The name the app shows for a choice of theme; null is following the system. */
+private fun Theme?.nameRes(): Int = when (this) {
+    null -> R.string.theme_follow_system
+    Theme.Light -> R.string.theme_light
+    Theme.Dark -> R.string.theme_dark
 }
 
 /**

@@ -41,4 +41,5 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.core.ktx)
     implementation(libs.litertlm.android)
+    testImplementation(libs.junit)
 }

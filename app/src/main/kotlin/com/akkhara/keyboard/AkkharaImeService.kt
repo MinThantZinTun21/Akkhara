@@ -1,5 +1,6 @@
 package com.akkhara.keyboard
 
+import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
@@ -7,6 +8,7 @@ import android.os.SystemClock
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import androidx.core.view.WindowCompat
 import com.akkhara.keyboard.engine.Conveniences
 import com.akkhara.keyboard.engine.KeyboardEngine
 import com.akkhara.keyboard.translation.ServiceTranslator
@@ -53,11 +55,30 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         super.onDestroy()
     }
 
-    override fun onCreateInputView(): View =
-        KeyboardView(this).also { view ->
+    override fun onCreateInputView(): View {
+        val theme = shownTheme()
+        return KeyboardView(this, theme).also { view ->
             view.bind(engine, this)
             keyboardView = view
+            showNavigationBarIconsFor(theme, view)
         }
+    }
+
+    /** The theme to draw now: the user's choice, or Light or Dark from the phone while following the system. */
+    private fun shownTheme(): Theme = Theme.shown(
+        chosen = settings.theme,
+        systemIsDark = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES,
+    )
+
+    /**
+     * The keyboard draws its own background behind the navigation bar, so the
+     * bar's icons have to suit the theme, not the phone's light or dark mode.
+     */
+    private fun showNavigationBarIconsFor(theme: Theme, view: View) {
+        val window = window?.window ?: return
+        WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !theme.isDark
+    }
 
     /**
      * Never the full-screen editor Android offers in landscape: the keyboard
@@ -68,6 +89,8 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     /** The keyboard is opening: this is when a changed setting takes effect. */
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        // A newly chosen theme is drawn by a new View, as each View keeps the theme it was built with.
+        if (keyboardView?.theme != shownTheme()) setInputView(onCreateInputView())
         engine.isTranslationAvailable = models.inUse() != null
         engine.translateAsYouType = settings.translateAsYouType
         engine.customPrompts = settings.customPrompts

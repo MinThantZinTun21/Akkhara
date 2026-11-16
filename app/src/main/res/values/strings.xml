@@ -24,6 +24,11 @@
     <string name="setting_double_space_full_stop">Double space types a full stop</string>
     <string name="setting_english_only_note">English only.</string>
     <string name="setting_translate_as_you_type">Translate as you type</string>
+    <string name="theme_title">Theme</string>
+    <string name="theme_note">The keyboard shows a new theme the next time it opens. Follow system is Light by day and Dark in dark mode.</string>
+    <string name="theme_follow_system">Follow system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
     <string name="setting_translate_as_you_type_note">When you pause typing, the translation above the keys updates by itself. Your text changes only when you tap the translation.</string>
 
     <string name="models_title">Translation models</string>
