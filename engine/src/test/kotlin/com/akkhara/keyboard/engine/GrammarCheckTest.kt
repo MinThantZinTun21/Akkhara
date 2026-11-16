@@ -11,7 +11,7 @@ class GrammarCheckTest {
 
     private fun KeyboardEngine.translateKey() = rows.last().single { it is ActionKey && it.action == Action.Translate }
 
-    private fun grammarRequest(text: String) = FakeTranslator.Request(text, ModelTask.GrammarCheck.defaultPrompt)
+    private fun grammarRequest(text: String) = FakeTranslator.Request(text, ModelTask.GrammarCheck, ModelTask.GrammarCheck.defaultPrompt)
 
     private fun engineWith(text: String) =
         KeyboardEngine(FakeEditor(text), FakeClock(), translator = translator).apply { isTranslationAvailable = true }
@@ -148,5 +148,36 @@ class GrammarCheckTest {
         engine.replaceWithResult()
 
         assertEquals("She go to school!", editor.text)
+    }
+}
+
+class GrammarCheckWithoutModelTest {
+    private val editor = FakeEditor("She go to school")
+    private val translator = FakeTranslator()
+    private val engine = KeyboardEngine(editor, FakeClock(), translator = translator).apply {
+        isTranslationAvailable = true
+        isGrammarCheckAvailable = false
+    }
+
+    private fun translateKey() = engine.rows.last().single { it is ActionKey && it.action == Action.Translate }
+
+    @Test
+    fun `with no model on the phone that checks grammar, holding the translate key on English text offers nothing`() {
+        assertEquals(Hold.None, engine.hold(translateKey()))
+    }
+
+    @Test
+    fun `with no model on the phone that checks grammar, a grammar check asks for nothing`() {
+        engine.checkGrammar()
+
+        assertEquals(emptyList<FakeTranslator.Request>(), translator.requests)
+        assertEquals(StripState.Idle, engine.strip)
+    }
+
+    @Test
+    fun `with no model on the phone that checks grammar, English text is still translated`() {
+        engine.translate()
+
+        assertEquals(listOf(ModelTask.EnglishToMyanmar), translator.requests.map { it.task })
     }
 }

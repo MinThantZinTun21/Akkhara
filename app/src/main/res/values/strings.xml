@@ -68,6 +68,8 @@
     <string name="model_on_phone">On the phone</string>
     <string name="model_not_downloaded">Not downloaded</string>
     <string name="model_status">%1$s · %2$s</string>
+    <string name="model_translates_only">Translates only · grammar check uses %1$s</string>
+    <string name="model_translates_only_no_grammar_check">Translates only · download another model to check grammar</string>
     <string name="model_remove">Remove</string>
     <string name="model_remove_title">Remove %1$s?</string>
     <string name="model_remove_body">This deletes its %1$s file from the phone.</string>
@@ -94,6 +96,7 @@
 
     <string name="prompts_title">Prompts</string>
     <string name="prompts_note">What the translation model is told to do for each task. Changes apply the next time the keyboard opens; an empty box uses the default.</string>
+    <string name="prompts_translates_only">Hy-MT2 translates only and always uses its own instruction, so these prompts don\'t apply to it.</string>
     <string name="prompt_english_to_myanmar">English → Myanmar</string>
     <string name="prompt_myanmar_to_english">Myanmar → English</string>
     <string name="prompt_grammar_check">Grammar check</string>

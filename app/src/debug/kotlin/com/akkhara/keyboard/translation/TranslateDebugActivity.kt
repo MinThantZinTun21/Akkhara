@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.akkhara.keyboard.AkkharaTheme
 import com.akkhara.keyboard.engine.ModelTask
+import java.io.File
 import java.util.Locale
 
 /**
@@ -104,8 +105,12 @@ class TranslateDebugActivity : ComponentActivity() {
     /** The file of the model in use, or null while there is none. */
     private fun modelFile() = models.inUse()?.let(models::file)
 
-    /** How the model in use is asked. */
-    private fun asking() = models.inUse()?.asking ?: Asking.Chat
+    /** Sends [text] to the model in use for [task], asked the way that model is asked. */
+    private fun send(text: String, task: ModelTask, model: File, onReply: (TranslatorReply) -> Unit) {
+        val inUse = models.inUse() ?: return
+        val (message, instruction) = inUse.ask(task, text, task.defaultPrompt)
+        client.translate(message, instruction, model, inUse.asking, backend, onReply)
+    }
 
     /** Translates every sample sentence in turn and lists each result with its timings. */
     private fun runSamples() {
@@ -119,7 +124,7 @@ class TranslateDebugActivity : ComponentActivity() {
                 return
             }
             val (sampleTask, sample) = sampleSentences[index]
-            client.translate(sample, sampleTask.defaultPrompt, model, asking(), backend) { reply ->
+            send(sample, sampleTask, model) { reply ->
                 result += "${index + 1}. $sample\n→ " + when (reply) {
                     is TranslatorReply.Translated -> reply.text + "\n   [" + reply.timings.describe(backend, reply.text) + "]"
                     is TranslatorReply.Failed -> "Failed: ${reply.reason}"
@@ -135,7 +140,7 @@ class TranslateDebugActivity : ComponentActivity() {
         busy = true
         result = ""
         timings = ""
-        client.translate(text, direction.defaultPrompt, model, asking(), backend) { reply ->
+        send(text, direction, model) { reply ->
             busy = false
             when (reply) {
                 is TranslatorReply.Translated -> {

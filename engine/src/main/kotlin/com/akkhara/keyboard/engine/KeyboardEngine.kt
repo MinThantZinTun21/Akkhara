@@ -41,6 +41,12 @@ class KeyboardEngine(
     /** Whether a translation model is installed, which shows the translate key and the translate strip. */
     var isTranslationAvailable = false
 
+    /**
+     * Whether some model on the phone can check grammar, which offers the
+     * grammar key. A model that translates only cannot. See GLOSSARY.md, "Translates only".
+     */
+    var isGrammarCheckAvailable = true
+
     /** Whether the translate strip translates by itself when typing pauses. See GLOSSARY.md, "Translate as you type". */
     var translateAsYouType = false
 
@@ -71,6 +77,10 @@ class KeyboardEngine(
     /** Translation is offered with a model installed, except in a password field, which is never translated. */
     private val offersTranslation: Boolean
         get() = isTranslationAvailable && translator != null && !textField.isPassword
+
+    /** A grammar check is offered for English text while some model on the phone can check grammar. */
+    private val offersGrammarCheck: Boolean
+        get() = strip != null && isGrammarCheckAvailable && translationSource().isEnglish
 
     /** The keys of the layer that is showing, top row first. */
     val rows: List<List<Key>>
@@ -130,7 +140,7 @@ class KeyboardEngine(
         key is ActionKey && key.action == Action.Globe -> Hold.KeyboardPicker
         key is ActionKey && key.action == Action.Backspace -> Hold.Repeat
         key is CharKey && key.alternates.isNotEmpty() -> Hold.Alternates(key.alternates)
-        key is ActionKey && key.action == Action.Translate && strip != null && translationSource().isEnglish -> Hold.GrammarKey
+        key is ActionKey && key.action == Action.Translate && offersGrammarCheck -> Hold.GrammarKey
         key is CharKey && layer == Layer.Letters && key.text == layoutFor(inputLanguage).comma -> Hold.EmojiKey
         else -> Hold.None
     }
@@ -318,7 +328,7 @@ class KeyboardEngine(
         if (strip == null || isBusy) return
         finishSyllable()
         val source = translationSource()
-        if (source.text.isBlank() || (checkGrammar && !source.isEnglish)) return
+        if (source.text.isBlank() || (checkGrammar && !(isGrammarCheckAvailable && source.isEnglish))) return
         if (source.text.length > MAX_TRANSLATION_CHARS) {
             stripState = StripState.Failed(TranslationFailure.TooLong)
             return
@@ -326,7 +336,7 @@ class KeyboardEngine(
         stripState = if (checkGrammar) StripState.CheckingGrammar else StripState.Translating
         val task = if (checkGrammar) ModelTask.GrammarCheck else source.translationTask
         val request = ++stripRequest
-        translator.run(source.text, task.prompt(customPrompts[task])) { result ->
+        translator.run(source.text, task, task.prompt(customPrompts[task])) { result ->
             if (request != stripRequest) return@run
             translatedSource = source
             stripState = when {

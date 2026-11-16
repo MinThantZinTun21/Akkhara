@@ -98,11 +98,17 @@ class TranslatorService : Service() {
             val engine = engineFor(model, backend)
             val loadMs = SystemClock.elapsedRealtime() - loadStart
 
-            val config = ConversationConfig(
-                systemInstruction = Contents.of(prompt),
-                samplerConfig = SamplerConfig(topK = 1, topP = 1.0, temperature = 0.0, seed = 0),
-                extraContext = if (asking == Asking.ChatWithoutThinking) mapOf("enable_thinking" to false) else emptyMap(),
-            )
+            val config = when (asking) {
+                // Hy-MT2 has no system prompt; its card's sampling (temperature 0.7, top-p 0.6, top-k 20).
+                Asking.TranslationOnly -> ConversationConfig(
+                    samplerConfig = SamplerConfig(topK = 20, topP = 0.6, temperature = 0.7, seed = 0),
+                )
+                else -> ConversationConfig(
+                    systemInstruction = Contents.of(prompt),
+                    samplerConfig = SamplerConfig(topK = 1, topP = 1.0, temperature = 0.0, seed = 0),
+                    extraContext = if (asking == Asking.ChatWithoutThinking) mapOf("enable_thinking" to false) else emptyMap(),
+                )
+            }
             val start = SystemClock.elapsedRealtime()
             engine.createConversation(config).use { conversation ->
                 val reply = conversation.sendMessage(text)

@@ -68,6 +68,7 @@ import com.akkhara.keyboard.translation.ModelDownloadService
 import com.akkhara.keyboard.translation.ModelDownloads
 import com.akkhara.keyboard.translation.ModelShelf
 import com.akkhara.keyboard.translation.TranslationModel
+import com.akkhara.keyboard.translation.grammarCheckModel
 import kotlin.reflect.KMutableProperty0
 
 /** Follows the system light or dark setting with two fixed schemes, as the keyboard does. */
@@ -180,7 +181,7 @@ fun AppScreen(
 
             SectionTitle(R.string.prompts_title)
             Text(
-                stringResource(R.string.prompts_note),
+                stringResource(R.string.prompts_note) + " " + stringResource(R.string.prompts_translates_only),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -356,6 +357,7 @@ private fun ModelsSection(
             ModelRow(
                 model = model,
                 status = status,
+                note = if (model.translatesOnly) translatesOnlyNote(model, onPhone) else null,
                 isInUse = model == inUse,
                 isOnPhone = isOnPhone,
                 progress = running?.takeIf { isRunning && it.step != DownloadState.Step.WaitingForWifi }
@@ -506,11 +508,20 @@ private data class ShelfView(
     )
 }
 
+/** For a model that translates only: which model on the phone would check grammar while it is in use, if any. */
+@Composable
+private fun translatesOnlyNote(model: TranslationModel, onPhone: List<TranslationModel>): String =
+    grammarCheckModel(inUse = model, onPhone = onPhone)
+        ?.let { stringResource(R.string.model_translates_only, it.name) }
+        ?: stringResource(R.string.model_translates_only_no_grammar_check)
+
 /** One translation model: a choice of it as the model in use, its size and state, [action], and the download's [progress]. */
 @Composable
 private fun ModelRow(
     model: TranslationModel,
     status: String,
+    /** A second line under the status, or null for none. */
+    note: String?,
     isInUse: Boolean,
     isOnPhone: Boolean,
     progress: Float?,
@@ -535,6 +546,9 @@ private fun ModelRow(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (note != null) {
+                    Text(note, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             action()
         }

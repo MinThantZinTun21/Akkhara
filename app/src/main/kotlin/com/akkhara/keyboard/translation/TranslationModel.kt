@@ -16,7 +16,17 @@ data class TranslationModel(
     /** Where a listed model downloads from; null for the imported model. */
     val source: ModelSource?,
     val asking: Asking = Asking.Chat,
-)
+) {
+    /** It cannot check grammar. See GLOSSARY.md, "Translates only". */
+    val translatesOnly: Boolean get() = asking == Asking.TranslationOnly
+}
+
+/**
+ * The model that checks grammar: [inUse] when it can, otherwise the smallest
+ * model [onPhone] that can, or null when none can.
+ */
+fun grammarCheckModel(inUse: TranslationModel?, onPhone: List<TranslationModel>): TranslationModel? =
+    inUse?.takeUnless { it.translatesOnly } ?: onPhone.filterNot { it.translatesOnly }.minByOrNull { it.sizeBytes }
 
 /** How a model is given the prompt and the text. */
 enum class Asking {
@@ -25,6 +35,12 @@ enum class Asking {
 
     /** As [Chat], with the model's thinking turned off so that only its answer comes back. */
     ChatWithoutThinking,
+
+    /**
+     * A model made only to translate (Hy-MT2): no system instruction and no
+     * edited prompt, just its maker's own instruction and the text in one message.
+     */
+    TranslationOnly,
 }
 
 /** One file on Hugging Face, pinned to a commit, and the SHA-256 it must have (docs/adr/0005). */
@@ -58,6 +74,19 @@ object ListedModels {
             sha256 = "e40599625f3e446d6522674586a40566d6a3a117af608f6e9ea46ac86d326461",
         ),
         asking = Asking.ChatWithoutThinking,
+    )
+
+    val HyMT2 = TranslationModel(
+        id = "hy-mt2-1.8b",
+        name = "Hy-MT2 1.8B",
+        sizeBytes = 1_827_065_856,
+        source = huggingFace(
+            repo = "litert-community/Hy-MT2-1.8B",
+            commit = "5162a55929a0d9d646b4e8c21d7d2e9170142c45",
+            file = "Hy-MT2-1.8B_int8.litertlm",
+            sha256 = "ed88f17831b0b7e1b20ea2350e931e6aa4208d9a558f07dcc8644eb94ca4ccda",
+        ),
+        asking = Asking.TranslationOnly,
     )
 
     val Qwen35_2B = TranslationModel(
@@ -121,7 +150,7 @@ object ListedModels {
     )
 
     /** Smallest first, so the list reads from what fits any phone to what needs the most room. */
-    val all = listOf(Qwen35_0_8B, Qwen3_1_7B, Qwen35_2B, Gemma4E2B, Qwen3_4B_Instruct, Qwen35_4B, Gemma4E4B)
+    val all = listOf(Qwen35_0_8B, Qwen3_1_7B, HyMT2, Qwen35_2B, Gemma4E2B, Qwen3_4B_Instruct, Qwen35_4B, Gemma4E4B)
 
     private fun huggingFace(repo: String, commit: String, file: String, sha256: String) =
         ModelSource("https://huggingface.co/$repo/resolve/$commit/$file", sha256)
@@ -163,6 +192,9 @@ class ModelShelf(context: Context) {
         val chosen = preferences.getString(KEY_IN_USE, null)
         return onPhone.firstOrNull { it.id == chosen } ?: onPhone.firstOrNull().also { use(it) }
     }
+
+    /** The model that checks grammar, or null while no model on the phone can. See [grammarCheckModel]. */
+    fun grammarCheckModel(): TranslationModel? = grammarCheckModel(inUse(), models().filter(::isOnPhone))
 
     fun use(model: TranslationModel?) {
         preferences.edit {

@@ -7,13 +7,13 @@ package com.akkhara.keyboard.engine
 class FakeTranslator : Translator {
     private val pending = ArrayDeque<Pair<Request, (TranslationResult) -> Unit>>()
 
-    data class Request(val text: String, val prompt: String)
+    data class Request(val text: String, val task: ModelTask, val prompt: String)
 
     /** Every request made so far, oldest first. */
     val requests = mutableListOf<Request>()
 
-    override fun run(text: String, prompt: String, onResult: (TranslationResult) -> Unit) {
-        val request = Request(text, prompt)
+    override fun run(text: String, task: ModelTask, prompt: String, onResult: (TranslationResult) -> Unit) {
+        val request = Request(text, task, prompt)
         requests += request
         pending += request to onResult
     }

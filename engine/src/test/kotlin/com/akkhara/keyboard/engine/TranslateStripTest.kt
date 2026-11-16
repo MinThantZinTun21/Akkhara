@@ -59,7 +59,7 @@ class TranslateStripTest {
         assertEquals("Good morning", editor.text)
     }
 
-    private fun request(text: String, task: ModelTask) = FakeTranslator.Request(text, task.defaultPrompt)
+    private fun request(text: String, task: ModelTask) = FakeTranslator.Request(text, task, task.defaultPrompt)
 
     @Test
     fun `Translate translates everything in the text field, wherever the cursor is`() {

@@ -102,6 +102,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         // A newly chosen theme is drawn by a new View, as each View keeps the theme it was built with.
         if (keyboardView?.theme != shownTheme()) setInputView(onCreateInputView())
         engine.isTranslationAvailable = models.inUse() != null
+        engine.isGrammarCheckAvailable = models.grammarCheckModel() != null
         engine.translateAsYouType = settings.translateAsYouType
         engine.customPrompts = settings.customPrompts
         engine.startInput(

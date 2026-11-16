@@ -5,8 +5,12 @@ package com.akkhara.keyboard.engine
  * usually later and always on the thread the engine runs on.
  */
 interface Translator {
-    /** Gives the model [text] with [prompt] as its instruction, and calls [onResult] exactly once with the reply. */
-    fun run(text: String, prompt: String, onResult: (TranslationResult) -> Unit)
+    /**
+     * Gives a model [text] to do [task] with [prompt] as its instruction, and
+     * calls [onResult] exactly once with the reply. The task lets the app pick
+     * the model, as a grammar check may need another model than translation.
+     */
+    fun run(text: String, task: ModelTask, prompt: String, onResult: (TranslationResult) -> Unit)
 }
 
 sealed interface TranslationResult {

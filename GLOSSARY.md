@@ -129,7 +129,7 @@ Said of a translation model that cannot check grammar, such as Hy-MT2. While it 
 _Avoid_: Translation-only model, limited model
 
 **Model in use**:
-The one translation model on the phone that the keyboard translates and checks grammar with. The user picks it in the Akkhara app; the first model on the phone is put in use by itself.
+The one translation model on the phone that the keyboard translates with, and checks grammar with unless it translates only. The user picks it in the Akkhara app; the first model on the phone is put in use by itself.
 _Avoid_: Active model, default model, selected model
 
 **Remove**:
