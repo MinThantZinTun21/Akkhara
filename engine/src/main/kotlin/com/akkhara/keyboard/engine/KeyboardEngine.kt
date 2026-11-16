@@ -116,6 +116,7 @@ class KeyboardEngine(
         key is ActionKey && key.action == Action.Globe -> Hold.KeyboardPicker
         key is ActionKey && key.action == Action.Backspace -> Hold.Repeat
         key is CharKey && key.alternates.isNotEmpty() -> Hold.Alternates(key.alternates)
+        key is ActionKey && key.action == Action.Translate && strip != null && translationSource().isEnglish -> Hold.GrammarKey
         else -> Hold.None
     }
 
@@ -265,30 +266,45 @@ class KeyboardEngine(
     /**
      * Translates the text field's text: the selection if there is one,
      * otherwise all of it. Myanmar text becomes English, and anything else
-     * becomes Myanmar. Does nothing for an empty field or while a translation
-     * is already running.
+     * becomes Myanmar. Does nothing for an empty field or while the strip is
+     * already busy.
      */
-    fun translate() {
+    fun translate() = ask(checkGrammar = false)
+
+    /**
+     * Checks the grammar of the text field's text: the selection if there is
+     * one, otherwise all of it. Only English text is checked. See GLOSSARY.md,
+     * "Grammar check".
+     */
+    fun checkGrammar() = ask(checkGrammar = true)
+
+    private val isBusy: Boolean
+        get() = stripState == StripState.Translating || stripState == StripState.CheckingGrammar
+
+    private fun ask(checkGrammar: Boolean) {
         val translator = translator ?: return
-        if (strip == null || stripState == StripState.Translating) return
+        if (strip == null || isBusy) return
         finishSyllable()
         val source = translationSource()
-        if (source.text.isBlank()) return
+        if (source.text.isBlank() || (checkGrammar && !source.isEnglish)) return
         if (source.text.length > MAX_TRANSLATION_CHARS) {
             stripState = StripState.Failed(TranslationFailure.TooLong)
             return
         }
-        stripState = StripState.Translating
+        stripState = if (checkGrammar) StripState.CheckingGrammar else StripState.Translating
+        val task = if (checkGrammar) ModelTask.GrammarCheck else source.translationTask
         val request = ++stripRequest
-        translator.run(source.text, source.task.defaultPrompt) { result ->
+        translator.run(source.text, task.defaultPrompt) { result ->
             if (request != stripRequest) return@run
             translatedSource = source
             stripState = when {
-                // The text changed while this ran: the translation is of older text.
+                // The text changed while this ran: the result is for older text.
                 translationSource() != source -> StripState.Idle
-                result is TranslationResult.Translated -> StripState.Translated(result.text)
                 result is TranslationResult.Failed -> StripState.Failed(result.reason)
-                else -> StripState.Idle
+                result !is TranslationResult.Translated -> StripState.Idle
+                !checkGrammar -> StripState.Translated(result.text)
+                result.text.trim() == source.text.trim() -> StripState.NoMistakes
+                else -> StripState.Corrected(result.text)
             }
             // The pause that would have translated the newer text came while this one ran.
             if (stripState == StripState.Idle) onTypingPaused()
@@ -304,7 +320,7 @@ class KeyboardEngine(
 
     /** A translation shown for the text before this edit no longer applies. */
     private fun onTextFieldEdited() {
-        if (stripState != StripState.Translating) stripState = StripState.Idle
+        if (!isBusy) stripState = StripState.Idle
     }
 
     /** Drops what the strip shows and any translation still running. */
@@ -314,9 +330,13 @@ class KeyboardEngine(
         stripRequest++
     }
 
-    /** Puts the translation in place of the text it was made from. */
-    fun replaceWithTranslation() {
-        val translated = stripState as? StripState.Translated ?: return
+    /** Puts the translation or correction the strip shows in place of the text it was made from. */
+    fun replaceWithResult() {
+        val result = when (val state = stripState) {
+            is StripState.Translated -> state.translation
+            is StripState.Corrected -> state.correction
+            else -> return
+        }
         val source = translationSource()
         stripState = StripState.Idle
         if (source != translatedSource) return
@@ -324,7 +344,7 @@ class KeyboardEngine(
             editor.deleteBeforeCursor(source.before)
             editor.deleteAfterCursor(source.after)
         }
-        editor.commit(translated.translation)
+        editor.commit(result)
     }
 
     /** The text Translate would translate now, and where it sits in the text field. */
@@ -339,13 +359,15 @@ class KeyboardEngine(
 
     /** Text to translate: the selection, or the text field's text with [before] units before the cursor and [after] after it. */
     private data class TranslationSource(val text: String, val isSelection: Boolean, val before: Int, val after: Int) {
+        private val myanmarLetters get() = text.count { it in '\u1000'..'\u109F' }
+        private val latinLetters get() = text.count { it in 'A'..'Z' || it in 'a'..'z' }
+
+        /** English text, judged by its letters: the only text a grammar check takes. */
+        val isEnglish: Boolean get() = latinLetters > myanmarLetters
+
         /** Myanmar text becomes English, and anything else becomes Myanmar. */
-        val task: ModelTask
-            get() {
-                val myanmar = text.count { it in '\u1000'..'\u109F' }
-                val latin = text.count { it in 'A'..'Z' || it in 'a'..'z' }
-                return if (myanmar > latin) ModelTask.MyanmarToEnglish else ModelTask.EnglishToMyanmar
-            }
+        val translationTask: ModelTask
+            get() = if (myanmarLetters > latinLetters) ModelTask.MyanmarToEnglish else ModelTask.EnglishToMyanmar
     }
 
     /** Puts the translate key after the globe key, taking its width from the space bar. */

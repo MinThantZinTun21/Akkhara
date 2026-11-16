@@ -97,7 +97,7 @@ Turning text in one input language into the other, done entirely on the phone. M
 _Avoid_: Transliteration, conversion
 
 **Translate strip**:
-The row above the keys that shows the translation, or that one is being made. The translate key, beside the globe key, translates the text in the text field, or only the selected part; tapping the translation in the strip puts it in place of that text. Neither shows without a translation model, nor in a password field.
+The row above the keys that shows the translation or the grammar check's correction, or that one is being made. The translate key, beside the globe key, translates the text in the text field, or only the selected part; tapping the result in the strip puts it in place of that text. Neither shows without a translation model, nor in a password field.
 _Avoid_: Toolbar, suggestion bar, translate panel
 
 **Translate as you type**:
@@ -108,8 +108,20 @@ _Avoid_: Auto translate, live translation, instant translate
 Which language is translated into which. Myanmar text becomes English, and anything else becomes Myanmar, whichever input language is showing.
 _Avoid_: Language pair, mode
 
+**Grammar check**:
+Correcting the grammar of English text, done on the phone by the translation model. Holding the translate key on English text offers the grammar key; the correction shows in the translate strip and replaces the text only when tapped. When nothing needs correcting, the strip says so.
+_Avoid_: Spell check, autocorrect, proofreading
+
+**Grammar key**:
+The key that appears above the translate key while it is held on English text, and starts a grammar check when the finger lifts on it.
+_Avoid_: Popup, grammar button
+
+**Prompt**:
+The instruction the translation model is given for a task: one for each translation direction, and one for the grammar check. Each starts as Akkhara's default; the user may rewrite it in settings or reset it to the default.
+_Avoid_: System prompt, template, instructions
+
 **Translation model**:
-The file that does the translating. The user downloads it in the Akkhara app or imports a copy they already have; until then, translation is unavailable.
+The file that does the translating, and the grammar check. The user downloads it in the Akkhara app or imports a copy they already have; until then, translation is unavailable.
 _Avoid_: Language pack, dictionary, AI
 
 **Model download**:

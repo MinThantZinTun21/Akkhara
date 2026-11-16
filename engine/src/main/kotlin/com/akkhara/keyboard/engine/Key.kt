@@ -58,4 +58,7 @@ sealed interface Hold {
 
     /** Keep pressing the key for as long as it is held. */
     data object Repeat : Hold
+
+    /** Offer the grammar key; lifting on it checks grammar, and lifting anywhere else does nothing. */
+    data object GrammarKey : Hold
 }

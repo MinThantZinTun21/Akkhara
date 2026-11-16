@@ -52,6 +52,10 @@ class KeyboardView(context: Context) : View(context) {
 
         /** True once holding has already done the key's work, so lifting must not press it again. */
         var consumed = false
+
+        /** True once holding the translate key offers the grammar key, and whether the finger is on it. */
+        var grammarOffered = false
+        var onGrammarKey = false
     }
 
     /**
@@ -451,7 +455,7 @@ class KeyboardView(context: Context) : View(context) {
         val strip = engine?.strip ?: return
         if (target == null || stripPainter.targetAt(x, y, strip) != target) return
         when (target) {
-            StripPainter.Target.Replace -> host?.edit { replaceWithTranslation() }
+            StripPainter.Target.Replace -> host?.edit { replaceWithResult() }
         }
     }
 
@@ -481,6 +485,10 @@ class KeyboardView(context: Context) : View(context) {
                 touch.choice = AlternateChoice(hold.alternates, touch.x, touch.y)
                 callout.showAlternates(this, touch.cell, hold.alternates)
             }
+            Hold.GrammarKey -> {
+                touch.grammarOffered = true
+                callout.showAlternates(this, touch.cell, listOf(GRAMMAR_KEY_LABEL))
+            }
             Hold.None, null -> Unit
         }
     }
@@ -491,10 +499,16 @@ class KeyboardView(context: Context) : View(context) {
         touch.repeatTimer = Runnable { repeat(touch) }.also { postDelayed(it, REPEAT_MILLIS) }
     }
 
-    /** The finger moved. Only matters while alternates are showing. */
+    /** The finger moved. Only matters while alternates or the grammar key are showing. */
     private fun slide(touch: Touch, x: Float, y: Float) {
         touch.x = x
         touch.y = y
+        if (touch.grammarOffered) {
+            // The grammar key floats above the translate key: the finger is on it once above the key.
+            touch.onGrammarKey = y < touch.cell.top
+            callout.select(if (touch.onGrammarKey) 0 else null)
+            return
+        }
         val choice = touch.choice ?: return
         if (choice.selected == null) {
             val moved = maxOf(abs(x - choice.startX), abs(y - choice.startY))
@@ -512,6 +526,10 @@ class KeyboardView(context: Context) : View(context) {
     private fun lift(pointerId: Int) {
         val touch = drop(pointerId) ?: return
         if (touch.consumed) return
+        if (touch.grammarOffered) {
+            if (touch.onGrammarKey) host?.edit { checkGrammar() }
+            return
+        }
         val key = touch.cell.key
         val alternate = touch.choice?.let { choice -> choice.selected?.let(choice.alternates::get) }
         if (alternate != null && key is CharKey) {
@@ -553,5 +571,8 @@ class KeyboardView(context: Context) : View(context) {
 
         /** Time between presses of a held, repeating key. */
         const val REPEAT_MILLIS = 60L
+
+        /** The grammar key, shown above the held translate key. */
+        const val GRAMMAR_KEY_LABEL = "A✓"
     }
 }

@@ -26,6 +26,8 @@
     <string name="setting_translate_as_you_type">Translate as you type</string>
     <string name="setting_translate_as_you_type_note">When you pause typing, the translation above the keys updates by itself. Your text changes only when you tap the translation.</string>
 
+    <string name="translate_strip_checking_grammar">Checking grammar…</string>
+    <string name="translate_strip_no_mistakes">No mistakes found</string>
     <string name="translate_strip_translating">Translating…</string>
     <string name="translate_strip_failed">Couldn\'t translate</string>
     <string name="translate_strip_not_installed">Translation model not installed</string>

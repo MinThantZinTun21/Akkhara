@@ -91,7 +91,7 @@ class TranslateStripTest {
         translator.answer("မင်္ဂလာနံနက်ခင်းပါ")
         assertEquals(StripState.Translated("မင်္ဂလာနံနက်ခင်းပါ"), engine.strip)
 
-        engine.replaceWithTranslation()
+        engine.replaceWithResult()
 
         assertEquals("မင်္ဂလာနံနက်ခင်းပါ", editor.text)
         assertEquals(StripState.Idle, engine.strip)
@@ -104,7 +104,7 @@ class TranslateStripTest {
 
         engine.translate()
         translator.answer("နံနက်")
-        engine.replaceWithTranslation()
+        engine.replaceWithResult()
 
         assertEquals(listOf(request("morning", ModelTask.EnglishToMyanmar)), translator.requests)
         assertEquals("Good နံနက်", editor.text)
@@ -117,7 +117,7 @@ class TranslateStripTest {
         translator.answer("မင်္ဂလာနံနက်ခင်းပါ")
         editor.commit("!") // the app changed the text by itself
 
-        engine.replaceWithTranslation()
+        engine.replaceWithResult()
 
         assertEquals("Good morning!", editor.text)
         assertEquals(StripState.Idle, engine.strip)
