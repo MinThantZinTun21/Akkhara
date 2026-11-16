@@ -14,13 +14,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -35,10 +38,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import android.text.format.Formatter
 import com.akkhara.keyboard.engine.ModelTask
+import com.akkhara.keyboard.translation.ModelShelf
+import com.akkhara.keyboard.translation.TranslationModel
 import kotlin.reflect.KMutableProperty0
 
 /** Follows the system light or dark setting with two fixed schemes, as the keyboard does. */
@@ -63,8 +70,10 @@ private val DarkColors = darkColorScheme(
 fun AppScreen(
     setup: Setup,
     settings: KeyboardSettings,
+    models: ModelShelf,
     onOpenKeyboardSettings: () -> Unit,
     onChooseKeyboard: () -> Unit,
+    onRemoveModel: (TranslationModel) -> Unit,
 ) {
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { insets ->
         Column(
@@ -133,6 +142,8 @@ fun AppScreen(
                 )
             }
 
+            ModelsSection(models, onRemoveModel)
+
             SectionTitle(R.string.prompts_title)
             Text(
                 stringResource(R.string.prompts_note),
@@ -143,6 +154,124 @@ fun AppScreen(
         }
     }
 }
+
+/**
+ * The translation models: each listed model and the imported one, whether it
+ * is on the phone, and a choice of the model in use among those that are.
+ */
+@Composable
+private fun ModelsSection(models: ModelShelf, onRemove: (TranslationModel) -> Unit) {
+    // What is on the phone is read from the files, and read again after each change.
+    var shelf by remember { mutableStateOf(ShelfView(models)) }
+    var removing by remember { mutableStateOf<TranslationModel?>(null) }
+    val (all, onPhone, inUse) = shelf
+
+    SectionTitle(R.string.models_title)
+    Text(
+        stringResource(R.string.models_note),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Column {
+        all.forEach { model ->
+            val isOnPhone = model in onPhone
+            ModelRow(
+                model = model,
+                status = stringResource(
+                    when {
+                        model == inUse -> R.string.model_in_use
+                        isOnPhone -> R.string.model_on_phone
+                        else -> R.string.model_not_downloaded
+                    },
+                ),
+                isInUse = model == inUse,
+                isOnPhone = isOnPhone,
+                onUse = {
+                    models.use(model)
+                    shelf = ShelfView(models)
+                },
+            ) {
+                if (isOnPhone) TextButton(onClick = { removing = model }) { Text(stringResource(R.string.model_remove)) }
+            }
+        }
+    }
+
+    removing?.let { model ->
+        val next = onPhone.firstOrNull { it != model }
+        AlertDialog(
+            onDismissRequest = { removing = null },
+            title = { Text(stringResource(R.string.model_remove_title, model.name)) },
+            text = {
+                Text(
+                    stringResource(R.string.model_remove_body, fileSize(model.sizeBytes)) +
+                        if (model != inUse) "" else " " + if (next != null) {
+                            stringResource(R.string.model_remove_next, next.name)
+                        } else {
+                            stringResource(R.string.model_remove_last)
+                        },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    removing = null
+                    onRemove(model)
+                    shelf = ShelfView(models)
+                }) { Text(stringResource(R.string.model_remove)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { removing = null }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+}
+
+/** What the models section shows, read from [ModelShelf] in one go. */
+private data class ShelfView(
+    val all: List<TranslationModel>,
+    val onPhone: List<TranslationModel>,
+    val inUse: TranslationModel?,
+) {
+    constructor(models: ModelShelf) : this(
+        all = models.models(),
+        onPhone = models.models().filter(models::isOnPhone),
+        inUse = models.inUse(),
+    )
+}
+
+/** One translation model: a choice of it as the model in use, its size and state, and [action]. */
+@Composable
+private fun ModelRow(
+    model: TranslationModel,
+    status: String,
+    isInUse: Boolean,
+    isOnPhone: Boolean,
+    onUse: () -> Unit,
+    action: @Composable () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .selectable(selected = isInUse, enabled = isOnPhone, role = Role.RadioButton, onClick = onUse)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = isInUse, onClick = null, enabled = isOnPhone)
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(model.name, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(R.string.model_status, fileSize(model.sizeBytes), status),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        action()
+    }
+}
+
+@Composable
+private fun fileSize(bytes: Long): String = Formatter.formatFileSize(LocalContext.current, bytes)
 
 /**
  * The prompt for [task], ready to rewrite. It shows the default until the

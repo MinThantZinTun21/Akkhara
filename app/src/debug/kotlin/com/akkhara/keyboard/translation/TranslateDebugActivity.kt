@@ -38,6 +38,7 @@ import java.util.Locale
 class TranslateDebugActivity : ComponentActivity() {
 
     private lateinit var client: TranslatorClient
+    private lateinit var models: ModelShelf
 
     private var text by mutableStateOf("")
     private var direction by mutableStateOf(ModelTask.MyanmarToEnglish)
@@ -50,6 +51,7 @@ class TranslateDebugActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         client = TranslatorClient(applicationContext)
+        models = ModelShelf(applicationContext)
         setContent { AkkharaTheme { Surface(Modifier.fillMaxSize()) { Screen() } } }
     }
 
@@ -64,11 +66,11 @@ class TranslateDebugActivity : ComponentActivity() {
             Modifier.safeDrawingPadding().padding(16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            val model = TranslationModel.file(this@TranslateDebugActivity)
+            val model = modelFile()
             Text("Translate (debug)", style = MaterialTheme.typography.headlineSmall)
             Text(
-                if (model.isFile) "Model: %.2f GB".format(Locale.ROOT, model.length() / 1e9)
-                else "Model not installed. Push it to ${model.path}",
+                if (model != null) "Model: ${model.name}, %.2f GB".format(Locale.ROOT, model.length() / 1e9)
+                else "No translation model on the phone. Download one in the Akkhara app.",
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -99,8 +101,12 @@ class TranslateDebugActivity : ComponentActivity() {
         }
     }
 
+    /** The file of the model in use, or null while there is none. */
+    private fun modelFile() = models.inUse()?.let(models::file)
+
     /** Translates every sample sentence in turn and lists each result with its timings. */
     private fun runSamples() {
+        val model = modelFile() ?: return
         busy = true
         result = ""
         timings = ""
@@ -110,7 +116,7 @@ class TranslateDebugActivity : ComponentActivity() {
                 return
             }
             val (sampleTask, sample) = sampleSentences[index]
-            client.translate(sample, sampleTask.defaultPrompt, backend) { reply ->
+            client.translate(sample, sampleTask.defaultPrompt, model, backend) { reply ->
                 result += "${index + 1}. $sample\n→ " + when (reply) {
                     is TranslatorReply.Translated -> reply.text + "\n   [" + reply.timings.describe(backend, reply.text) + "]"
                     is TranslatorReply.Failed -> "Failed: ${reply.reason}"
@@ -122,10 +128,11 @@ class TranslateDebugActivity : ComponentActivity() {
     }
 
     private fun translate() {
+        val model = modelFile() ?: return
         busy = true
         result = ""
         timings = ""
-        client.translate(text, direction.defaultPrompt, backend) { reply ->
+        client.translate(text, direction.defaultPrompt, model, backend) { reply ->
             busy = false
             when (reply) {
                 is TranslatorReply.Translated -> {

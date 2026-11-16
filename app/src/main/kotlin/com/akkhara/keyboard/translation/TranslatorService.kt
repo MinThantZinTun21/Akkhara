@@ -13,8 +13,10 @@ import android.os.RemoteException
 import android.os.SystemClock
 import com.akkhara.keyboard.engine.TranslationFailure
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_BACKEND
-import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_PROMPT
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_LOAD_MS
+import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_MODEL
+import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_OPENS
+import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_PROMPT
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_REASON
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_TEXT
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_TRANSLATE_MS
@@ -25,14 +27,17 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.SamplerConfig
+import java.io.File
 
 /**
  * Runs the translation model in its own process (`:translator`), so the 1–2 GB
  * it needs can never cost the user their keyboard: if Android stops this
  * process, only the translation in progress fails.
  *
- * The model loads on the first request and stays loaded until [TranslatorProtocol.MSG_UNLOAD]
- * or the service is destroyed. Requests run one at a time on a worker thread.
+ * Each request names the model file to use. It loads on the first request and
+ * stays loaded until a request names another model (the model in use changed),
+ * [TranslatorProtocol.MSG_UNLOAD], or the service is destroyed. Requests run
+ * one at a time on a worker thread.
  * Nothing the user types or the model writes is logged or stored.
  */
 class TranslatorService : Service() {
@@ -43,6 +48,7 @@ class TranslatorService : Service() {
 
     /** Touched only on the worker thread. */
     private var engine: Engine? = null
+    private var engineModel: String? = null
     private var engineBackend: TranslatorBackend? = null
 
     override fun onCreate() {
@@ -67,6 +73,11 @@ class TranslatorService : Service() {
                 val data = Bundle(request.data)
                 work.post { send(replyTo, translate(data)) }
             }
+            TranslatorProtocol.MSG_CHECK -> {
+                val replyTo = request.replyTo ?: return true
+                val model = request.data.getString(KEY_MODEL) ?: return true
+                work.post { send(replyTo, check(model)) }
+            }
             TranslatorProtocol.MSG_UNLOAD -> work.post(::unload)
             else -> return false
         }
@@ -77,12 +88,12 @@ class TranslatorService : Service() {
         val text = data.getString(KEY_TEXT).orEmpty()
         val prompt = data.getString(KEY_PROMPT) ?: return failed(TranslationFailure.Failed)
         val backend = data.getString(KEY_BACKEND)?.let(TranslatorBackend::valueOf) ?: TranslatorBackend.Cpu
-        val model = TranslationModel.file(this)
-        if (!model.isFile) return failed(TranslationFailure.NotInstalled)
+        val model = data.getString(KEY_MODEL)?.takeIf { File(it).isFile }
+            ?: return failed(TranslationFailure.NotInstalled)
 
         return try {
             val loadStart = SystemClock.elapsedRealtime()
-            val engine = engineFor(model.path, backend)
+            val engine = engineFor(model, backend)
             val loadMs = SystemClock.elapsedRealtime() - loadStart
 
             val config = ConversationConfig(
@@ -114,8 +125,16 @@ class TranslatorService : Service() {
     }
 
     private fun engineFor(modelPath: String, backend: TranslatorBackend): Engine {
-        engine?.let { if (engineBackend == backend) return it }
+        engine?.let { if (engineModel == modelPath && engineBackend == backend) return it }
         unload()
+        return load(modelPath, backend).also {
+            engine = it
+            engineModel = modelPath
+            engineBackend = backend
+        }
+    }
+
+    private fun load(modelPath: String, backend: TranslatorBackend): Engine {
         val config = EngineConfig(
             modelPath = modelPath,
             backend = when (backend) {
@@ -124,16 +143,33 @@ class TranslatorService : Service() {
             },
             cacheDir = cacheDir.path,
         )
-        return Engine(config).also {
-            it.initialize()
-            engine = it
-            engineBackend = backend
+        return Engine(config).apply { initialize() }
+    }
+
+    /**
+     * The open check a downloaded or imported file must pass before it counts
+     * as on the phone: it loads as a model. The loaded model is freed first,
+     * so two never take memory at once.
+     */
+    private fun check(modelPath: String): Message {
+        unload()
+        val opens = try {
+            load(modelPath, TranslatorBackend.Cpu).close()
+            true
+        } catch (_: Exception) {
+            false
+        } catch (_: LinkageError) {
+            false
+        }
+        return Message.obtain(null, TranslatorProtocol.MSG_CHECKED).apply {
+            data = Bundle().apply { putBoolean(KEY_OPENS, opens) }
         }
     }
 
     private fun unload() {
         engine?.close()
         engine = null
+        engineModel = null
         engineBackend = null
     }
 

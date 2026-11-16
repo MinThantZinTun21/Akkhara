@@ -13,6 +13,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.akkhara.keyboard.translation.ModelShelf
+import com.akkhara.keyboard.translation.TranslatorClient
 
 /**
  * The app screen: setup, a place to try the keyboard, and the settings.
@@ -23,6 +25,7 @@ import androidx.compose.runtime.setValue
 class AppActivity : ComponentActivity() {
 
     private var setup by mutableStateOf(Setup(isEnabled = false, isSelected = false))
+    private lateinit var translator: TranslatorClient
 
     private val setupObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) = readSetup()
@@ -32,16 +35,29 @@ class AppActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val settings = KeyboardSettings(this)
+        val models = ModelShelf(this)
+        translator = TranslatorClient(applicationContext)
         setContent {
             AkkharaTheme {
                 AppScreen(
                     setup = setup,
                     settings = settings,
+                    models = models,
                     onOpenKeyboardSettings = { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) },
                     onChooseKeyboard = { inputMethodManager().showInputMethodPicker() },
+                    onRemoveModel = { model ->
+                        // The translator lets go of the file first, so its space is freed at once.
+                        translator.unload()
+                        models.remove(model)
+                    },
                 )
             }
         }
+    }
+
+    override fun onDestroy() {
+        translator.close()
+        super.onDestroy()
     }
 
     override fun onStart() {

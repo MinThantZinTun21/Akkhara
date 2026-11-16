@@ -10,13 +10,14 @@ import android.view.inputmethod.InputMethodManager
 import com.akkhara.keyboard.engine.Conveniences
 import com.akkhara.keyboard.engine.KeyboardEngine
 import com.akkhara.keyboard.translation.ServiceTranslator
-import com.akkhara.keyboard.translation.TranslationModel
+import com.akkhara.keyboard.translation.ModelShelf
 import com.akkhara.keyboard.translation.TranslatorClient
 
 /** Hosts the keyboard View and connects the engine to the current text field. */
 class AkkharaImeService : InputMethodService(), KeyboardView.Host {
 
     private lateinit var settings: KeyboardSettings
+    private lateinit var models: ModelShelf
     private lateinit var engine: KeyboardEngine
     private var keyboardView: KeyboardView? = null
     private lateinit var translatorClient: TranslatorClient
@@ -34,12 +35,13 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     override fun onCreate() {
         super.onCreate()
         settings = KeyboardSettings(this)
+        models = ModelShelf(this)
         translatorClient = TranslatorClient(this)
         engine = KeyboardEngine(
             editor = InputConnectionEditor({ currentInputConnection }, { currentInputEditorInfo }),
             clock = SystemClock::uptimeMillis,
             inputLanguage = settings.inputLanguage,
-            translator = ServiceTranslator(translatorClient),
+            translator = ServiceTranslator(translatorClient) { models.inUse()?.let(models::file) },
         )
         // A translation arrives later, on its own: redraw the strip to show it.
         engine.onStripChanged = { keyboardView?.onEngineChanged() }
@@ -66,7 +68,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     /** The keyboard is opening: this is when a changed setting takes effect. */
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        engine.isTranslationAvailable = TranslationModel.isInstalled(this)
+        engine.isTranslationAvailable = models.inUse() != null
         engine.translateAsYouType = settings.translateAsYouType
         engine.customPrompts = settings.customPrompts
         engine.startInput(

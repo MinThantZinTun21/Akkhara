@@ -13,14 +13,17 @@ import android.os.Messenger
 import android.os.RemoteException
 import com.akkhara.keyboard.engine.TranslationFailure
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_BACKEND
-import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_PROMPT
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_LOAD_MS
+import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_MODEL
+import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_OPENS
+import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_PROMPT
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_REASON
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_TEXT
 import com.akkhara.keyboard.translation.TranslatorProtocol.KEY_TRANSLATE_MS
+import java.io.File
 
 /**
- * The keyboard side of [TranslatorService]: binds to it, sends one request at a
+ * The app's side of [TranslatorService]: binds to it, sends one request at a
  * time, and calls back on the main thread. If the translator process dies, the
  * request in flight fails and the next one binds again.
  */
@@ -30,12 +33,12 @@ class TranslatorClient(private val context: Context) {
     private var service: Messenger? = null
     private var bound = false
     private var queued: Message? = null
-    private var waiting: ((TranslatorReply) -> Unit)? = null
+    private var waiting: ((Message) -> Unit)? = null
 
     private val replies = Messenger(Handler(Looper.getMainLooper()) { reply ->
         val callback = waiting ?: return@Handler true
         waiting = null
-        callback(reply.toTranslatorReply())
+        callback(reply)
         true
     })
 
@@ -56,32 +59,50 @@ class TranslatorClient(private val context: Context) {
         }
     }
 
-    /** Gives the model [text] with [prompt] as its instruction. A request made while another is in flight replaces its callback. */
+    /**
+     * Gives the [model] [text] with [prompt] as its instruction. A request
+     * made while another is in flight replaces its callback.
+     */
     fun translate(
         text: String,
         prompt: String,
+        model: File,
         backend: TranslatorBackend = TranslatorBackend.Cpu,
         onReply: (TranslatorReply) -> Unit,
     ) {
-        waiting = onReply
-        val request = Message.obtain(null, TranslatorProtocol.MSG_TRANSLATE).apply {
-            data = Bundle().apply {
-                putString(KEY_TEXT, text)
-                putString(KEY_PROMPT, prompt)
-                putString(KEY_BACKEND, backend.name)
-            }
-            replyTo = replies
-        }
-        val connected = service
-        if (connected != null) deliver(request) else {
+        waiting = { onReply(it.toTranslatorReply()) }
+        send(
+            Message.obtain(null, TranslatorProtocol.MSG_TRANSLATE).apply {
+                data = Bundle().apply {
+                    putString(KEY_TEXT, text)
+                    putString(KEY_PROMPT, prompt)
+                    putString(KEY_MODEL, model.path)
+                    putString(KEY_BACKEND, backend.name)
+                }
+                replyTo = replies
+            },
+        )
+    }
+
+    /** Tells [onResult] whether [model] opens as a translation model: the open check of a new file. */
+    fun check(model: File, onResult: (Boolean) -> Unit) {
+        waiting = { onResult(it.what == TranslatorProtocol.MSG_CHECKED && it.data.getBoolean(KEY_OPENS)) }
+        send(
+            Message.obtain(null, TranslatorProtocol.MSG_CHECK).apply {
+                data = Bundle().apply { putString(KEY_MODEL, model.path) }
+                replyTo = replies
+            },
+        )
+    }
+
+    /** Asks the translator to free the model's memory now, such as before the model's file is removed. */
+    fun unload() = send(Message.obtain(null, TranslatorProtocol.MSG_UNLOAD))
+
+    private fun send(request: Message) {
+        if (service != null) deliver(request) else {
             queued = request
             bind()
         }
-    }
-
-    /** Asks the translator to free the model's memory now. */
-    fun unload() {
-        service?.let { runCatching { it.send(Message.obtain(null, TranslatorProtocol.MSG_UNLOAD)) } }
     }
 
     /** Stops using the translator. Any request in flight is dropped without a callback. */
@@ -116,7 +137,7 @@ class TranslatorClient(private val context: Context) {
         val callback = waiting ?: return
         waiting = null
         queued = null
-        main.post { callback(TranslatorReply.Failed(TranslationFailure.Failed)) }
+        main.post { callback(Message.obtain(null, TranslatorProtocol.MSG_FAILED)) }
     }
 }
 
