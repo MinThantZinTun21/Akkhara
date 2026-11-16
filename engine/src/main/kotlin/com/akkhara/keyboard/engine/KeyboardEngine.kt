@@ -80,7 +80,11 @@ class KeyboardEngine(
                 .let { if (offersTranslation) it.withTranslateKey() else it }
             Layer.Symbols -> SymbolsLayout.first
             Layer.MoreSymbols -> SymbolsLayout.second
+            Layer.Emoji -> EmojiPanelLayout.bar
         }
+
+    /** What the emoji panel offers, category by category. */
+    val emojiCategories: List<EmojiCategory> get() = EmojiList.categories
 
     /** The name of the current input language, for the space bar. */
     val spaceLabel: String get() = layoutFor(inputLanguage).name
@@ -131,6 +135,13 @@ class KeyboardEngine(
         onTextFieldEdited()
     }
 
+    /** The user tapped [emoji] in the emoji panel. It is typed as it is, whatever the input language. */
+    fun typeEmoji(emoji: String) {
+        insert(emoji)
+        afterEdit()
+        onTextFieldEdited()
+    }
+
     fun press(key: Key) {
         when (key) {
             is CharKey -> type(key.text)
@@ -171,6 +182,7 @@ class KeyboardEngine(
             Action.MoreSymbols -> show(Layer.MoreSymbols)
             Action.Letters -> show(Layer.Letters)
             Action.Translate -> translate()
+            Action.Emoji -> show(Layer.Emoji)
         }
     }
 
@@ -262,7 +274,9 @@ class KeyboardEngine(
 
     private fun backspace() {
         if (editor.deleteSelection()) return
-        val units = MyanmarReordering.backspace(editor.textBeforeCursor(2))
+        val before = editor.textBeforeCursor(EmojiText.WINDOW)
+        val emoji = EmojiText.lengthAtEnd(before)
+        val units = if (emoji > 0) emoji else MyanmarReordering.backspace(before.takeLast(2))
         if (units > 0) editor.deleteBeforeCursor(units)
     }
 

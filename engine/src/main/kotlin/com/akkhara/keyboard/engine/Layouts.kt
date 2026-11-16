@@ -30,7 +30,8 @@ private fun lettersBottomRow(comma: String, fullStop: CharKey): Row = listOf(
 private val symbolsBottomRow: Row = listOf(
     ActionKey(Action.Letters, WIDE),
     CharKey(","),
-    ActionKey(Action.Space, width = 5f),
+    ActionKey(Action.Emoji),
+    ActionKey(Action.Space, width = 4f),
     CharKey("."),
     enterKey,
 )
@@ -138,4 +139,9 @@ internal object SymbolsLayout {
         listOf(ActionKey(Action.Symbols, WIDE)) + chars("‘ ’ “ ” — – ·") + backspaceKey,
         symbolsBottomRow,
     )
+}
+
+/** The keys of the emoji panel's bar, either side of its category tabs. */
+internal object EmojiPanelLayout {
+    val bar: List<Row> = listOf(listOf(ActionKey(Action.Letters, WIDE), backspaceKey))
 }

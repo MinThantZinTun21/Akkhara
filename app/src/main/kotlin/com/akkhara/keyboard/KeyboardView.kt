@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RectF
 import android.os.Build
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
@@ -19,8 +20,10 @@ import com.akkhara.keyboard.engine.Cell
 import com.akkhara.keyboard.engine.CharKey
 import com.akkhara.keyboard.engine.EnterAction
 import com.akkhara.keyboard.engine.Hold
+import com.akkhara.keyboard.engine.Key
 import com.akkhara.keyboard.engine.KeyGrid
 import com.akkhara.keyboard.engine.KeyboardEngine
+import com.akkhara.keyboard.engine.Layer
 import com.akkhara.keyboard.engine.ShiftState
 import com.akkhara.keyboard.engine.StripState
 import kotlin.math.abs
@@ -107,6 +110,14 @@ class KeyboardView(context: Context) : View(context) {
     private val touches = LinkedHashMap<Int, Touch>() // by pointer id, oldest first
     private val callout = KeyCallout(context, palette)
 
+    private val emojiPanel = EmojiPanel(context, palette)
+
+    /** The finger on the emoji panel's grid or tabs, if any. */
+    private var panelPointer: Int? = null
+
+    /** Which layer was showing when the View last looked, so the emoji panel opens at its start. */
+    private var shownLayer: Layer? = null
+
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val labelSize = 20f * resources.displayMetrics.scaledDensity
     private val smallLabelSize = 14f * resources.displayMetrics.scaledDensity
@@ -132,6 +143,9 @@ class KeyboardView(context: Context) : View(context) {
 
     /** Call after anything that may have changed which keys are showing. */
     fun onEngineChanged() {
+        val layer = engine?.layer
+        if (layer == Layer.Emoji && shownLayer != Layer.Emoji) emojiPanel.scrollToStart()
+        shownLayer = layer
         requestLayout()
         layoutKeys()
         invalidate()
@@ -146,7 +160,7 @@ class KeyboardView(context: Context) : View(context) {
      * leaves the text field in view.
      */
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val rowCount = engine?.rows?.size ?: 0
+        val rowCount = shownRows()?.size ?: 0
         // The strip shows only while it has something to say, so the keyboard keeps its height otherwise.
         val hasStrip = engine?.strip.let { it != null && it != StripState.Idle }
         var scale = 1f
@@ -191,10 +205,31 @@ class KeyboardView(context: Context) : View(context) {
      * letter with the other thumb) does not lose it.
      */
     private fun layoutKeys() {
-        val rows = engine?.rows
+        val rows = shownRows()
         grid = if (rows == null || width == 0) null else {
             KeyGrid(rows, width.toFloat(), rowHeight, edgePadding, keyGap, rowGap, top = stripHeight)
         }
+        val engine = engine ?: return
+        val tabs = grid?.cells?.firstOrNull { it.key === EMOJI_TABS } ?: return
+        val gridTop = stripHeight + edgePadding
+        emojiPanel.layout(
+            engine.emojiCategories,
+            grid = RectF(edgePadding, gridTop, width - edgePadding, gridTop + EMOJI_GRID_ROWS * rowHeight),
+            tabs = RectF(tabs.left, tabs.top, tabs.right, tabs.bottom),
+            rowHeight = rowHeight,
+        )
+    }
+
+    /**
+     * The rows to lay out. On the emoji panel, the grid takes the place of all
+     * but the last row, and the category tabs fill the bar between its keys.
+     */
+    private fun shownRows(): List<List<Key>>? {
+        val engine = engine ?: return null
+        val rows = engine.rows
+        if (engine.layer != Layer.Emoji) return rows
+        val bar = rows.last()
+        return List(EMOJI_GRID_ROWS) { emptyList<Key>() } + listOf(listOf(bar.first(), EMOJI_TABS) + bar.drop(1))
     }
 
     // ---- drawing ----
@@ -209,7 +244,10 @@ class KeyboardView(context: Context) : View(context) {
             val moving = stripPainter.draw(canvas, strip, stripTarget, SystemClock.uptimeMillis())
             if (moving) postInvalidateOnAnimation()
         }
-        for (cell in grid?.cells.orEmpty()) drawKey(canvas, cell)
+        for (cell in grid?.cells.orEmpty()) {
+            if (cell.key !== EMOJI_TABS) drawKey(canvas, cell)
+        }
+        if (engine?.layer == Layer.Emoji && emojiPanel.draw(canvas)) postInvalidateOnAnimation()
     }
 
     private fun drawKey(canvas: Canvas, cell: Cell) {
@@ -258,7 +296,7 @@ class KeyboardView(context: Context) : View(context) {
             Action.Space, Action.Globe, Action.Translate -> KeyStyle.Plain
             Action.Shift -> if (engine?.shift == ShiftState.Locked) KeyStyle.Accent else KeyStyle.Action
             Action.Enter -> if (engine?.enterAction == EnterAction.NewLine) KeyStyle.Action else KeyStyle.Accent
-            Action.Backspace, Action.Symbols, Action.MoreSymbols, Action.Letters -> KeyStyle.Action
+            Action.Backspace, Action.Symbols, Action.MoreSymbols, Action.Letters, Action.Emoji -> KeyStyle.Action
         }
     }
 
@@ -337,6 +375,13 @@ class KeyboardView(context: Context) : View(context) {
             Action.Enter -> enterIcon(engine?.enterAction ?: EnterAction.NewLine, cx, cy, half)
             // a Latin A and a Myanmar letter with a two-way arrow between them
             Action.Translate -> return drawLabel(canvas, "A⇄က", cell, smallLabelPaint)
+            Action.Emoji -> {
+                // a round face with two eyes and a smile
+                iconPath.addCircle(cx, cy, half, Path.Direction.CW)
+                iconPath.addArc(cx - half * 0.5f, cy - half * 0.35f, cx + half * 0.5f, cy + half * 0.5f, 25f, 130f)
+                iconPath.addCircle(cx - half * 0.35f, cy - half * 0.3f, half * 0.06f, Path.Direction.CW)
+                iconPath.addCircle(cx + half * 0.35f, cy - half * 0.3f, half * 0.06f, Path.Direction.CW)
+            }
         }
         canvas.drawPath(iconPath, iconPaint)
     }
@@ -404,27 +449,39 @@ class KeyboardView(context: Context) : View(context) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 // A second finger landing commits the first, so fast two-thumb typing never drops a key.
                 liftAll()
+                dropPanelTouch()
                 val index = event.actionIndex
                 val x = event.getX(index)
                 val y = event.getY(index)
-                if (y < stripHeight) {
-                    stripDown(event.getPointerId(index), x, y)
-                } else {
-                    grid?.cellAt(x, y)?.let { touchDown(event.getPointerId(index), Touch(it, x, y)) }
+                val cell = grid?.cellAt(x, y)
+                when {
+                    y < stripHeight -> stripDown(event.getPointerId(index), x, y)
+                    engine?.layer == Layer.Emoji && (emojiPanel.contains(x, y) || cell?.key === EMOJI_TABS) -> {
+                        panelPointer = event.getPointerId(index)
+                        emojiPanel.down(event, index)
+                    }
+                    cell != null -> touchDown(event.getPointerId(index), Touch(cell, x, y))
                 }
             }
             MotionEvent.ACTION_MOVE ->
                 for (index in 0 until event.pointerCount) {
-                    val touch = touches[event.getPointerId(index)] ?: continue
+                    val pointerId = event.getPointerId(index)
+                    if (pointerId == panelPointer) emojiPanel.move(event, index)
+                    val touch = touches[pointerId] ?: continue
                     slide(touch, event.getX(index), event.getY(index))
                 }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
                 val index = event.actionIndex
                 val pointerId = event.getPointerId(index)
-                if (pointerId == stripPointer) stripUp(event.getX(index), event.getY(index)) else lift(pointerId)
+                when (pointerId) {
+                    stripPointer -> stripUp(event.getX(index), event.getY(index))
+                    panelPointer -> panelUp(event, index, pointerId)
+                    else -> lift(pointerId)
+                }
             }
             MotionEvent.ACTION_CANCEL -> {
                 dropAll()
+                dropPanelTouch()
                 stripPointer = null
                 stripTarget = null
             }
@@ -435,7 +492,24 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onDetachedFromWindow() {
         dropAll()
+        dropPanelTouch()
         super.onDetachedFromWindow()
+    }
+
+    /** The finger lifted from the emoji panel: an emoji tapped is typed. */
+    private fun panelUp(event: MotionEvent, index: Int, pointerId: Int) {
+        panelPointer = null
+        val lift = emojiPanel.up(event, index, pointerId)
+        if (lift is EmojiPanel.Lift.Typed) {
+            if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            host?.edit { typeEmoji(lift.emoji) }
+        }
+    }
+
+    private fun dropPanelTouch() {
+        if (panelPointer == null) return
+        panelPointer = null
+        emojiPanel.cancel()
     }
 
     /** A finger went down on the translate strip. Only the translation responds. */
@@ -574,5 +648,15 @@ class KeyboardView(context: Context) : View(context) {
 
         /** The grammar key, shown above the held translate key. */
         const val GRAMMAR_KEY_LABEL = "A✓"
+
+        /** Rows of the emoji panel's grid, above its bar. */
+        const val EMOJI_GRID_ROWS = 4
+
+        /**
+         * Stands for the emoji panel's category tabs when the bar is laid out,
+         * filling the row between the bar's two keys; it is never pressed or
+         * drawn as a key.
+         */
+        val EMOJI_TABS = CharKey("", width = 7f)
     }
 }

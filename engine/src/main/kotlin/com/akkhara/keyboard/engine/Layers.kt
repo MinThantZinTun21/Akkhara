@@ -1,7 +1,7 @@
 package com.akkhara.keyboard.engine
 
-/** Which screenful of keys is showing. */
-enum class Layer { Letters, Symbols, MoreSymbols }
+/** Which screenful of keys is showing. On [Emoji], the emoji panel takes the place of the keys. */
+enum class Layer { Letters, Symbols, MoreSymbols, Emoji }
 
 enum class ShiftState {
     Off,

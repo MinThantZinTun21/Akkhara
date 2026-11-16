@@ -43,6 +43,9 @@ enum class Action {
 
     /** Translate the text field's text, showing the translation in the translate strip. */
     Translate,
+
+    /** Show the emoji panel. */
+    Emoji,
 }
 
 /** What holding a key down should do, for the View to carry out. */
