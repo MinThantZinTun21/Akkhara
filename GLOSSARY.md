@@ -121,11 +121,19 @@ The instruction the translation model is given for a task: one for each translat
 _Avoid_: System prompt, template, instructions
 
 **Translation model**:
-The file that does the translating, and the grammar check. The user downloads it in the Akkhara app or imports a copy they already have; until then, translation is unavailable.
+The file that does the translating, and the grammar check. Akkhara offers a short, fixed list of them (Gemma 4 E2B and Gemma 4 E4B), each downloaded in the Akkhara app, and the user may also import a model file they already have. Several may be on the phone at once; until one is, translation is unavailable.
 _Avoid_: Language pack, dictionary, AI
 
+**Model in use**:
+The one translation model on the phone that the keyboard translates and checks grammar with. The user picks it in the Akkhara app; the first model on the phone is put in use by itself.
+_Avoid_: Active model, default model, selected model
+
+**Remove**:
+Deleting a translation model from the phone to free its space. Removing the model in use puts another model on the phone in use, if there is one.
+_Avoid_: Uninstall, delete (for this meaning)
+
 **Model download**:
-Fetching the translation model from the internet inside the Akkhara app. It runs in the background, shown in a notification, and is the app's only use of the network.
+Fetching one of Akkhara's listed translation models from the internet inside the Akkhara app, one at a time. It runs in the background, shown in a notification, and is the app's only use of the network.
 _Avoid_: Update, sync, install
 
 **Import**:
