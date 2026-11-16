@@ -17,4 +17,31 @@ data class ActionKey(
     override val width: Float = 1f,
 ) : Key
 
-enum class Action { Backspace, Enter, Space }
+enum class Action {
+    Shift,
+    Backspace,
+    Enter,
+    Space,
+
+    /** Show the first symbols layer. */
+    Symbols,
+
+    /** Show the second symbols layer. */
+    MoreSymbols,
+
+    /** Leave the symbols layers for the letters of the current layout. */
+    Letters,
+}
+
+/** Which screenful of keys is showing. */
+enum class Layer { Letters, Symbols, MoreSymbols }
+
+enum class ShiftState {
+    Off,
+
+    /** The shift layer shows for exactly one typed character. */
+    OneShot,
+
+    /** The shift layer shows until the user turns it off. */
+    Locked,
+}

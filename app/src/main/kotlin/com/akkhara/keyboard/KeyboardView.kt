@@ -13,6 +13,7 @@ import com.akkhara.keyboard.engine.ActionKey
 import com.akkhara.keyboard.engine.CharKey
 import com.akkhara.keyboard.engine.Key
 import com.akkhara.keyboard.engine.KeyboardEngine
+import com.akkhara.keyboard.engine.ShiftState
 
 /**
  * Draws the layer the engine is showing and reports touches back to it.
@@ -40,6 +41,10 @@ class KeyboardView(context: Context) : View(context) {
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         textSize = 22f * resources.displayMetrics.scaledDensity
+    }
+    private val smallLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        textSize = 15f * resources.displayMetrics.scaledDensity
     }
     private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -100,6 +105,7 @@ class KeyboardView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(palette.background)
         labelPaint.color = palette.label
+        smallLabelPaint.color = palette.label
         iconPaint.color = palette.label
         for (cell in cells) {
             keyPaint.color = when {
@@ -109,15 +115,15 @@ class KeyboardView(context: Context) : View(context) {
             }
             canvas.drawRoundRect(cell.bounds, keyRadius, keyRadius, keyPaint)
             when (val key = cell.key) {
-                is CharKey -> drawLabel(canvas, key.char, cell.bounds)
+                is CharKey -> drawLabel(canvas, key.char, cell.bounds, labelPaint)
                 is ActionKey -> drawAction(canvas, key.action, cell.bounds)
             }
         }
     }
 
-    private fun drawLabel(canvas: Canvas, text: String, bounds: RectF) {
-        val baseline = bounds.centerY() - (labelPaint.descent() + labelPaint.ascent()) / 2
-        canvas.drawText(text, bounds.centerX(), baseline, labelPaint)
+    private fun drawLabel(canvas: Canvas, text: String, bounds: RectF, paint: Paint) {
+        val baseline = bounds.centerY() - (paint.descent() + paint.ascent()) / 2
+        canvas.drawText(text, bounds.centerX(), baseline, paint)
     }
 
     private fun drawAction(canvas: Canvas, action: Action, bounds: RectF) {
@@ -125,8 +131,28 @@ class KeyboardView(context: Context) : View(context) {
         val cy = bounds.centerY()
         val s = 9f * density // half the icon's size
         iconPath.rewind()
+        iconPaint.style = Paint.Style.STROKE
         when (action) {
             Action.Space -> return
+            Action.Symbols -> return drawLabel(canvas, "?123", bounds, smallLabelPaint)
+            Action.MoreSymbols -> return drawLabel(canvas, "=\\<", bounds, smallLabelPaint)
+            Action.Letters -> return drawLabel(canvas, "ABC", bounds, smallLabelPaint)
+            Action.Shift -> {
+                // an upward arrow: outlined when off, filled for one-shot shift, underlined for shift lock
+                val shift = engine?.shift ?: ShiftState.Off
+                iconPath.moveTo(cx, cy - s)
+                iconPath.lineTo(cx + s, cy)
+                iconPath.lineTo(cx + s * 0.45f, cy)
+                iconPath.lineTo(cx + s * 0.45f, cy + s * 0.7f)
+                iconPath.lineTo(cx - s * 0.45f, cy + s * 0.7f)
+                iconPath.lineTo(cx - s * 0.45f, cy)
+                iconPath.lineTo(cx - s, cy)
+                iconPath.close()
+                if (shift != ShiftState.Off) iconPaint.style = Paint.Style.FILL_AND_STROKE
+                if (shift == ShiftState.Locked) {
+                    canvas.drawLine(cx - s * 0.6f, cy + s * 1.15f, cx + s * 0.6f, cy + s * 1.15f, iconPaint)
+                }
+            }
             Action.Backspace -> {
                 // a left-pointing tag with a cross in it
                 iconPath.moveTo(cx - s * 1.3f, cy)

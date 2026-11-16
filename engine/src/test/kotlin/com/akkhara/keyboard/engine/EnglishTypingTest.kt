@@ -85,7 +85,7 @@ class EnglishTypingTest {
     fun `the base layer is QWERTY`() {
         assertEquals(
             listOf("q w e r t y u i o p", "a s d f g h j k l", "z x c v b n m"),
-            typist.rowLabels().take(3),
+            typist.rowLabels().subList(1, 4),
         )
     }
 }
