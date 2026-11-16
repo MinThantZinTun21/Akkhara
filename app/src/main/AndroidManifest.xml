@@ -46,6 +46,20 @@
                 android:resource="@xml/method" />
         </service>
 
+        <!--
+          The translation model runs in its own process so that the memory it
+          needs can never get the keyboard stopped.
+        -->
+        <service
+            android:name=".translation.TranslatorService"
+            android:exported="false"
+            android:process=":translator" />
+
+        <!-- The GPU backend of the translation model uses OpenCL where the phone has it. -->
+        <uses-native-library
+            android:name="libOpenCL.so"
+            android:required="false" />
+
     </application>
 
 </manifest>
