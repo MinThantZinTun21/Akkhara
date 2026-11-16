@@ -161,3 +161,13 @@ _Avoid_: History, favourites, frequently used
 **Skin tone**:
 One of the five versions of an emoji showing a person in a different skin colour. Holding such an emoji in the emoji panel offers them; a tap types the emoji without a skin tone.
 _Avoid_: Skin colour, variant, modifier
+
+### Themes
+
+**Theme**:
+The set of colours the keyboard is drawn in: its background, keys and labels, the translate strip and the emoji panel. Akkhara has a fixed list of ten, five light and five dark, and the user picks one in the Akkhara app. A theme changes colours only, never the shape or place of a key.
+_Avoid_: Skin, style, colour scheme, palette (for what the user picks)
+
+**Follow system**:
+The choice in place until the user picks a theme: the keyboard is drawn in the Light theme while the phone is in light mode and in the Dark theme while it is in dark mode.
+_Avoid_: Auto, default theme, dynamic colour
