@@ -1,6 +1,13 @@
 package com.akkhara.keyboard
 
-/** The fixed colours of the keyboard surface, as ARGB ints. */
+/**
+ * The fixed colours of the keyboard surface, as ARGB ints. There are exactly
+ * two, and neither takes anything from the wallpaper.
+ *
+ * In both, [label] has a contrast ratio of at least 5.9:1 against [key],
+ * [keyPressed], [actionKey] and [bubble], and [onAccent] at least 6.6:1
+ * against [accent], so small Myanmar marks stay readable (the floor is 4.5:1).
+ */
 data class Palette(
     val background: Int,
     val key: Int,
@@ -24,5 +31,19 @@ data class Palette(
             accent = 0xFF00695C.toInt(),
             onAccent = 0xFFFFFFFF.toInt(),
         )
+
+        val Dark = Palette(
+            background = 0xFF1B1C1E.toInt(),
+            key = 0xFF3A3D41.toInt(),
+            keyPressed = 0xFF5A5E64.toInt(),
+            actionKey = 0xFF2A2C2F.toInt(),
+            label = 0xFFF1F3F4.toInt(),
+            bubble = 0xFF4A4D52.toInt(),
+            accent = 0xFF80CBC4.toInt(),
+            onAccent = 0xFF00201C.toInt(),
+        )
+
+        /** The palette for the system's light or dark setting. */
+        fun forSystem(isDark: Boolean): Palette = if (isDark) Dark else Light
     }
 }

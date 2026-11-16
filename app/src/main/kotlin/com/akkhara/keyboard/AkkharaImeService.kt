@@ -33,6 +33,12 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
             keyboardView = view
         }
 
+    /**
+     * Never the full-screen editor Android offers in landscape: the keyboard
+     * keeps to half the screen there, so the text field itself stays in view.
+     */
+    override fun onEvaluateFullscreenMode(): Boolean = false
+
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         engine.startInput(info.toField())

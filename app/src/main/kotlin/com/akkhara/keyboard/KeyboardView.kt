@@ -2,14 +2,17 @@ package com.akkhara.keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.WindowInsets
 import com.akkhara.keyboard.engine.Action
 import com.akkhara.keyboard.engine.ActionKey
 import com.akkhara.keyboard.engine.CharKey
@@ -20,6 +23,7 @@ import com.akkhara.keyboard.engine.Key
 import com.akkhara.keyboard.engine.KeyboardEngine
 import com.akkhara.keyboard.engine.ShiftState
 import kotlin.math.abs
+import kotlin.math.min
 
 /**
  * Draws the layer the engine is showing and reports touches back to it.
@@ -66,9 +70,18 @@ class KeyboardView(context: Context) : View(context) {
         get() = keyPreviewEnabled && engine?.allowsKeyPreview == true
     private var host: Host? = null
 
-    private val palette = Palette.Light
+    // The service builds a new View when the system setting changes, so this is read once.
+    private val palette = Palette.forSystem(
+        resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES,
+    )
     private val density = resources.displayMetrics.density
-    private val rowHeight = 54f * density
+    private val fullRowHeight = FULL_ROW_DP * density
+
+    /** Shorter than [fullRowHeight] when the screen is too short for it, as in landscape. */
+    private var rowHeight = fullRowHeight
+
+    /** Height of whatever the system draws over the bottom of the keyboard's window. */
+    private var bottomInset = 0
     private val keyGap = 3f * density
     private val keyRadius = 6f * density
     private val edgePadding = 4f * density
@@ -79,14 +92,10 @@ class KeyboardView(context: Context) : View(context) {
     private val bubble = KeyBubble(context, palette)
 
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textAlign = Paint.Align.CENTER
-        textSize = 22f * resources.displayMetrics.scaledDensity
-    }
-    private val smallLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textAlign = Paint.Align.CENTER
-        textSize = 15f * resources.displayMetrics.scaledDensity
-    }
+    private val labelSize = 22f * resources.displayMetrics.scaledDensity
+    private val smallLabelSize = 15f * resources.displayMetrics.scaledDensity
+    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
+    private val smallLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 2f * density
@@ -103,19 +112,48 @@ class KeyboardView(context: Context) : View(context) {
 
     /** Call after anything that may have changed which keys are showing. */
     fun onEngineChanged() {
+        requestLayout()
         layoutKeys()
         invalidate()
     }
 
     // ---- layout ----
 
+    /**
+     * Key widths come from the width on offer and row heights from the height
+     * of the screen, so one layout serves portrait and landscape: the
+     * keyboard never takes more than [MAX_SCREEN_SHARE] of the screen, which
+     * leaves the text field in view.
+     */
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rowCount = engine?.rows?.size ?: 0
-        val height = (rowCount * rowHeight + 2 * edgePadding).toInt()
+        if (rowCount > 0) {
+            val tallest = resources.displayMetrics.heightPixels * MAX_SCREEN_SHARE - 2 * edgePadding
+            rowHeight = min(fullRowHeight, tallest / rowCount)
+        }
+        val scale = rowHeight / fullRowHeight
+        labelPaint.textSize = labelSize * scale
+        smallLabelPaint.textSize = smallLabelSize * scale
+        val height = (rowCount * rowHeight + 2 * edgePadding).toInt() + bottomInset
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), height)
     }
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+    /** Keeps the keys clear of a navigation bar drawn over the keyboard's window. */
+    override fun onApplyWindowInsets(insets: WindowInsets): WindowInsets {
+        val bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            insets.getInsets(WindowInsets.Type.systemBars()).bottom
+        } else {
+            @Suppress("DEPRECATION")
+            insets.systemWindowInsetBottom
+        }
+        if (bottom != bottomInset) {
+            bottomInset = bottom
+            requestLayout()
+        }
+        return super.onApplyWindowInsets(insets)
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         layoutKeys()
     }
 
@@ -178,7 +216,7 @@ class KeyboardView(context: Context) : View(context) {
     private fun drawAction(canvas: Canvas, action: Action, bounds: RectF) {
         val cx = bounds.centerX()
         val cy = bounds.centerY()
-        val s = 9f * density // half the icon's size
+        val s = 9f * density * (rowHeight / fullRowHeight) // half the icon's size
         iconPath.rewind()
         iconPaint.style = Paint.Style.STROKE
         when (action) {
@@ -405,6 +443,12 @@ class KeyboardView(context: Context) : View(context) {
     private companion object {
         /** Width of the keyboard in ordinary character keys. */
         const val COLUMNS = 10f
+
+        /** Height of a row of keys where the screen has room for it. */
+        const val FULL_ROW_DP = 54f
+
+        /** The most of the screen's height the keys may take. */
+        const val MAX_SCREEN_SHARE = 0.5f
 
         /** How long a finger must stay down to count as holding the key. */
         const val HOLD_MILLIS = 350L
