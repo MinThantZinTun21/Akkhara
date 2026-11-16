@@ -47,6 +47,7 @@ class AppActivity : ComponentActivity() {
                     onOpenKeyboardSettings = { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) },
                     onChooseKeyboard = { inputMethodManager().showInputMethodPicker() },
                     onDownloadModel = { ModelDownloadService.download(this, it) },
+                    onImportModel = { uri, size -> ModelDownloadService.import(this, uri, size) },
                     onCancelDownload = { ModelDownloadService.cancel(this) },
                     onRemoveModel = { model ->
                         // The translator lets go of the file first, so its space is freed at once.

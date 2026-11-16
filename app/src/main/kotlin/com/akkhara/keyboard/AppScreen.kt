@@ -3,7 +3,9 @@ package com.akkhara.keyboard
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.OpenableColumns
 import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -86,6 +88,7 @@ fun AppScreen(
     onOpenKeyboardSettings: () -> Unit,
     onChooseKeyboard: () -> Unit,
     onDownloadModel: (TranslationModel) -> Unit,
+    onImportModel: (Uri, Long) -> Unit,
     onCancelDownload: () -> Unit,
     onRemoveModel: (TranslationModel) -> Unit,
 ) {
@@ -156,7 +159,7 @@ fun AppScreen(
                 )
             }
 
-            ModelsSection(models, onDownloadModel, onCancelDownload, onRemoveModel)
+            ModelsSection(models, onDownloadModel, onImportModel, onCancelDownload, onRemoveModel)
 
             SectionTitle(R.string.prompts_title)
             Text(
@@ -177,6 +180,7 @@ fun AppScreen(
 private fun ModelsSection(
     models: ModelShelf,
     onDownload: (TranslationModel) -> Unit,
+    onImport: (Uri, Long) -> Unit,
     onCancelDownload: () -> Unit,
     onRemove: (TranslationModel) -> Unit,
 ) {
@@ -205,10 +209,11 @@ private fun ModelsSection(
     Column {
         all.forEach { model ->
             val isOnPhone = model in onPhone
-            val isRunning = running?.model == model
+            // An import's progress shows by the import button instead, even while replacing this model.
+            val isRunning = model.source != null && running?.model == model
             val status = when {
                 isRunning -> ModelDownloadService.progressText(context, running.step, running.bytes, running.total)
-                download is DownloadState.Failed && download.model == model ->
+                model.source != null && download is DownloadState.Failed && download.model == model ->
                     ModelDownloadService.failureText(context, download.reason, model)
                 model == inUse -> stringResource(R.string.model_in_use)
                 isOnPhone -> stringResource(R.string.model_on_phone)
@@ -238,6 +243,8 @@ private fun ModelsSection(
             }
         }
     }
+
+    ImportButton(download, onImport, onCancelDownload)
 
     downloading?.let { model ->
         AlertDialog(
@@ -288,6 +295,64 @@ private fun ModelsSection(
             },
         )
     }
+}
+
+/**
+ * Import model file: Android's file picker, then the copy's progress or why it
+ * failed. Only a file named `.litertlm` is taken.
+ */
+@Composable
+private fun ImportButton(download: DownloadState, onImport: (Uri, Long) -> Unit, onCancel: () -> Unit) {
+    val context = LocalContext.current
+    var wrongFile by remember { mutableStateOf(false) }
+    val chooseFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val (name, size) = describe(context, uri)
+        wrongFile = !name.endsWith(".litertlm", ignoreCase = true)
+        if (!wrongFile) onImport(uri, size)
+    }
+    val importing = (download as? DownloadState.Running)?.takeIf { it.model.source == null }
+    val failed = (download as? DownloadState.Failed)?.takeIf { it.model.source == null }
+    val status = when {
+        importing != null -> ModelDownloadService.progressText(context, importing.step, importing.bytes, importing.total)
+        failed != null -> ModelDownloadService.failureText(context, failed.reason, failed.model)
+        wrongFile -> stringResource(R.string.import_wrong_file)
+        else -> stringResource(R.string.model_import_note)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            status,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (failed != null || wrongFile) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (importing != null && importing.step == DownloadState.Step.Copying && importing.total > 0) {
+            LinearProgressIndicator(
+                progress = { importing.bytes.toFloat() / importing.total },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { chooseFile.launch(arrayOf("*/*")) },
+                // One download or import at a time.
+                enabled = download !is DownloadState.Running,
+            ) { Text(stringResource(R.string.model_import)) }
+            if (importing != null) TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+        }
+    }
+}
+
+/** The chosen file's name and size in bytes (-1 when Android does not say). */
+private fun describe(context: Context, uri: Uri): Pair<String, Long> {
+    val columns = arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
+    context.contentResolver.query(uri, columns, null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) {
+            val name = cursor.getString(0).orEmpty()
+            val size = if (cursor.isNull(1)) -1 else cursor.getLong(1)
+            return name to size
+        }
+    }
+    return "" to -1
 }
 
 private fun needsNotificationPermission(context: Context) =

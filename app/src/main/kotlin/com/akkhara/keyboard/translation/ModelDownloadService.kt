@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -50,9 +51,9 @@ sealed interface DownloadState {
 
     data class Failed(val model: TranslationModel, val reason: Reason) : DownloadState
 
-    enum class Step { WaitingForWifi, Downloading, Checking }
+    enum class Step { WaitingForWifi, Downloading, Copying, Checking }
 
-    enum class Reason { Failed, NoSpace }
+    enum class Reason { Failed, NoSpace, NotAModel }
 }
 
 /**
@@ -66,6 +67,10 @@ sealed interface DownloadState {
  * The file is written to a partial file in private storage, continued with a
  * range request after a dropped connection, and counts as on the phone only
  * once it has the listed SHA-256 and opens as a model.
+ *
+ * It also copies a model file the user imports, which uses no network: the
+ * copy runs in the background in the same way and must pass the same open
+ * check. Only one download or import runs at a time.
  */
 class ModelDownloadService : Service() {
 
@@ -111,7 +116,16 @@ class ModelDownloadService : Service() {
                 }
                 goForeground(progressNotification(model, DownloadState.Step.Downloading, 0, model.sizeBytes))
                 // One download at a time: a second request while one runs changes nothing.
-                if (job == null) start(model)
+                if (job == null) start(model) { download(model) }
+            }
+            ACTION_IMPORT -> {
+                val uri = intent.data
+                val size = intent.getLongExtra(EXTRA_SIZE, -1)
+                val imported = TranslationModel(ModelShelf.IMPORTED_ID, ModelShelf.IMPORTED_NAME, size, source = null)
+                val model = model ?: imported
+                goForeground(progressNotification(model, DownloadState.Step.Copying, 0, model.sizeBytes))
+                if (job == null && uri != null) start(model) { copy(uri, model) }
+                else if (job == null) stopEmpty()
             }
             ACTION_CANCEL -> {
                 cancel()
@@ -135,14 +149,20 @@ class ModelDownloadService : Service() {
         super.onDestroy()
     }
 
-    private fun start(model: TranslationModel) {
+    private fun stopEmpty() {
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    private fun start(model: TranslationModel, work: () -> Outcome) {
         this.model = model
         cancelled = false
         stopped = false
-        report(model, DownloadState.Step.Downloading, models.partialFile(model).length(), force = true)
+        val first = if (model.source != null) DownloadState.Step.Downloading else DownloadState.Step.Copying
+        report(model, first, models.partialFile(model).length(), force = true)
         job = Thread({
             val outcome = try {
-                download(model)
+                work()
             } catch (_: Exception) {
                 Outcome.Failed(DownloadState.Reason.Failed)
             }
@@ -202,6 +222,44 @@ class ModelDownloadService : Service() {
         if (sha256 != source.sha256 || !opens(partial)) {
             partial.delete()
             return Outcome.Failed(DownloadState.Reason.Failed)
+        }
+        return if (models.install(model, partial)) Outcome.Done else Outcome.Failed(DownloadState.Reason.Failed)
+    }
+
+    /**
+     * Runs on the download thread: copies the file the user chose into a
+     * partial file, then makes it the imported model if it opens as one. It
+     * replaces any model imported before.
+     */
+    private fun copy(uri: Uri, model: TranslationModel): Outcome {
+        val partial = models.partialFile(model)
+        partial.parentFile?.mkdirs()
+        partial.delete()
+        if (model.sizeBytes > 0 && freeBytes(partial.parentFile!!) < model.sizeBytes + SPARE_BYTES) {
+            return Outcome.Failed(DownloadState.Reason.NoSpace)
+        }
+        val input = contentResolver.openInputStream(uri) ?: return Outcome.Failed(DownloadState.Reason.Failed)
+        input.use {
+            FileOutputStream(partial).use { output ->
+                val buffer = ByteArray(BUFFER_BYTES)
+                var copied = 0L
+                while (true) {
+                    if (cancelled || stopped) {
+                        partial.delete()
+                        return if (cancelled) Outcome.Cancelled else Outcome.Failed(DownloadState.Reason.Failed)
+                    }
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    output.write(buffer, 0, read)
+                    copied += read
+                    report(model, DownloadState.Step.Copying, copied)
+                }
+            }
+        }
+        report(model, DownloadState.Step.Checking, 0, force = true)
+        if (!opens(partial)) {
+            partial.delete()
+            return Outcome.Failed(DownloadState.Reason.NotAModel)
         }
         return if (models.install(model, partial)) Outcome.Done else Outcome.Failed(DownloadState.Reason.Failed)
     }
@@ -312,7 +370,7 @@ class ModelDownloadService : Service() {
         val now = SystemClock.elapsedRealtime()
         if (!force && now - lastReport < REPORT_MILLIS) return
         lastReport = now
-        val total = model.sizeBytes
+        val total = model.sizeBytes.coerceAtLeast(bytes)
         main.post {
             ModelDownloads.state = DownloadState.Running(model, step, bytes, total)
             notify(progressNotification(model, step, bytes, total))
@@ -345,9 +403,16 @@ class ModelDownloadService : Service() {
     private fun progressNotification(model: TranslationModel, step: DownloadState.Step, bytes: Long, total: Long) =
         NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle(getString(R.string.download_title, model.name))
+            .setContentTitle(
+                if (model.source != null) getString(R.string.download_title, model.name)
+                else getString(R.string.import_title),
+            )
             .setContentText(progressText(this, step, bytes, total))
-            .setProgress(PROGRESS_MAX, (PROGRESS_MAX * bytes / total.coerceAtLeast(1)).toInt(), step == DownloadState.Step.WaitingForWifi)
+            .setProgress(
+                PROGRESS_MAX,
+                (PROGRESS_MAX * bytes / total.coerceAtLeast(1)).toInt(),
+                step == DownloadState.Step.WaitingForWifi || total <= 0,
+            )
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(openApp())
@@ -379,8 +444,10 @@ class ModelDownloadService : Service() {
 
     companion object {
         private const val ACTION_DOWNLOAD = "com.akkhara.keyboard.action.DOWNLOAD_MODEL"
+        private const val ACTION_IMPORT = "com.akkhara.keyboard.action.IMPORT_MODEL"
         private const val ACTION_CANCEL = "com.akkhara.keyboard.action.CANCEL_DOWNLOAD"
         private const val EXTRA_MODEL = "model"
+        private const val EXTRA_SIZE = "size"
         private const val CHANNEL = "model_download"
         private const val NOTIFICATION_ID = 1
 
@@ -409,7 +476,22 @@ class ModelDownloadService : Service() {
             )
         }
 
-        /** Stops the download and deletes what it fetched. */
+        /**
+         * Starts copying the model file at [uri], [size] bytes long or -1 if
+         * unknown, in the background to become the imported model.
+         */
+        fun import(context: Context, uri: Uri, size: Long) {
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, ModelDownloadService::class.java)
+                    .setAction(ACTION_IMPORT)
+                    .setData(uri)
+                    .putExtra(EXTRA_SIZE, size)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+            )
+        }
+
+        /** Stops the download or import and deletes what it fetched. */
         fun cancel(context: Context) {
             context.startService(Intent(context, ModelDownloadService::class.java).setAction(ACTION_CANCEL))
         }
@@ -429,11 +511,17 @@ class ModelDownloadService : Service() {
                 Formatter.formatFileSize(context, bytes),
                 Formatter.formatFileSize(context, total),
             )
+            DownloadState.Step.Copying -> context.getString(
+                R.string.import_progress,
+                Formatter.formatFileSize(context, bytes),
+                Formatter.formatFileSize(context, total),
+            )
             DownloadState.Step.Checking -> context.getString(R.string.download_checking)
         }
 
         fun failureText(context: Context, reason: DownloadState.Reason, model: TranslationModel): String = when (reason) {
             DownloadState.Reason.Failed -> context.getString(R.string.download_failed)
+            DownloadState.Reason.NotAModel -> context.getString(R.string.import_not_a_model)
             DownloadState.Reason.NoSpace -> context.getString(
                 R.string.download_no_space,
                 Formatter.formatFileSize(context, model.sizeBytes),

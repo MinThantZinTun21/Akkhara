@@ -48,6 +48,12 @@
     <string name="download_checking">Checking the file…</string>
     <string name="download_done">%1$s is ready to use.</string>
     <string name="download_failed">Download failed. Try again.</string>
+    <string name="model_import">Import model file</string>
+    <string name="model_import_note">Already have a .litertlm model file? Import it to use it instead of downloading one.</string>
+    <string name="import_title">Importing a model file</string>
+    <string name="import_progress">Copying: %1$s of %2$s</string>
+    <string name="import_wrong_file">Choose a file whose name ends in .litertlm.</string>
+    <string name="import_not_a_model">This file isn\'t a translation model.</string>
     <string name="download_no_space">Not enough free space: %1$s and some room to spare are needed.</string>
 
     <string name="prompts_title">Prompts</string>
