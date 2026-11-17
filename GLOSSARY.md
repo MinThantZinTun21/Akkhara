@@ -137,7 +137,7 @@ Deleting a translation model from the phone to free its space. Removing the mode
 _Avoid_: Uninstall, delete (for this meaning)
 
 **Model download**:
-Fetching one of Akkhara's listed translation models from the internet inside the Akkhara app, one at a time. It runs in the background, shown in a notification, and is the app's only use of the network.
+Fetching one of Akkhara's listed translation models from the internet, started in the Akkhara app, one at a time. Android itself does the downloading, so it keeps going in a notification even after the app is closed or stopped, and the model becomes usable once it is checked. It is the app's only use of the network.
 _Avoid_: Update, sync, install
 
 **Import**:

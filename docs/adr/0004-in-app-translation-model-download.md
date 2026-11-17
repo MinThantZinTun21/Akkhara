@@ -1,5 +1,7 @@
 # The app downloads the translation model itself, and that is its only network use
 
+_ADR 0006 replaces this ADR's choice of the app's own service over Android's `DownloadManager`._
+
 Translation runs a language model on the phone, and the model (about 2.6 GB) is far too large to ship inside the APK. The owner chose a download inside the Akkhara app over sending the user to a browser, so the app now declares the `INTERNET` permission. This reverses ADR 0002's central rule, and the owner accepted the cost: Android grants the permission to the whole app, so the keyboard process could in principle reach the network too.
 
 To keep that cost as small as we can:
