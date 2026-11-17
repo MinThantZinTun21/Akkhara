@@ -132,8 +132,13 @@ class ModelDownloader(private val context: Context) {
 
     /** Where the download stands: running, complete, failed, or null when there is none. */
     fun progress(): DownloadProgress? {
-        val model = model() ?: return null
         val id = downloadId()
+        val model = model()
+        if (model == null) {
+            // Its model is no longer listed, after an update: the download is stopped and its file goes.
+            if (id >= 0) exclusively { if (downloadId() == id) discard(null) }
+            return null
+        }
         manager.query(DownloadManager.Query().setFilterById(id)).use { row ->
             // The row is gone when the user cleared it from Android's downloads,
             // or when another thread finished or cancelled the download meanwhile.
@@ -204,19 +209,9 @@ class ModelDownloader(private val context: Context) {
     fun actIfOver() = exclusively {
         when (val progress = progress()) {
             DownloadProgress.Complete -> checkIfComplete()
-            is DownloadProgress.Failed -> failed(downloadId(), progress.reason)
+            is DownloadProgress.Failed -> model()?.let { endAsFailed(it, progress.reason) }
             else -> Unit
         }
-    }
-
-    /**
-     * Download [id] failed for [reason]: its file goes and the user is told.
-     * Nothing happens once [id] is no longer the download in progress, as
-     * after a cancel.
-     */
-    internal fun failed(id: Long, reason: DownloadState.Reason) = exclusively {
-        val model = model() ?: return@exclusively
-        if (downloadId() == id) endAsFailed(model, reason)
     }
 
     /**
@@ -225,8 +220,7 @@ class ModelDownloader(private val context: Context) {
      * [MAX_OPEN_TIMEOUTS] tries the download fails.
      */
     internal fun openTimedOut(id: Long): Boolean = exclusively {
-        val model = model() ?: return@exclusively false
-        if (downloadId() != id) return@exclusively false
+        val model = inProgress(id) ?: return@exclusively false
         val timeouts = preferences.getInt(KEY_TIMEOUTS, 0) + 1
         if (timeouts >= MAX_OPEN_TIMEOUTS) {
             endAsFailed(model, DownloadState.Reason.Failed)
@@ -243,8 +237,7 @@ class ModelDownloader(private val context: Context) {
      * cancel.
      */
     internal fun checked(id: Long, failure: DownloadState.Reason?) = exclusively {
-        val model = model() ?: return@exclusively
-        if (downloadId() != id) return@exclusively
+        val model = inProgress(id) ?: return@exclusively
         val file = shelf.downloadFile(model)
         // With no file left, an earlier check put the model on the phone and was stopped before it said so.
         val onPhone = failure == null && if (file?.isFile == true) shelf.install(model, file) else shelf.isOnPhone(model)
@@ -252,6 +245,9 @@ class ModelDownloader(private val context: Context) {
         discard(model)
         ModelNotifications.ready(context, model)
     }
+
+    /** The model of download [id], or null once [id] is no longer the download in progress, as after a cancel. */
+    private fun inProgress(id: Long): TranslationModel? = model()?.takeIf { downloadId() == id }
 
     private fun endAsFailed(model: TranslationModel, reason: DownloadState.Reason) {
         discard(model)
