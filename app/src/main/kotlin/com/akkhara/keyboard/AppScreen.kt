@@ -385,7 +385,7 @@ private fun ModelsSection(
                 note = if (model.translatesOnly) translatesOnlyNote(model, onPhone) else null,
                 isInUse = model == inUse,
                 isOnPhone = isOnPhone,
-                progress = running?.takeIf { isRunning && it.step != DownloadState.Step.WaitingForWifi }
+                progress = running?.takeIf { isRunning && it.step == DownloadState.Step.Downloading }
                     ?.let { it.bytes.toFloat() / it.total },
                 onUse = {
                     models.use(model)

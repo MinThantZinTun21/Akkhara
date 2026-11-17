@@ -157,7 +157,7 @@ class ModelImportService : Service() {
             }
         }
         report(model, DownloadState.Step.Checking, 0, force = true)
-        if (!checker.opens(partial)) {
+        if (checker.opens(partial) != true) {
             partial.delete()
             return Outcome.Failed(DownloadState.Reason.NotAModel)
         }

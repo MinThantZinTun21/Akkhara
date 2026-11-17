@@ -27,17 +27,22 @@ class ModelCheckJob : JobService() {
     override fun onStartJob(params: JobParameters): Boolean {
         val stop = AtomicBoolean(false)
         stopped[params] = stop
+        val downloader = ModelDownloader(this)
+        val id = downloader.downloadId()
         Thread({
-            val finished = try {
-                check(stop)
+            val outcome = try {
+                check(downloader, id, stop)
             } catch (_: Exception) {
                 // An unreadable file, say: the download failed.
-                val downloader = ModelDownloader(this)
-                downloader.settle { downloader.model()?.let { fail(downloader, it, ModelShelf(this).downloadFile(it)) } }
-                true
+                downloader.checked(id, DownloadState.Reason.Failed)
+                Outcome.Done
             }
             stopped.remove(params)
-            if (finished) jobFinished(params, false)
+            when (outcome) {
+                Outcome.Done -> jobFinished(params, false)
+                Outcome.Again -> jobFinished(params, true)
+                Outcome.Stopped -> Unit
+            }
         }, "model-check").start()
         return true
     }
@@ -47,50 +52,43 @@ class ModelCheckJob : JobService() {
         return true
     }
 
-    /** Runs on the worker thread. False when it was [stop]ped before it finished. */
-    private fun check(stop: AtomicBoolean): Boolean {
-        val downloader = ModelDownloader(this)
-        val shelf = ModelShelf(this)
-        val model = downloader.model() ?: return true
-        val id = downloader.downloadId()
-        if (downloader.progress() != DownloadProgress.Complete) return true
-        val file = shelf.downloadFile(model)
-        val source = model.source
-        if (file != null && !file.isFile && shelf.isOnPhone(model)) {
-            // An earlier run installed it and was killed before it said so.
-            downloader.finish(model, null)
-            return true
+    private enum class Outcome {
+        Done,
+
+        /** Android stopped it, and runs it again. */
+        Stopped,
+
+        /** The model did not answer in time, which says nothing about the file: it runs again later. */
+        Again,
+    }
+
+    /** Runs on the worker thread: checks download [id] unless it has ended. */
+    private fun check(downloader: ModelDownloader, id: Long, stop: AtomicBoolean): Outcome {
+        val model = downloader.model() ?: return Outcome.Done
+        if (downloader.downloadId() != id || downloader.progress() != DownloadProgress.Complete) return Outcome.Done
+        val file = ModelShelf(this).downloadFile(model)
+        if (file == null || !file.isFile) {
+            downloader.checked(id, null)
+            return Outcome.Done
         }
-        if (file == null || source == null || !file.isFile) {
-            fail(downloader, model, file)
-            return true
+        val sha256 = sha256(file, stop) ?: return Outcome.Stopped
+        if (sha256 != model.source?.sha256) {
+            downloader.checked(id, DownloadState.Reason.Failed)
+            return Outcome.Done
         }
-        val sha256 = sha256(file, stop) ?: return false
         val checker = TranslatorClient(applicationContext)
         val opens = try {
-            sha256 == source.sha256 && checker.opens(file)
+            checker.opens(file, stop)
         } finally {
             Handler(Looper.getMainLooper()).post { checker.close() }
         }
-        if (stop.get()) return false
-        downloader.settle {
-            // Cancelled while it was checked: the cancel deleted the file, and nothing is reported.
-            if (downloader.downloadId() != id) return@settle
-            if (opens && shelf.install(model, file)) {
-                downloader.finish(model, null)
-                ModelNotifications.ready(this, model)
-            } else {
-                fail(downloader, model, file)
-            }
+        if (stop.get()) return Outcome.Stopped
+        when (opens) {
+            null -> return Outcome.Again
+            true -> downloader.checked(id, null)
+            false -> downloader.checked(id, DownloadState.Reason.NotAModel)
         }
-        return true
-    }
-
-    /** The downloaded [file] is no good: it goes, and the user is told. */
-    private fun fail(downloader: ModelDownloader, model: TranslationModel, file: File?) {
-        file?.delete()
-        downloader.finish(model, DownloadState.Reason.Failed)
-        ModelNotifications.failed(this, model, DownloadState.Reason.Failed)
+        return Outcome.Done
     }
 
     /** The file's SHA-256 in lower-case hex, or null if the check was stopped while reading it. */
@@ -117,17 +115,22 @@ class ModelCheckJob : JobService() {
 /**
  * The open check, run in the translator's own process so a large model never
  * loads in this one. Blocks the calling thread, which must not be the main one.
+ * Null when the model did not answer in time or [stop] was set first.
  */
-internal fun TranslatorClient.opens(file: File): Boolean {
+internal fun TranslatorClient.opens(file: File, stop: AtomicBoolean = AtomicBoolean(false)): Boolean? {
     val answered = CountDownLatch(1)
-    var opens = false
+    val opens = AtomicBoolean(false)
     Handler(Looper.getMainLooper()).post {
         check(file) {
-            opens = it
+            opens.set(it)
             answered.countDown()
         }
     }
-    return answered.await(OPEN_CHECK_MINUTES, TimeUnit.MINUTES) && opens
+    repeat(OPEN_CHECK_SECONDS) {
+        if (answered.await(1, TimeUnit.SECONDS)) return opens.get()
+        if (stop.get()) return null
+    }
+    return null
 }
 
-private const val OPEN_CHECK_MINUTES = 3L
+private const val OPEN_CHECK_SECONDS = 180

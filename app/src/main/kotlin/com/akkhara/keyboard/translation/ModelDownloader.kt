@@ -101,11 +101,11 @@ class ModelDownloader(private val context: Context) {
     fun downloadId(): Long = preferences.getLong(KEY_DOWNLOAD, -1)
 
     /** Starts downloading [model], unless a download is already in progress. A failed one makes way. */
-    fun start(model: TranslationModel) {
-        val source = model.source ?: return
-        if (progress().let { it != null && it !is DownloadProgress.Failed }) return
+    fun start(model: TranslationModel) = exclusively {
+        val source = model.source ?: return@exclusively
+        if (progress().let { it != null && it !is DownloadProgress.Failed }) return@exclusively
         cancel()
-        val file = shelf.downloadFile(model) ?: return
+        val file = shelf.downloadFile(model) ?: return@exclusively
         file.parentFile?.mkdirs()
         file.delete()
         val request = DownloadManager.Request(source.url.toUri())
@@ -123,8 +123,8 @@ class ModelDownloader(private val context: Context) {
     }
 
     /** Stops the download or its check and deletes what was downloaded. */
-    fun cancel() = settle {
-        val model = model() ?: return@settle
+    fun cancel() = exclusively {
+        val model = model() ?: return@exclusively
         context.getSystemService(JobScheduler::class.java).cancel(ModelCheckJob.JOB_ID)
         removeDownload()
         shelf.downloadFile(model)?.delete()
@@ -139,7 +139,7 @@ class ModelDownloader(private val context: Context) {
             // The row is gone when the user cleared it from Android's downloads,
             // or when another thread finished or cancelled the download meanwhile.
             if (!row.moveToFirst()) {
-                if (downloadId() == id) forget()
+                exclusively { if (downloadId() == id) forget() }
                 return null
             }
             return downloadProgress(
@@ -172,7 +172,11 @@ class ModelDownloader(private val context: Context) {
         }
     }
 
-    /** What the app screen shows, read every moment it is open: [state], and the check asked for when it is due. */
+    /**
+     * What the app screen shows, read every moment it is open: [state]. It
+     * also schedules the check once the download is complete, in case nothing
+     * else did.
+     */
     fun poll(): DownloadState = state().also {
         if (it is DownloadState.Running && it.step == DownloadState.Step.Checking) checkIfComplete()
     }
@@ -183,28 +187,54 @@ class ModelDownloader(private val context: Context) {
      * It is a regular job, not an expedited one, so a large model has the
      * minutes its check needs.
      */
-    fun checkIfComplete() = settle {
-        if (progress() != DownloadProgress.Complete) return@settle
+    fun checkIfComplete() = exclusively {
+        if (progress() != DownloadProgress.Complete) return@exclusively
         val scheduler = context.getSystemService(JobScheduler::class.java)
-        if (scheduler.getPendingJob(ModelCheckJob.JOB_ID) != null) return@settle
+        if (scheduler.getPendingJob(ModelCheckJob.JOB_ID) != null) return@exclusively
         val job = JobInfo.Builder(ModelCheckJob.JOB_ID, ComponentName(context, ModelCheckJob::class.java))
             .setOverrideDeadline(0)
             .build()
         scheduler.schedule(job)
     }
 
-    /** The download is over: [reason] says why it failed, or null when it worked. */
-    internal fun finish(model: TranslationModel, reason: DownloadState.Reason?) {
-        removeDownload()
-        forget()
-        if (reason != null) preferences.edit { putString(KEY_FAILED, "${model.id}:${reason.name}") }
+    /**
+     * Download [id] failed for [reason]: its file goes and the user is told.
+     * Nothing happens once [id] is no longer the download in progress, as
+     * after a cancel.
+     */
+    internal fun failed(id: Long, reason: DownloadState.Reason) = exclusively {
+        val model = model() ?: return@exclusively
+        if (downloadId() == id) fail(model, reason)
     }
 
     /**
-     * Runs [block] while no other thread cancels the download, schedules its
-     * check or settles how the check came out.
+     * The check of download [id] is over: [failure] says why its file is no
+     * good, or null when it passed and the model goes on the phone. Nothing
+     * happens once [id] is no longer the download in progress, as after a
+     * cancel.
      */
-    internal fun <T> settle(block: () -> T): T = synchronized(lock, block)
+    internal fun checked(id: Long, failure: DownloadState.Reason?) = exclusively {
+        val model = model() ?: return@exclusively
+        if (downloadId() != id) return@exclusively
+        val file = shelf.downloadFile(model)
+        // With no file left, an earlier check put the model on the phone and was stopped before it said so.
+        val onPhone = failure == null && if (file?.isFile == true) shelf.install(model, file) else shelf.isOnPhone(model)
+        if (!onPhone) return@exclusively fail(model, failure ?: DownloadState.Reason.Failed)
+        removeDownload()
+        forget()
+        ModelNotifications.ready(context, model)
+    }
+
+    private fun fail(model: TranslationModel, reason: DownloadState.Reason) {
+        shelf.downloadFile(model)?.delete()
+        removeDownload()
+        forget()
+        preferences.edit { putString(KEY_FAILED, "${model.id}:${reason.name}") }
+        ModelNotifications.failed(context, model, reason)
+    }
+
+    /** Runs [block] while no other thread starts, cancels or ends the download, or schedules its check. */
+    private fun <T> exclusively(block: () -> T): T = synchronized(lock, block)
 
     private fun listed(id: String) = ListedModels.all.firstOrNull { it.id == id }
 

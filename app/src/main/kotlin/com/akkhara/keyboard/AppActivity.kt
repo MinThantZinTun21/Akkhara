@@ -17,6 +17,7 @@ import com.akkhara.keyboard.translation.ModelDownloader
 import com.akkhara.keyboard.translation.ModelImportService
 import com.akkhara.keyboard.translation.ModelShelf
 import com.akkhara.keyboard.translation.TranslatorClient
+import kotlin.concurrent.thread
 
 /**
  * The app screen: setup, a place to try the keyboard, and the settings.
@@ -40,7 +41,8 @@ class AppActivity : ComponentActivity() {
         val models = ModelShelf(this)
         val downloader = ModelDownloader(this)
         // A download that completed while the app was stopped is checked now.
-        downloader.checkIfComplete()
+        // DownloadManager and multi-GB files are kept off the main thread.
+        thread { downloader.checkIfComplete() }
         translator = TranslatorClient(applicationContext)
         setContent {
             AkkharaTheme {
@@ -51,8 +53,8 @@ class AppActivity : ComponentActivity() {
                     onOpenKeyboardSettings = { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) },
                     onChooseKeyboard = { inputMethodManager().showInputMethodPicker() },
                     readDownload = downloader::poll,
-                    onDownloadModel = downloader::start,
-                    onCancelDownload = downloader::cancel,
+                    onDownloadModel = { model -> thread { downloader.start(model) } },
+                    onCancelDownload = { thread { downloader.cancel() } },
                     onImportModel = { uri, size -> ModelImportService.import(this, uri, size) },
                     onCancelImport = { ModelImportService.cancel(this) },
                     onRemoveModel = { model ->

@@ -15,14 +15,10 @@ class ModelDownloadReceiver : BroadcastReceiver() {
         if (intent.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
         val downloader = ModelDownloader(context)
         val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-        val model = downloader.model() ?: return
         if (id != downloader.downloadId()) return
         when (val progress = downloader.progress()) {
             DownloadProgress.Complete -> downloader.checkIfComplete()
-            is DownloadProgress.Failed -> {
-                downloader.finish(model, progress.reason)
-                ModelNotifications.failed(context, model, progress.reason)
-            }
+            is DownloadProgress.Failed -> downloader.failed(id, progress.reason)
             else -> Unit
         }
     }

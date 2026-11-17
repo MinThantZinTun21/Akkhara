@@ -83,7 +83,7 @@
     <string name="download_waiting_for_wifi">Waiting for Wi-Fi</string>
     <string name="download_progress">%1$s of %2$s</string>
     <string name="download_checking">Checking the file…</string>
-    <string name="download_done">%1$s is ready to use.</string>
+    <string name="download_done">%1$s is ready to translate.</string>
     <string name="download_failed">Download failed. Try again.</string>
     <string name="model_import">Import model file</string>
     <string name="model_import_note">Already have a .litertlm model file? Import it to use it instead of downloading one.</string>

@@ -184,7 +184,7 @@ class ModelShelf(context: Context) {
     /** [model]'s file: in the app's own folder, or where it was downloaded. */
     fun file(model: TranslationModel): File {
         val own = fileFor(model.id)
-        val downloaded = downloads?.let { File(it, model.id + EXTENSION) }
+        val downloaded = downloadedFile(model)
         return if (!own.isFile && downloaded?.isFile == true) downloaded else own
     }
 
@@ -198,6 +198,9 @@ class ModelShelf(context: Context) {
     fun downloadPath(model: TranslationModel): String = "$FOLDER/${downloadName(model)}"
 
     private fun downloadName(model: TranslationModel) = model.id + PARTIAL
+
+    /** Where a downloaded [model] is once it passed its checks. */
+    private fun downloadedFile(model: TranslationModel): File? = downloads?.let { File(it, model.id + EXTENSION) }
 
     /**
      * The model the keyboard translates with, or null while there is none on
@@ -229,7 +232,7 @@ class ModelShelf(context: Context) {
     /** Deletes [model]'s file, wherever it is. If it was in use, another model on the phone takes its place. */
     fun remove(model: TranslationModel) {
         fileFor(model.id).delete()
-        downloads?.let { File(it, model.id + EXTENSION).delete() }
+        downloadedFile(model)?.delete()
         inUse()
     }
 
