@@ -84,7 +84,7 @@ class ModelCheckJob : JobService() {
         }
         if (stop.get()) return Outcome.Stopped
         when (opens) {
-            null -> return Outcome.Again
+            null -> return if (downloader.openTimedOut(id)) Outcome.Again else Outcome.Done
             true -> downloader.checked(id, null)
             false -> downloader.checked(id, DownloadState.Reason.NotAModel)
         }

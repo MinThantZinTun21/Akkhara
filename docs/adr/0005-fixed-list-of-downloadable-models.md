@@ -1,6 +1,6 @@
 # The app may download any model from a fixed list, not just one file
 
-_ADR 0006 replaces the foreground model download service mentioned here: Android's `DownloadManager` now downloads the listed models. The fixed list, the pins and one download at a time still stand._
+_ADR 0006 replaces the foreground model download service mentioned here: Android's `DownloadManager` now downloads the listed models, and a downloaded model's file stays in the app's folder on shared storage instead of private storage. The fixed list, the pins and one download at a time still stand._
 
 ADR 0004 let the app download exactly one pinned file. The owner now wants to choose between translation models in settings, keep several on the phone, and switch the one in use. This ADR replaces ADR 0004's "one fixed file" rule; the rest of ADR 0004 stands unchanged: Wi-Fi only, a foreground model download service that holds the only networking code, the SHA-256 and open checks, and no other network use.
 

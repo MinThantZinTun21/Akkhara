@@ -40,9 +40,9 @@ class AppActivity : ComponentActivity() {
         val settings = KeyboardSettings(this)
         val models = ModelShelf(this)
         val downloader = ModelDownloader(this)
-        // A download that completed while the app was stopped is checked now.
+        // A download that ended while the app was stopped is checked or reported now.
         // DownloadManager and multi-GB files are kept off the main thread.
-        thread { downloader.checkIfComplete() }
+        thread { downloader.actIfOver() }
         translator = TranslatorClient(applicationContext)
         setContent {
             AkkharaTheme {

@@ -4,6 +4,7 @@ import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import kotlin.concurrent.thread
 
 /**
  * Android says a download is over, whether or not the app is open: a complete
@@ -13,13 +14,16 @@ import android.content.Intent
 class ModelDownloadReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
-        val downloader = ModelDownloader(context)
         val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-        if (id != downloader.downloadId()) return
-        when (val progress = downloader.progress()) {
-            DownloadProgress.Complete -> downloader.checkIfComplete()
-            is DownloadProgress.Failed -> downloader.failed(id, progress.reason)
-            else -> Unit
+        // DownloadManager and a failed multi-GB file are kept off the main thread.
+        val pending = goAsync()
+        thread {
+            try {
+                val downloader = ModelDownloader(context)
+                if (id == downloader.downloadId()) downloader.actIfOver()
+            } finally {
+                pending.finish()
+            }
         }
     }
 }
