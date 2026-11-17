@@ -48,6 +48,7 @@ class ModelCheckJob : JobService() {
         val source = model.source
         if (file == null || source == null || !file.isFile) {
             downloader.finish(model, DownloadState.Reason.Failed)
+            ModelNotifications.failed(this, model, DownloadState.Reason.Failed)
             return true
         }
         val sha256 = sha256(file) ?: return false
@@ -59,8 +60,14 @@ class ModelCheckJob : JobService() {
         }
         if (stopped) return false
         val installed = opens && shelf.install(model, file)
-        if (!installed) file.delete()
-        downloader.finish(model, if (installed) null else DownloadState.Reason.Failed)
+        if (installed) {
+            downloader.finish(model, null)
+            ModelNotifications.ready(this, model)
+        } else {
+            file.delete()
+            downloader.finish(model, DownloadState.Reason.Failed)
+            ModelNotifications.failed(this, model, DownloadState.Reason.Failed)
+        }
         return true
     }
 

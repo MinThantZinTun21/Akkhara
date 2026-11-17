@@ -63,6 +63,19 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!--
+          Android says when a model download is over, even while the app is
+          not running. Only the download provider can send this.
+        -->
+        <receiver
+            android:name=".translation.ModelDownloadReceiver"
+            android:exported="true"
+            android:permission="android.permission.SEND_DOWNLOAD_COMPLETED_INTENTS">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
         <!-- Checks a model Android has finished downloading. -->
         <service
             android:name=".translation.ModelCheckJob"
