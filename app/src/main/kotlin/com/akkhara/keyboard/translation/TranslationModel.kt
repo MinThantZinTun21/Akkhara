@@ -165,10 +165,10 @@ object ListedModels {
  * the screen is seen by the next translation.
  */
 class ModelShelf(context: Context) {
-    private val folder = File(context.filesDir, "translation")
+    private val folder = File(context.filesDir, FOLDER)
 
     /** Where Android's DownloadManager puts downloaded models (docs/adr/0006). Null while shared storage is missing. */
-    private val downloads: File? = context.getExternalFilesDir(null)?.let { File(it, "translation") }
+    private val downloads: File? = context.getExternalFilesDir(null)?.let { File(it, FOLDER) }
     private val preferences = context.getSharedPreferences("akkhara", Context.MODE_PRIVATE)
 
     init {
@@ -192,7 +192,12 @@ class ModelShelf(context: Context) {
     fun partialFile(model: TranslationModel): File = File(folder, model.id + PARTIAL)
 
     /** Where Android downloads [model], until it passes its checks. Null while shared storage is missing. */
-    fun downloadFile(model: TranslationModel): File? = downloads?.let { File(it, model.id + PARTIAL) }
+    fun downloadFile(model: TranslationModel): File? = downloads?.let { File(it, downloadName(model)) }
+
+    /** [downloadFile]'s path within the app's shared-storage folder, as DownloadManager takes it. */
+    fun downloadPath(model: TranslationModel): String = "$FOLDER/${downloadName(model)}"
+
+    private fun downloadName(model: TranslationModel) = model.id + PARTIAL
 
     /**
      * The model the keyboard translates with, or null while there is none on
@@ -256,6 +261,7 @@ class ModelShelf(context: Context) {
     companion object {
         const val IMPORTED_ID = "imported"
         const val IMPORTED_NAME = "Imported model"
+        private const val FOLDER = "translation"
         private const val EXTENSION = ".litertlm"
         private const val PARTIAL = ".partial.litertlm"
         private const val KEY_IN_USE = "model_in_use"

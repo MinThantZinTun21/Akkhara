@@ -7,7 +7,7 @@ import com.akkhara.keyboard.translation.downloadProgress
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class SystemDownloadTest {
+class ModelDownloadProgressTest {
     private val size = 1_000L
 
     @Test

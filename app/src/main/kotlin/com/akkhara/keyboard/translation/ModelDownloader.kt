@@ -5,7 +5,6 @@ import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
 import android.content.Context
-import android.os.Build
 import android.text.format.Formatter
 import androidx.core.content.edit
 import androidx.core.net.toUri
@@ -90,13 +89,12 @@ fun downloadProgress(status: Int, reason: Int, bytes: Long, total: Long, listedS
  */
 class ModelDownloader(private val context: Context) {
     private val manager = context.getSystemService(DownloadManager::class.java)
-    private val models = ModelShelf(context)
+    private val shelf = ModelShelf(context)
     private val preferences = context.getSharedPreferences("akkhara", Context.MODE_PRIVATE)
 
     /** The model being downloaded or checked, or null. */
     fun model(): TranslationModel? {
-        val id = preferences.getString(KEY_MODEL, null) ?: return null
-        return ListedModels.all.firstOrNull { it.id == id }
+        return listed(preferences.getString(KEY_MODEL, null) ?: return null)
     }
 
     /** The DownloadManager id of the download in progress, or -1. */
@@ -107,12 +105,12 @@ class ModelDownloader(private val context: Context) {
         val source = model.source ?: return
         if (progress().let { it != null && it !is DownloadProgress.Failed }) return
         cancel()
-        val file = models.downloadFile(model) ?: return
+        val file = shelf.downloadFile(model) ?: return
         file.parentFile?.mkdirs()
         file.delete()
         val request = DownloadManager.Request(source.url.toUri())
             .setTitle(model.name)
-            .setDestinationInExternalFilesDir(context, null, "${file.parentFile?.name}/${file.name}")
+            .setDestinationInExternalFilesDir(context, null, shelf.downloadPath(model))
             .setAllowedOverMetered(false)
             .setAllowedOverRoaming(false)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
@@ -125,11 +123,11 @@ class ModelDownloader(private val context: Context) {
     }
 
     /** Stops the download or its check and deletes what was downloaded. */
-    fun cancel() {
-        val model = model() ?: return
+    fun cancel() = settle {
+        val model = model() ?: return@settle
         context.getSystemService(JobScheduler::class.java).cancel(ModelCheckJob.JOB_ID)
-        downloadId().takeIf { it >= 0 }?.let { manager.remove(it) }
-        models.downloadFile(model)?.delete()
+        removeDownload()
+        shelf.downloadFile(model)?.delete()
         forget()
     }
 
@@ -138,8 +136,12 @@ class ModelDownloader(private val context: Context) {
         val model = model() ?: return null
         val id = downloadId()
         manager.query(DownloadManager.Query().setFilterById(id)).use { row ->
-            // The row is gone when the user cleared it from Android's downloads.
-            if (!row.moveToFirst()) return null.also { forget() }
+            // The row is gone when the user cleared it from Android's downloads,
+            // or when another thread finished or cancelled the download meanwhile.
+            if (!row.moveToFirst()) {
+                if (downloadId() == id) forget()
+                return null
+            }
             return downloadProgress(
                 status = row.getInt(row.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)),
                 reason = row.getInt(row.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)),
@@ -159,7 +161,7 @@ class ModelDownloader(private val context: Context) {
         if (model == null) {
             val failed = preferences.getString(KEY_FAILED, null) ?: return DownloadState.Idle
             val (id, reason) = failed.split(':').let { it[0] to it.getOrNull(1) }
-            val failedModel = ListedModels.all.firstOrNull { it.id == id } ?: return DownloadState.Idle
+            val failedModel = listed(id) ?: return DownloadState.Idle
             return DownloadState.Failed(failedModel, reason?.let(DownloadState.Reason::valueOf) ?: DownloadState.Reason.Failed)
         }
         return when (val progress = progress()) {
@@ -170,30 +172,44 @@ class ModelDownloader(private val context: Context) {
         }
     }
 
+    /** What the app screen shows, read every moment it is open: [state], and the check asked for when it is due. */
+    fun poll(): DownloadState = state().also {
+        if (it is DownloadState.Running && it.step == DownloadState.Step.Checking) checkIfComplete()
+    }
+
     /**
      * Schedules the check of a complete download, unless it is already
      * scheduled or running: scheduling it again would replace a running check.
+     * It is a regular job, not an expedited one, so a large model has the
+     * minutes its check needs.
      */
-    fun checkIfComplete() {
-        synchronized(scheduling) {
-            if (progress() != DownloadProgress.Complete) return
-            val scheduler = context.getSystemService(JobScheduler::class.java)
-            if (scheduler.getPendingJob(ModelCheckJob.JOB_ID) != null) return
-            val job = JobInfo.Builder(ModelCheckJob.JOB_ID, ComponentName(context, ModelCheckJob::class.java))
-            // Expedited runs it at once; when Android has none of those left for the app, it runs soon after.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (scheduler.schedule(job.setExpedited(true).build()) == JobScheduler.RESULT_SUCCESS) return
-                job.setExpedited(false)
-            }
-            scheduler.schedule(job.setOverrideDeadline(0).build())
-        }
+    fun checkIfComplete() = settle {
+        if (progress() != DownloadProgress.Complete) return@settle
+        val scheduler = context.getSystemService(JobScheduler::class.java)
+        if (scheduler.getPendingJob(ModelCheckJob.JOB_ID) != null) return@settle
+        val job = JobInfo.Builder(ModelCheckJob.JOB_ID, ComponentName(context, ModelCheckJob::class.java))
+            .setOverrideDeadline(0)
+            .build()
+        scheduler.schedule(job)
     }
 
-    /** The download is over: [reason] says why it failed, or null when it worked or was cancelled. */
+    /** The download is over: [reason] says why it failed, or null when it worked. */
     internal fun finish(model: TranslationModel, reason: DownloadState.Reason?) {
-        downloadId().takeIf { it >= 0 }?.let { manager.remove(it) }
+        removeDownload()
         forget()
         if (reason != null) preferences.edit { putString(KEY_FAILED, "${model.id}:${reason.name}") }
+    }
+
+    /**
+     * Runs [block] while no other thread cancels the download, schedules its
+     * check or settles how the check came out.
+     */
+    internal fun <T> settle(block: () -> T): T = synchronized(lock, block)
+
+    private fun listed(id: String) = ListedModels.all.firstOrNull { it.id == id }
+
+    private fun removeDownload() {
+        downloadId().takeIf { it >= 0 }?.let { manager.remove(it) }
     }
 
     private fun forget() {
@@ -204,8 +220,8 @@ class ModelDownloader(private val context: Context) {
     }
 
     private companion object {
-        /** The screen's poll, the receiver and the app opening may all ask for the check at once. */
-        val scheduling = Any()
+        /** The screen's poll, the receiver, the app opening, a cancel and the check itself may all act at once. */
+        val lock = Any()
 
         const val KEY_MODEL = "download_model"
         const val KEY_DOWNLOAD = "download_id"

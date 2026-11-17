@@ -33,7 +33,7 @@ class ModelCheckJob : JobService() {
             } catch (_: Exception) {
                 // An unreadable file, say: the download failed.
                 val downloader = ModelDownloader(this)
-                downloader.model()?.let { fail(downloader, it, ModelShelf(this).downloadFile(it)) }
+                downloader.settle { downloader.model()?.let { fail(downloader, it, ModelShelf(this).downloadFile(it)) } }
                 true
             }
             stopped.remove(params)
@@ -52,9 +52,15 @@ class ModelCheckJob : JobService() {
         val downloader = ModelDownloader(this)
         val shelf = ModelShelf(this)
         val model = downloader.model() ?: return true
+        val id = downloader.downloadId()
         if (downloader.progress() != DownloadProgress.Complete) return true
         val file = shelf.downloadFile(model)
         val source = model.source
+        if (file != null && !file.isFile && shelf.isOnPhone(model)) {
+            // An earlier run installed it and was killed before it said so.
+            downloader.finish(model, null)
+            return true
+        }
         if (file == null || source == null || !file.isFile) {
             fail(downloader, model, file)
             return true
@@ -67,11 +73,15 @@ class ModelCheckJob : JobService() {
             Handler(Looper.getMainLooper()).post { checker.close() }
         }
         if (stop.get()) return false
-        if (opens && shelf.install(model, file)) {
-            downloader.finish(model, null)
-            ModelNotifications.ready(this, model)
-        } else {
-            fail(downloader, model, file)
+        downloader.settle {
+            // Cancelled while it was checked: the cancel deleted the file, and nothing is reported.
+            if (downloader.downloadId() != id) return@settle
+            if (opens && shelf.install(model, file)) {
+                downloader.finish(model, null)
+                ModelNotifications.ready(this, model)
+            } else {
+                fail(downloader, model, file)
+            }
         }
         return true
     }

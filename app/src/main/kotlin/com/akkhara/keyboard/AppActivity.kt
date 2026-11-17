@@ -13,7 +13,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.akkhara.keyboard.translation.DownloadState
 import com.akkhara.keyboard.translation.ModelDownloader
 import com.akkhara.keyboard.translation.ModelImportService
 import com.akkhara.keyboard.translation.ModelShelf
@@ -51,11 +50,7 @@ class AppActivity : ComponentActivity() {
                     models = models,
                     onOpenKeyboardSettings = { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) },
                     onChooseKeyboard = { inputMethodManager().showInputMethodPicker() },
-                    readDownload = {
-                        downloader.state().also {
-                            if (it is DownloadState.Running && it.step == DownloadState.Step.Checking) downloader.checkIfComplete()
-                        }
-                    },
+                    readDownload = downloader::poll,
                     onDownloadModel = downloader::start,
                     onCancelDownload = downloader::cancel,
                     onImportModel = { uri, size -> ModelImportService.import(this, uri, size) },
