@@ -13,7 +13,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.akkhara.keyboard.translation.ModelDownloadService
+import com.akkhara.keyboard.translation.DownloadState
+import com.akkhara.keyboard.translation.ModelDownloader
+import com.akkhara.keyboard.translation.ModelImportService
 import com.akkhara.keyboard.translation.ModelShelf
 import com.akkhara.keyboard.translation.TranslatorClient
 
@@ -37,6 +39,9 @@ class AppActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val settings = KeyboardSettings(this)
         val models = ModelShelf(this)
+        val downloader = ModelDownloader(this)
+        // A download that completed while the app was stopped is checked now.
+        downloader.checkIfComplete()
         translator = TranslatorClient(applicationContext)
         setContent {
             AkkharaTheme {
@@ -46,9 +51,15 @@ class AppActivity : ComponentActivity() {
                     models = models,
                     onOpenKeyboardSettings = { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) },
                     onChooseKeyboard = { inputMethodManager().showInputMethodPicker() },
-                    onDownloadModel = { ModelDownloadService.download(this, it) },
-                    onImportModel = { uri, size -> ModelDownloadService.import(this, uri, size) },
-                    onCancelDownload = { ModelDownloadService.cancel(this) },
+                    readDownload = {
+                        downloader.state().also {
+                            if (it is DownloadState.Running && it.step == DownloadState.Step.Checking) downloader.checkIfComplete()
+                        }
+                    },
+                    onDownloadModel = downloader::start,
+                    onCancelDownload = downloader::cancel,
+                    onImportModel = { uri, size -> ModelImportService.import(this, uri, size) },
+                    onCancelImport = { ModelImportService.cancel(this) },
                     onRemoveModel = { model ->
                         // The translator lets go of the file first, so its space is freed at once.
                         translator.unload()

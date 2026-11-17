@@ -80,7 +80,6 @@
     <string name="model_download_title">Download %1$s?</string>
     <string name="model_download_body">It is %1$s and downloads over Wi-Fi only. It keeps downloading in the background, shown in a notification, even if you close the app.</string>
     <string name="download_channel">Translation model downloads</string>
-    <string name="download_title">Downloading %1$s</string>
     <string name="download_waiting_for_wifi">Waiting for Wi-Fi</string>
     <string name="download_progress">%1$s of %2$s</string>
     <string name="download_checking">Checking the file…</string>
