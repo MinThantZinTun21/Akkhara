@@ -43,7 +43,8 @@ internal object ModelNotifications {
 
     /**
      * A download's or import's progress, titled [title], with Cancel. [total]
-     * is -1 while unknown; the check shows no bar of its own.
+     * is -1 while unknown. Waiting for Wi-Fi and the check have no amount to
+     * show, so their bar only moves.
      */
     fun progress(
         context: Context,
