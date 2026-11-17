@@ -170,18 +170,23 @@ class ModelDownloader(private val context: Context) {
         }
     }
 
-    /** Schedules the check of a complete download, unless it is already scheduled or running. */
+    /**
+     * Schedules the check of a complete download, unless it is already
+     * scheduled or running: scheduling it again would replace a running check.
+     */
     fun checkIfComplete() {
-        if (progress() != DownloadProgress.Complete) return
-        val scheduler = context.getSystemService(JobScheduler::class.java)
-        if (scheduler.getPendingJob(ModelCheckJob.JOB_ID) != null) return
-        val job = JobInfo.Builder(ModelCheckJob.JOB_ID, ComponentName(context, ModelCheckJob::class.java))
-        // Expedited runs it at once; when Android has none of those left for the app, it runs soon after.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            scheduler.schedule(job.setExpedited(true).build()) == JobScheduler.RESULT_SUCCESS
-        ) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) job.setExpedited(false)
-        scheduler.schedule(job.setOverrideDeadline(0).build())
+        synchronized(scheduling) {
+            if (progress() != DownloadProgress.Complete) return
+            val scheduler = context.getSystemService(JobScheduler::class.java)
+            if (scheduler.getPendingJob(ModelCheckJob.JOB_ID) != null) return
+            val job = JobInfo.Builder(ModelCheckJob.JOB_ID, ComponentName(context, ModelCheckJob::class.java))
+            // Expedited runs it at once; when Android has none of those left for the app, it runs soon after.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (scheduler.schedule(job.setExpedited(true).build()) == JobScheduler.RESULT_SUCCESS) return
+                job.setExpedited(false)
+            }
+            scheduler.schedule(job.setOverrideDeadline(0).build())
+        }
     }
 
     /** The download is over: [reason] says why it failed, or null when it worked or was cancelled. */
@@ -199,6 +204,9 @@ class ModelDownloader(private val context: Context) {
     }
 
     private companion object {
+        /** The screen's poll, the receiver and the app opening may all ask for the check at once. */
+        val scheduling = Any()
+
         const val KEY_MODEL = "download_model"
         const val KEY_DOWNLOAD = "download_id"
         const val KEY_FAILED = "download_failed"

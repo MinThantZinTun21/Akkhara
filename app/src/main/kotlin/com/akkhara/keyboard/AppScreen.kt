@@ -63,6 +63,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.akkhara.keyboard.engine.ModelTask
 import com.akkhara.keyboard.translation.DownloadState
 import com.akkhara.keyboard.translation.ModelImports
@@ -331,11 +334,14 @@ private fun ModelsSection(
     onRemove: (TranslationModel) -> Unit,
 ) {
     val context = LocalContext.current
-    // Android runs the download, so the screen asks it how the download stands, twice a second.
-    val download by produceState(readDownload()) {
-        while (true) {
-            value = withContext(Dispatchers.IO) { readDownload() }
-            delay(DOWNLOAD_POLL_MILLIS)
+    // Android runs the download, so the screen asks it how the download stands, twice a second while it shows.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val download by produceState<DownloadState>(DownloadState.Idle, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                value = withContext(Dispatchers.IO) { readDownload() }
+                delay(DOWNLOAD_POLL_MILLIS)
+            }
         }
     }
     val import = ModelImports.state

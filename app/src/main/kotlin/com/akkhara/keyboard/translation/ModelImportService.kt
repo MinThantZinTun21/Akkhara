@@ -1,12 +1,11 @@
 package com.akkhara.keyboard.translation
 
-import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
@@ -18,12 +17,10 @@ import android.os.storage.StorageManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import com.akkhara.keyboard.AppActivity
 import com.akkhara.keyboard.R
 import java.io.File
 import java.io.FileOutputStream
@@ -63,11 +60,6 @@ class ModelImportService : Service() {
         super.onCreate()
         models = ModelShelf(this)
         notifications = NotificationManagerCompat.from(this)
-        notifications.createNotificationChannel(
-            NotificationChannelCompat.Builder(CHANNEL, NotificationManagerCompat.IMPORTANCE_LOW)
-                .setName(getString(R.string.download_channel))
-                .build(),
-        )
         checker = TranslatorClient(applicationContext)
     }
 
@@ -197,12 +189,12 @@ class ModelImportService : Service() {
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         ModelImports.state = when (outcome) {
             Outcome.Done -> {
-                notify(doneNotification(getString(R.string.download_done, model.name)))
+                ModelNotifications.ready(this, model)
                 DownloadState.Idle
             }
             Outcome.Cancelled -> DownloadState.Idle
             is Outcome.Failed -> {
-                notify(doneNotification(failureText(this, outcome.reason, model)))
+                ModelNotifications.failed(this, model, outcome.reason)
                 DownloadState.Failed(model, outcome.reason)
             }
         }
@@ -215,7 +207,7 @@ class ModelImportService : Service() {
     }
 
     private fun progressNotification(step: DownloadState.Step, bytes: Long, total: Long) =
-        NotificationCompat.Builder(this, CHANNEL)
+        NotificationCompat.Builder(this, ModelNotifications.channel(this))
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle(getString(R.string.import_title))
             .setContentText(progressText(this, step, bytes, total))
@@ -226,38 +218,20 @@ class ModelImportService : Service() {
             )
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setContentIntent(openApp())
+            .setContentIntent(ModelNotifications.openApp(this))
             .addAction(0, getString(R.string.cancel), cancelIntent(this))
             .build()
 
-    private fun doneNotification(text: String) =
-        NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle(getString(R.string.models_title))
-            .setContentText(text)
-            .setAutoCancel(true)
-            .setContentIntent(openApp())
-            .build()
-
-    private fun openApp() = PendingIntent.getActivity(
-        this,
-        0,
-        Intent(this, AppActivity::class.java),
-        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-    )
-
-    /** Shows [notification] if the user allows notifications; the download runs either way. */
+    /** Shows the import's progress if the user allows notifications; the import runs either way. */
+    @SuppressLint("MissingPermission") // ModelNotifications.allowed checks it.
     private fun notify(notification: Notification) {
-        val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-        if (allowed) notifications.notify(NOTIFICATION_ID, notification)
+        if (ModelNotifications.allowed(this)) notifications.notify(NOTIFICATION_ID, notification)
     }
 
     companion object {
         private const val ACTION_IMPORT = "com.akkhara.keyboard.action.IMPORT_MODEL"
-        private const val ACTION_CANCEL = "com.akkhara.keyboard.action.CANCEL_DOWNLOAD"
+        private const val ACTION_CANCEL = "com.akkhara.keyboard.action.CANCEL_IMPORT"
         private const val EXTRA_SIZE = "size"
-        private const val CHANNEL = "model_download"
         private const val NOTIFICATION_ID = 1
 
         private const val BUFFER_BYTES = 1 shl 20
