@@ -17,7 +17,6 @@ import android.os.storage.StorageManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -207,20 +206,7 @@ class ModelImportService : Service() {
     }
 
     private fun progressNotification(step: DownloadState.Step, bytes: Long, total: Long) =
-        NotificationCompat.Builder(this, ModelNotifications.channel(this))
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle(getString(R.string.import_title))
-            .setContentText(progressText(this, step, bytes, total))
-            .setProgress(
-                PROGRESS_MAX,
-                (PROGRESS_MAX * bytes / total.coerceAtLeast(1)).toInt(),
-                total <= 0,
-            )
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setContentIntent(ModelNotifications.openApp(this))
-            .addAction(0, getString(R.string.cancel), cancelIntent(this))
-            .build()
+        ModelNotifications.progress(this, getString(R.string.import_title), step, bytes, total, cancelIntent(this))
 
     /** Shows the import's progress if the user allows notifications; the import runs either way. */
     @SuppressLint("MissingPermission") // ModelNotifications.allowed checks it.
@@ -236,7 +222,6 @@ class ModelImportService : Service() {
 
         private const val BUFFER_BYTES = 1 shl 20
         private const val REPORT_MILLIS = 500L
-        private const val PROGRESS_MAX = 1_000
 
         /** Free space left over after the copy, so the phone is never filled to the last byte. */
         private const val SPARE_BYTES = 500L * 1024 * 1024

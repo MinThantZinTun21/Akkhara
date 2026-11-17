@@ -2,6 +2,7 @@ package com.akkhara.keyboard.translation
 
 import android.annotation.SuppressLint
 import android.Manifest
+import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -14,10 +15,11 @@ import androidx.core.content.ContextCompat
 import com.akkhara.keyboard.AppActivity
 import com.akkhara.keyboard.R
 
-/** Tells the user a downloaded or imported model is ready, or why it is not. */
+/** The app's notifications for models: progress, and whether a downloaded or imported model is ready. */
 internal object ModelNotifications {
     private const val CHANNEL = "model_download"
     private const val NOTIFICATION_ID = 2
+    private const val PROGRESS_MAX = 1_000
 
     fun ready(context: Context, model: TranslationModel) =
         show(context, context.getString(R.string.download_done, model.name))
@@ -38,6 +40,32 @@ internal object ModelNotifications {
         )
         return CHANNEL
     }
+
+    /**
+     * A download's or import's progress, titled [title], with Cancel. [total]
+     * is -1 while unknown; the check shows no bar of its own.
+     */
+    fun progress(
+        context: Context,
+        title: String,
+        step: DownloadState.Step,
+        bytes: Long,
+        total: Long,
+        cancel: PendingIntent,
+    ): Notification = NotificationCompat.Builder(context, channel(context))
+        .setSmallIcon(android.R.drawable.stat_sys_download)
+        .setContentTitle(title)
+        .setContentText(progressText(context, step, bytes, total))
+        .setProgress(
+            PROGRESS_MAX,
+            (PROGRESS_MAX * bytes / total.coerceAtLeast(1)).toInt(),
+            total <= 0 || step == DownloadState.Step.Checking || step == DownloadState.Step.WaitingForWifi,
+        )
+        .setOngoing(true)
+        .setOnlyAlertOnce(true)
+        .setContentIntent(openApp(context))
+        .addAction(0, context.getString(R.string.cancel), cancel)
+        .build()
 
     /** Opens the app on its screen. */
     fun openApp(context: Context): PendingIntent = PendingIntent.getActivity(

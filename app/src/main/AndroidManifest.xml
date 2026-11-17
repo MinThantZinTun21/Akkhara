@@ -11,7 +11,7 @@
       (docs/adr/0002).
     -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- An import runs in the background as a foreground service, shown in a notification. -->
+    <!-- An import, and a download's progress, show in a notification from a foreground service. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -60,6 +60,12 @@
 
         <service
             android:name=".translation.ModelImportService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Shows a model download's progress while the app runs; DownloadManager does the download. -->
+        <service
+            android:name=".translation.ModelDownloadProgressService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 

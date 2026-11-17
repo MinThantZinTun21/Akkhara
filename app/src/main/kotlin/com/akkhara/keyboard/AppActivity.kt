@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.akkhara.keyboard.translation.ModelDownloadProgressService
 import com.akkhara.keyboard.translation.ModelDownloader
 import com.akkhara.keyboard.translation.ModelImportService
 import com.akkhara.keyboard.translation.ModelShelf
@@ -29,6 +30,7 @@ class AppActivity : ComponentActivity() {
 
     private var setup by mutableStateOf(Setup(isEnabled = false, isSelected = false))
     private lateinit var translator: TranslatorClient
+    private lateinit var downloader: ModelDownloader
 
     private val setupObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) = readSetup()
@@ -39,7 +41,7 @@ class AppActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val settings = KeyboardSettings(this)
         val models = ModelShelf(this)
-        val downloader = ModelDownloader(this)
+        downloader = ModelDownloader(this)
         // A download that ended while the app was stopped is checked or reported now.
         // DownloadManager and multi-GB files are kept off the main thread.
         thread { downloader.actIfOver() }
@@ -74,6 +76,8 @@ class AppActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        // A download still running shows its progress again, after the app was killed say.
+        if (downloader.model() != null) ModelDownloadProgressService.show(this)
         for (name in listOf(Settings.Secure.ENABLED_INPUT_METHODS, Settings.Secure.DEFAULT_INPUT_METHOD)) {
             contentResolver.registerContentObserver(Settings.Secure.getUriFor(name), false, setupObserver)
         }

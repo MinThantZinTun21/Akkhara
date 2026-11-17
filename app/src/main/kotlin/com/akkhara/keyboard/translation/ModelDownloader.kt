@@ -121,6 +121,7 @@ class ModelDownloader(private val context: Context) {
             putLong(KEY_DOWNLOAD, id)
             remove(KEY_FAILED)
         }
+        ModelDownloadProgressService.show(context)
     }
 
     /** Stops the download or its check and deletes what was downloaded. */
