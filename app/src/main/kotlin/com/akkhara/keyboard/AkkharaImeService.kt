@@ -195,6 +195,12 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         super.onFinishInput()
     }
 
+    /** The app has let go of the keyboard, as when the user goes to the home screen: the field is left. */
+    override fun onUnbindInput() {
+        typingHistory.leaveField()
+        super.onUnbindInput()
+    }
+
     /**
      * Tells typing history the field's text, read only while it would be saved.
      * It reads at most [TypingHistoryRecorder.MAX_CHARS] each side of the
