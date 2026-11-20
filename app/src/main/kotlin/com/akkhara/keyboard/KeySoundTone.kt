@@ -28,6 +28,22 @@ enum class KeySoundTone(
         R.raw.key_sound_typewriter_letter, R.raw.key_sound_typewriter_space,
         R.raw.key_sound_typewriter_delete, R.raw.key_sound_typewriter_enter,
     ),
+    Glass(
+        R.string.key_sound_glass,
+        R.raw.key_sound_glass_letter, R.raw.key_sound_glass_space, R.raw.key_sound_glass_delete, R.raw.key_sound_glass_enter,
+    ),
+    Wood(
+        R.string.key_sound_wood,
+        R.raw.key_sound_wood_letter, R.raw.key_sound_wood_space, R.raw.key_sound_wood_delete, R.raw.key_sound_wood_enter,
+    ),
+    Retro(
+        R.string.key_sound_retro,
+        R.raw.key_sound_retro_letter, R.raw.key_sound_retro_space, R.raw.key_sound_retro_delete, R.raw.key_sound_retro_enter,
+    ),
+    Chips(
+        R.string.key_sound_chips,
+        R.raw.key_sound_chips_letter, R.raw.key_sound_chips_space, R.raw.key_sound_chips_delete, R.raw.key_sound_chips_enter,
+    ),
     ;
 
     /** The file this tone plays for [sound]. */
