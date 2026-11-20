@@ -74,9 +74,12 @@ class KeyboardEngine(
     val strip: StripState?
         get() = if (offersTranslation) stripState else null
 
-    /** Translation is offered with a model installed, except in a password field, which is never translated. */
+    /**
+     * Translation is offered with a model installed, except in a password
+     * field, which is never translated, and on a pad, where there is nothing to translate.
+     */
     private val offersTranslation: Boolean
-        get() = isTranslationAvailable && translator != null && !textField.isPassword
+        get() = isTranslationAvailable && translator != null && !textField.isPassword && !layer.isPad
 
     /** A grammar check is offered for English text while some model on the phone can check grammar. */
     private val offersGrammarCheck: Boolean
@@ -91,6 +94,9 @@ class KeyboardEngine(
             Layer.Symbols -> SymbolsLayout.first
             Layer.MoreSymbols -> SymbolsLayout.second
             Layer.Emoji -> EmojiPanelLayout.bar
+            Layer.NumberPad -> Pads.number(textField.kind as? FieldKind.Number ?: FieldKind.Number())
+            Layer.PhonePad -> Pads.phone
+            Layer.DateTimePad -> Pads.dateTime(textField.kind as? FieldKind.DateOrTime ?: FieldKind.DateAndTime)
         }
 
     /** The emoji chosen since the keyboard started, newest first. Never stored. See GLOSSARY.md, "Recent emoji". */
@@ -104,7 +110,13 @@ class KeyboardEngine(
         get() = listOf(EmojiCategory(EmojiCategory.Kind.Recent, shownRecentEmoji)) + EmojiList.categories
 
     /** The name of the current input language, for the space bar. */
-    val spaceLabel: String get() = layoutFor(inputLanguage).name
+    val spaceLabel: String get() = if (layer.isPad) SPACE_SIGN else layoutFor(inputLanguage).name
+
+    /**
+     * How many rows tall the keys are drawn. A pad has fewer rows than the
+     * letters but keeps their height, so the app above does not jump.
+     */
+    val heightInRows: Int get() = if (layer.isPad) layoutFor(inputLanguage).base.size else rows.size
 
     /** A few letters of the current input language, for the key that leaves the symbols layers. */
     val lettersLabel: String get() = layoutFor(inputLanguage).lettersLabel
@@ -119,7 +131,12 @@ class KeyboardEngine(
     fun startInput(field: Field, conveniences: Conveniences = this.conveniences) {
         textField = field
         this.conveniences = conveniences
-        layer = if (field.kind == FieldKind.Number) Layer.Symbols else Layer.Letters
+        layer = when (field.kind) {
+            FieldKind.Text, FieldKind.Address -> Layer.Letters
+            FieldKind.Phone -> Layer.PhonePad
+            is FieldKind.DateOrTime -> Layer.DateTimePad
+            is FieldKind.Number -> Layer.NumberPad
+        }
         setShift(ShiftState.Off)
         lastShiftTap = null
         updateAutomaticCapital()
@@ -170,6 +187,7 @@ class KeyboardEngine(
         when (key) {
             is CharKey -> type(key.text)
             is ActionKey -> perform(key.action)
+            is Blank -> return
         }
         if (key is CharKey || (key as ActionKey).action in EDITING_ACTIONS) onTextFieldEdited()
         // A tap on shift is the user's own choice of shift, so it is left as they set it.

@@ -7,26 +7,36 @@ import com.akkhara.keyboard.engine.Field
 import com.akkhara.keyboard.engine.FieldKind
 
 /** Describes Android's text field to the engine. */
-fun EditorInfo.toField(): Field {
+fun EditorInfo.toField(): Field = fieldOf(inputType, imeOptions)
+
+/** Reads a text field's [inputType] and [imeOptions], as Android gives them, into what the engine needs. */
+fun fieldOf(inputType: Int, imeOptions: Int): Field {
     val inputClass = inputType and InputType.TYPE_MASK_CLASS
     val variation = inputType and InputType.TYPE_MASK_VARIATION
     val isText = inputClass == InputType.TYPE_CLASS_TEXT
     val isNumber = inputClass == InputType.TYPE_CLASS_NUMBER
     return Field(
         kind = when {
-            isNumber ||
-                inputClass == InputType.TYPE_CLASS_PHONE ||
-                inputClass == InputType.TYPE_CLASS_DATETIME -> FieldKind.Number
+            isNumber -> FieldKind.Number(
+                allowsNegative = inputType and InputType.TYPE_NUMBER_FLAG_SIGNED != 0,
+                allowsDecimal = inputType and InputType.TYPE_NUMBER_FLAG_DECIMAL != 0,
+            )
+            inputClass == InputType.TYPE_CLASS_PHONE -> FieldKind.Phone
+            inputClass == InputType.TYPE_CLASS_DATETIME -> when (variation) {
+                InputType.TYPE_DATETIME_VARIATION_DATE -> FieldKind.Date
+                InputType.TYPE_DATETIME_VARIATION_TIME -> FieldKind.Time
+                else -> FieldKind.DateAndTime
+            }
             isText && variation in ADDRESS_VARIATIONS -> FieldKind.Address
             else -> FieldKind.Text
         },
         isPassword = (isText && variation in PASSWORD_VARIATIONS) ||
             (isNumber && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD),
-        enterAction = enterAction(),
+        enterAction = enterAction(imeOptions),
     )
 }
 
-private fun EditorInfo.enterAction(): EnterAction {
+private fun enterAction(imeOptions: Int): EnterAction {
     if (imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) return EnterAction.NewLine
     return when (imeOptions and EditorInfo.IME_MASK_ACTION) {
         EditorInfo.IME_ACTION_GO -> EnterAction.Go

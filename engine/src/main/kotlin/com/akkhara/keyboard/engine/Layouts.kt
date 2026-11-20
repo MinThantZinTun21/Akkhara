@@ -151,3 +151,50 @@ internal object SymbolsLayout {
 internal object EmojiPanelLayout {
     val bar: List<Row> = listOf(listOf(ActionKey(Action.Letters, WIDE), backspaceKey))
 }
+
+/**
+ * The pads: a grid of four equal columns with backspace and enter down the
+ * right. A cell whose key the field does not take is left blank. See
+ * GLOSSARY.md, "Number pad", "Phone pad" and "Date/time pad".
+ */
+internal object Pads {
+    private const val PAD_WIDTH = 2.5f
+
+    private val blank = Blank(PAD_WIDTH)
+
+    /** A key typing [text], or a blank where the field does not take it. */
+    private fun padKey(text: String?, alternates: List<String> = emptyList()): Key =
+        if (text == null) blank else CharKey(text, alternates, width = PAD_WIDTH)
+
+    private val backspace = ActionKey(Action.Backspace, PAD_WIDTH)
+    private val enter = ActionKey(Action.Enter, PAD_WIDTH)
+    private val space = ActionKey(Action.Space, PAD_WIDTH)
+
+    /** The three rows every pad shares: digits 1 to 9 with backspace, [besideSix] and enter down the right. */
+    private fun digitRows(besideSix: Key): List<Row> = listOf(
+        listOf(padKey("1"), padKey("2"), padKey("3"), backspace),
+        listOf(padKey("4"), padKey("5"), padKey("6"), besideSix),
+        listOf(padKey("7"), padKey("8"), padKey("9"), enter),
+    )
+
+    fun number(kind: FieldKind.Number): List<Row> = digitRows(padKey("-".takeIf { kind.allowsNegative })) +
+        listOf(listOf(padKey(".".takeIf { kind.allowsDecimal }), padKey("0"), blank, blank))
+
+    /** Holding 0 offers `+`, and holding `#` a space, as on a phone's dialler. */
+    val phone: List<Row> = digitRows(padKey("+")) + listOf(
+        listOf(padKey("*"), padKey("0", alternates = listOf("+")), padKey("#", alternates = listOf(" ")), blank),
+    )
+
+    /** A date gets `/` and `-`, a time `:`, and a field for both all three and a space between them. */
+    fun dateTime(kind: FieldKind.DateOrTime): List<Row> {
+        val takesBoth = kind.takesDate && kind.takesTime
+        return digitRows(padKey(if (kind.takesDate) "-" else ":")) + listOf(
+            listOf(
+                padKey("/".takeIf { kind.takesDate }),
+                padKey("0"),
+                padKey(":".takeIf { takesBoth }),
+                if (takesBoth) space else blank,
+            ),
+        )
+    }
+}

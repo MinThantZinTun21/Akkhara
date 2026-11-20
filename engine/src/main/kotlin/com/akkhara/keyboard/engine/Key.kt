@@ -17,6 +17,16 @@ data class CharKey(
     val hint: String? = null,
 ) : Key
 
+/**
+ * A blank on a pad: a place with no key, which keeps the keys in their
+ * columns. It is drawn as nothing, and a touch on it does nothing.
+ * See GLOSSARY.md, "Blank".
+ */
+data class Blank(override val width: Float) : Key
+
+/** Stands for a space where a label must show one, as on a pad's space key. */
+const val SPACE_SIGN = "\u2423"
+
 /** A key that performs [action] instead of typing a character. */
 data class ActionKey(
     val action: Action,

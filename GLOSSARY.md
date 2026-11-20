@@ -15,16 +15,36 @@ The full set of keys belonging to one input language, across all of its layers.
 _Avoid_: Keymap, keyboard (for this meaning)
 
 **Layer**:
-One screenful of keys within a layout. Each input language has a base layer and a shift layer; the two symbols layers are shared by both languages.
+One screenful of keys within a layout. Each input language has a base layer and a shift layer; the two symbols layers are shared by both languages; and the number pad, phone pad and date/time pad are the layers for fields that take only those.
 _Avoid_: Page, mode, state
 
 **Symbols layer**:
 Either of the two shared layers of digits and punctuation, reached from any layout.
-_Avoid_: Numeric keyboard, number pad
+_Avoid_: Numeric keyboard
+
+**Pad**:
+A layer shown in a field that takes only digits and a few characters: the number pad, phone pad or date/time pad. Its keys sit in a grid of four equal columns, and it offers no way to letters, symbols or emoji.
+_Avoid_: Keypad, numeric keyboard
+
+**Number pad**:
+The layer shown in a field that takes only a number: the digits 0 to 9, a minus sign if the field takes negative numbers and a decimal point if it takes decimals. It offers no way to letters, symbols or emoji.
+_Avoid_: Numeric keyboard, number layer, symbols layer (for this meaning)
+
+**Phone pad**:
+The layer shown in a field that takes a phone number: the digits with `+`, `*` and `#`. It offers no way to letters, symbols or emoji.
+_Avoid_: Dialer, dial pad
+
+**Date/time pad**:
+The layer shown in a field that takes a date or a time: the number pad's digits with only the separators that kind of field needs: `/` and `-` for a date, `:` for a time, and all three with a space key for a field that takes both.
+_Avoid_: Date picker, calendar
 
 **Key**:
 One touchable cell on a layer. A key either types a character or performs an action (shift, backspace, enter, space, globe, layer switch).
 _Avoid_: Button
+
+**Blank**:
+A place on a pad where there is no key, because the field does not take the character that would go there. It keeps the other keys in their columns, and a touch on it does nothing.
+_Avoid_: Empty key, gap, spacer
 
 **Alternate**:
 An extra character offered when a key is held down, such as the Latin digit on a Myanmar digit key.

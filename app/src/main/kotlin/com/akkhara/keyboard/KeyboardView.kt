@@ -15,6 +15,7 @@ import android.view.ViewConfiguration
 import android.view.WindowInsets
 import com.akkhara.keyboard.engine.Action
 import com.akkhara.keyboard.engine.ActionKey
+import com.akkhara.keyboard.engine.Blank
 import com.akkhara.keyboard.engine.Cell
 import com.akkhara.keyboard.engine.CharKey
 import com.akkhara.keyboard.engine.EnterAction
@@ -26,6 +27,7 @@ import com.akkhara.keyboard.engine.Layer
 import com.akkhara.keyboard.engine.ShiftState
 import com.akkhara.keyboard.engine.StripState
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -86,6 +88,9 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
 
     /** Shorter than [fullRowHeight] when the screen is too short for it, as in landscape. */
     private var rowHeight = fullRowHeight
+
+    /** How much the keys' labels and pictures are shrunk to fit a short screen. */
+    private var keyScale = 1f
 
     /** Height of whatever the system draws over the bottom of the keyboard's window. */
     private var bottomInset = 0
@@ -163,16 +168,19 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
      */
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rowCount = shownRows()?.size ?: 0
+        // A pad keeps the letters' height with fewer rows; the emoji panel has more rows than the engine's bar.
+        val heightInRows = max(rowCount, engine?.heightInRows ?: 0)
         // The strip shows only while it has something to say, so the keyboard keeps its height otherwise.
         val hasStrip = engine?.strip.let { it != null && it != StripState.Idle }
         var scale = 1f
         if (rowCount > 0) {
             // The strip and the keys shrink together when the screen is too short for both.
             val tallest = resources.displayMetrics.heightPixels * MAX_SCREEN_SHARE - 2 * edgePadding
-            val fullHeight = rowCount * fullRowHeight + if (hasStrip) stripPainter.height(1f) else 0f
+            val fullHeight = heightInRows * fullRowHeight + if (hasStrip) stripPainter.height(1f) else 0f
             scale = min(1f, tallest / fullHeight)
         }
-        rowHeight = fullRowHeight * scale
+        keyScale = scale
+        rowHeight = fullRowHeight * scale * if (rowCount > 0) heightInRows.toFloat() / rowCount else 1f
         stripHeight = if (hasStrip) stripPainter.height(scale) else 0f
         labelPaint.textSize = labelSize * scale
         smallLabelPaint.textSize = smallLabelSize * scale
@@ -247,7 +255,8 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
             if (moving) postInvalidateOnAnimation()
         }
         for (cell in grid?.cells.orEmpty()) {
-            if (cell.key !== EMOJI_TABS) drawKey(canvas, cell)
+            // A blank is drawn as nothing.
+            if (cell.key !== EMOJI_TABS && cell.key !is Blank) drawKey(canvas, cell)
         }
         if (engine?.layer == Layer.Emoji && emojiPanel.draw(canvas)) postInvalidateOnAnimation()
     }
@@ -288,12 +297,14 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
                 }
             }
             is ActionKey -> drawAction(canvas, key.action, cell)
+            is Blank -> Unit
         }
     }
 
     private fun styleOf(cell: Cell): KeyStyle = when (val key = cell.key) {
-        // The comma and full stop in the bottom row are coloured with the action keys.
-        is CharKey -> if (grid?.isInBottomRow(cell) == true) KeyStyle.Action else KeyStyle.Plain
+        // The comma and full stop in the bottom row are coloured with the action keys; a pad's keys are all plain.
+        is CharKey -> if (grid?.isInBottomRow(cell) == true && engine?.layer?.isPad != true) KeyStyle.Action else KeyStyle.Plain
+        is Blank -> KeyStyle.Plain
         is ActionKey -> when (key.action) {
             Action.Space, Action.Globe, Action.Translate -> KeyStyle.Plain
             Action.Shift -> if (engine?.shift == ShiftState.Locked) KeyStyle.Accent else KeyStyle.Action
@@ -327,7 +338,7 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
     private fun drawAction(canvas: Canvas, action: Action, cell: Cell) {
         val cx = cell.centerX
         val cy = (cell.top + cell.bottom) / 2
-        val half = 10f * density * (rowHeight / fullRowHeight) // half the picture's size
+        val half = 10f * density * keyScale // half the picture's size
         iconPath.rewind()
         iconPaint.style = Paint.Style.STROKE
         when (action) {
