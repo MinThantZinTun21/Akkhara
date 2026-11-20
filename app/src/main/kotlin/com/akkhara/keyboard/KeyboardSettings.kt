@@ -27,6 +27,13 @@ class KeyboardSettings internal constructor(private val preferences: SharedPrefe
     /** Off until the user turns it on, so nobody hears the keyboard who did not ask to. See GLOSSARY.md, "Key sound". */
     var keySound: Boolean by toggle("key_sound", default = false)
 
+    /** The key sound's tone. */
+    var keySoundTone: KeySoundTone
+        get() = KeySoundTone.named(preferences.getString(KEY_KEY_SOUND_TONE, null))
+        set(value) {
+            preferences.edit { putString(KEY_KEY_SOUND_TONE, value.name) }
+        }
+
     /** How loud the key sound is, from 0 to 100 percent of the phone's system-sounds volume. */
     var keySoundVolume: Int
         get() = preferences.getInt(KEY_KEY_SOUND_VOLUME, DEFAULT_KEY_SOUND_VOLUME)
@@ -97,6 +104,7 @@ class KeyboardSettings internal constructor(private val preferences: SharedPrefe
         const val KEY_INPUT_LANGUAGE = "input_language"
         const val KEY_THEME = "theme"
         const val KEY_KEY_STYLE = "key_style"
+        const val KEY_KEY_SOUND_TONE = "key_sound_tone"
         const val KEY_KEY_SOUND_VOLUME = "key_sound_volume"
         const val DEFAULT_KEY_SOUND_VOLUME = 30
     }

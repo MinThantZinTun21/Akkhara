@@ -78,7 +78,7 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
     var hapticsEnabled = true
     var keyPreviewEnabled = true
 
-    /** Plays the key sound on each press, or null while the user has it off. See GLOSSARY.md, "Key sound". */
+    /** Plays the key sound on each press, while the user has it on. See GLOSSARY.md, "Key sound". */
     var keySounds: KeySoundPlayer? = null
 
     private var engine: KeyboardEngine? = null

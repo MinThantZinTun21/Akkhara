@@ -53,4 +53,29 @@ class KeySoundTest {
         settings.keySoundVolume = -5
         assertEquals(0, settings.keySoundVolume)
     }
+
+    @Test
+    fun `a preview plays while key sound is off, but never while the phone is silenced`() {
+        assertTrue(KeySound.plays(isOn = false, ringerMode = AudioManager.RINGER_MODE_NORMAL, isPreview = true))
+        assertFalse(KeySound.plays(isOn = false, ringerMode = AudioManager.RINGER_MODE_SILENT, isPreview = true))
+        assertFalse(KeySound.plays(isOn = true, ringerMode = AudioManager.RINGER_MODE_VIBRATE, isPreview = true))
+    }
+
+    @Test
+    fun `the tone is Click until the user picks another`() {
+        val settings = KeyboardSettings(FakePreferences())
+        assertEquals(KeySoundTone.Click, settings.keySoundTone)
+        settings.keySoundTone = KeySoundTone.Typewriter
+        assertEquals(KeySoundTone.Typewriter, settings.keySoundTone)
+    }
+
+    @Test
+    fun `there are four tones, each with its own four sounds`() {
+        assertEquals(
+            listOf(KeySoundTone.Click, KeySoundTone.SoftTap, KeySoundTone.Bubble, KeySoundTone.Typewriter),
+            KeySoundTone.entries,
+        )
+        val sounds = KeySoundTone.entries.flatMap { tone -> KeySound.entries.map(tone::sound) }
+        assertEquals(16, sounds.toSet().size)
+    }
 }

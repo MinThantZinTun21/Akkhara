@@ -20,6 +20,12 @@
     <string name="setting_haptic_feedback">Vibrate on key press</string>
     <string name="setting_key_sound">Sound on key press</string>
     <string name="setting_key_sound_volume">Volume: %1$d%%</string>
+    <string name="setting_key_sound_tone">Key sound</string>
+    <string name="setting_key_sound_tone_note">Tap a sound to hear it.</string>
+    <string name="key_sound_click">Click</string>
+    <string name="key_sound_soft_tap">Soft tap</string>
+    <string name="key_sound_bubble">Bubble</string>
+    <string name="key_sound_typewriter">Typewriter</string>
     <string name="setting_key_preview">Show key preview</string>
     <string name="setting_key_preview_note">Never shown while typing a password.</string>
     <string name="setting_capitalise_sentences">Capitalise the start of a sentence</string>

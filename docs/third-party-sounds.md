@@ -8,3 +8,15 @@ The key sounds in `app/src/main/res/raw/` are cut from two packs by Kenney (www.
 | `key_sound_click_space.wav` | Interface Sounds 1.0 | `click_001.ogg` |
 | `key_sound_click_delete.wav` | Interface Sounds 1.0 | `click_003.ogg` |
 | `key_sound_click_enter.wav` | Interface Sounds 1.0 | `select_002.ogg` |
+| `key_sound_tap_letter.wav` | Impact Sounds 1.0 | `impactSoft_medium_004.ogg` |
+| `key_sound_tap_space.wav` | Impact Sounds 1.0 | `impactSoft_medium_001.ogg` |
+| `key_sound_tap_delete.wav` | Impact Sounds 1.0 | `impactSoft_medium_002.ogg` |
+| `key_sound_tap_enter.wav` | Impact Sounds 1.0 | `impactWood_light_000.ogg` |
+| `key_sound_bubble_letter.wav` | Interface Sounds 1.0 | `drop_001.ogg` |
+| `key_sound_bubble_space.wav` | Interface Sounds 1.0 | `drop_003.ogg` |
+| `key_sound_bubble_delete.wav` | Interface Sounds 1.0 | `drop_002.ogg` |
+| `key_sound_bubble_enter.wav` | Interface Sounds 1.0 | `drop_004.ogg` |
+| `key_sound_typewriter_letter.wav` | Impact Sounds 1.0 | `impactMetal_light_004.ogg` |
+| `key_sound_typewriter_space.wav` | Impact Sounds 1.0 | `impactTin_medium_002.ogg` |
+| `key_sound_typewriter_delete.wav` | Impact Sounds 1.0 | `impactMetal_light_002.ogg` |
+| `key_sound_typewriter_enter.wav` | Impact Sounds 1.0 | `impactBell_heavy_004.ogg` |

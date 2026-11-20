@@ -118,11 +118,16 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
                 doubleSpaceFullStop = settings.doubleSpaceFullStop,
             ),
         )
-        // Sounds stay loaded only while the user has them on.
-        if (settings.keySound) keySounds.volume = settings.keySoundVolume / 100f else keySounds.release()
+        keySounds.isOn = settings.keySound
+        if (settings.keySound) {
+            keySounds.tone = settings.keySoundTone
+            keySounds.volume = settings.keySoundVolume / 100f
+        } else {
+            keySounds.release() // Sounds stay loaded only while the user has them on.
+        }
         keyboardView?.apply {
             hapticsEnabled = settings.hapticFeedback
-            keySounds = if (settings.keySound) this@AkkharaImeService.keySounds else null
+            keySounds = this@AkkharaImeService.keySounds
             keyPreviewEnabled = settings.keyPreview
             onEngineChanged()
         }

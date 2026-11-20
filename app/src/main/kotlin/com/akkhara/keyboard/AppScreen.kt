@@ -49,6 +49,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -724,25 +725,67 @@ private fun SetupStep(
     }
 }
 
-/** The key sound switch, and its volume while it is on. See GLOSSARY.md, "Key sound". */
+/**
+ * The key sound switch and, while it is on, the choice of tone and the
+ * volume. Picking a tone or letting go of the volume plays the tone.
+ * See GLOSSARY.md, "Key sound".
+ */
 @Composable
 private fun KeySoundSettings(settings: KeyboardSettings) {
+    val context = LocalContext.current
+    val player = remember { KeySoundPlayer(context) }
+    DisposableEffect(player) { onDispose(player::release) }
     var isOn by remember { mutableStateOf(settings.keySound) }
+    var tone by remember { mutableStateOf(settings.keySoundTone) }
+    var volume by remember { mutableFloatStateOf(settings.keySoundVolume.toFloat()) }
+    fun preview() {
+        player.tone = tone
+        player.volume = volume / 100f
+        player.preview()
+    }
+
     Toggle(R.string.setting_key_sound, settings::keySound, onChange = { isOn = it })
-    if (isOn) {
-        var volume by remember { mutableFloatStateOf(settings.keySoundVolume.toFloat()) }
-        Column(modifier = Modifier.padding(bottom = 8.dp)) {
-            Text(
-                stringResource(R.string.setting_key_sound_volume, volume.roundToInt()),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Slider(
-                value = volume,
-                onValueChange = { volume = it },
-                onValueChangeFinished = { settings.keySoundVolume = volume.roundToInt() },
-                valueRange = 0f..100f,
-            )
+    if (!isOn) return
+    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+        Text(stringResource(R.string.setting_key_sound_tone), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(R.string.setting_key_sound_tone_note),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Column(modifier = Modifier.selectableGroup()) {
+            for (choice in KeySoundTone.entries) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .selectable(selected = choice == tone, role = Role.RadioButton) {
+                            tone = choice
+                            settings.keySoundTone = choice
+                            preview()
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = choice == tone, onClick = null)
+                    Spacer(Modifier.width(16.dp))
+                    Text(stringResource(choice.nameRes), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
         }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.setting_key_sound_volume, volume.roundToInt()),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Slider(
+            value = volume,
+            onValueChange = { volume = it },
+            onValueChangeFinished = {
+                settings.keySoundVolume = volume.roundToInt()
+                preview()
+            },
+            valueRange = 0f..100f,
+        )
     }
 }
 
