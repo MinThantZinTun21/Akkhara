@@ -211,3 +211,13 @@ _Avoid_: Key shape, skin, button design, key theme
 **Follow system**:
 The choice in place until the user picks a theme: the keyboard is drawn in the Light theme while the phone is in light mode and in the Dark theme while it is in dark mode.
 _Avoid_: Auto, default theme, dynamic colour
+
+### Sound
+
+**Key sound**:
+The short sound the keyboard can play each time a key is pressed, at the same moments it vibrates. It is off until the user turns it on in the Akkhara app. Each tone has one sound for letters and every other key, and its own for Space, Delete and Enter. The phone's silent and vibrate modes mute it.
+_Avoid_: Click sound, keypress audio, typing sound, voice
+
+**Tone**:
+One of the four ways the key sound can sound: Click, Soft tap, Bubble or Typewriter. The user picks one in the Akkhara app; Click is the default.
+_Avoid_: Sound pack, sound theme, voice

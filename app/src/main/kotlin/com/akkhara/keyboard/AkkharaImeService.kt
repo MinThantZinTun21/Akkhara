@@ -24,6 +24,10 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     private lateinit var engine: KeyboardEngine
     private var keyboardView: KeyboardView? = null
     private lateinit var translatorClient: TranslatorClient
+    private lateinit var keySoundPlayer: KeySoundPlayer
+
+    /** Stops following key sound changes; holding it also keeps the listener alive. */
+    private lateinit var stopWatchingKeySound: () -> Unit
     private val handler = Handler(Looper.getMainLooper())
 
     /**
@@ -40,6 +44,8 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         settings = KeyboardSettings(this)
         models = ModelShelf(this)
         translatorClient = TranslatorClient(this)
+        keySoundPlayer = KeySoundPlayer(this)
+        stopWatchingKeySound = settings.watchKeySound { keySoundPlayer.follow(settings) }
         engine = KeyboardEngine(
             editor = InputConnectionEditor({ currentInputConnection }, { currentInputEditorInfo }),
             clock = SystemClock::uptimeMillis,
@@ -53,6 +59,8 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     override fun onDestroy() {
         handler.removeCallbacks(typingPaused)
         translatorClient.close()
+        stopWatchingKeySound()
+        keySoundPlayer.release()
         super.onDestroy()
     }
 
@@ -115,8 +123,10 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
                 doubleSpaceFullStop = settings.doubleSpaceFullStop,
             ),
         )
+        keySoundPlayer.follow(settings)
         keyboardView?.apply {
             hapticsEnabled = settings.hapticFeedback
+            keySoundPlayer = this@AkkharaImeService.keySoundPlayer
             keyPreviewEnabled = settings.keyPreview
             onEngineChanged()
         }

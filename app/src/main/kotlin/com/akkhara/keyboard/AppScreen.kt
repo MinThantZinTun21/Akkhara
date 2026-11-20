@@ -42,14 +42,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -72,6 +75,7 @@ import com.akkhara.keyboard.translation.ModelDownloads
 import com.akkhara.keyboard.translation.ModelShelf
 import com.akkhara.keyboard.translation.TranslationModel
 import com.akkhara.keyboard.translation.grammarCheckModel
+import kotlin.math.roundToInt
 import kotlin.reflect.KMutableProperty0
 
 /** Follows the system light or dark setting with two fixed schemes, as the keyboard does. */
@@ -175,6 +179,7 @@ fun AppScreen(
             )
             Column {
                 Toggle(R.string.setting_haptic_feedback, settings::hapticFeedback)
+                KeySoundSettings(settings)
                 Toggle(R.string.setting_key_preview, settings::keyPreview, note = R.string.setting_key_preview_note)
                 Toggle(
                     R.string.setting_capitalise_sentences,
@@ -720,12 +725,79 @@ private fun SetupStep(
     }
 }
 
+/**
+ * The key sound switch and, while it is on, the choice of tone and the
+ * volume. Picking a tone or letting go of the volume plays the tone.
+ * See GLOSSARY.md, "Key sound".
+ */
+@Composable
+private fun KeySoundSettings(settings: KeyboardSettings) {
+    val context = LocalContext.current
+    val player = remember { KeySoundPlayer(context) }
+    DisposableEffect(player) { onDispose(player::release) }
+    var isOn by remember { mutableStateOf(settings.keySound) }
+    var tone by remember { mutableStateOf(settings.keySoundTone) }
+    var volume by remember { mutableFloatStateOf(settings.keySoundVolume.toFloat()) }
+    fun preview() {
+        player.follow(settings)
+        player.preview()
+    }
+
+    Toggle(R.string.setting_key_sound, settings::keySound) {
+        isOn = it
+        player.follow(settings) // Frees the sounds once key sound is off.
+    }
+    if (!isOn) return
+    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+        Text(stringResource(R.string.setting_key_sound_tone), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(R.string.setting_key_sound_tone_note),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Column(modifier = Modifier.selectableGroup()) {
+            for (choice in KeySoundTone.entries) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .selectable(selected = choice == tone, role = Role.RadioButton) {
+                            tone = choice
+                            settings.keySoundTone = choice
+                            preview()
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = choice == tone, onClick = null)
+                    Spacer(Modifier.width(16.dp))
+                    Text(stringResource(choice.nameRes), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.setting_key_sound_volume, volume.roundToInt()),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Slider(
+            value = volume,
+            onValueChange = { volume = it },
+            onValueChangeFinished = {
+                settings.keySoundVolume = volume.roundToInt()
+                preview()
+            },
+            valueRange = 0f..100f,
+        )
+    }
+}
+
 /** A [setting] that is either on or off. The whole row is the switch. */
 @Composable
 private fun Toggle(
     title: Int,
     setting: KMutableProperty0<Boolean>,
     note: Int? = null,
+    onChange: (Boolean) -> Unit = {},
 ) {
     var isOn by remember { mutableStateOf(setting.get()) }
     Row(
@@ -738,6 +810,7 @@ private fun Toggle(
                 onValueChange = {
                     isOn = it
                     setting.set(it)
+                    onChange(it)
                 },
             )
             .padding(vertical = 8.dp),
