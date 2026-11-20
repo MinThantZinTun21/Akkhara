@@ -1,12 +1,12 @@
 package com.akkhara.keyboard.engine
 
+/** The ASCII digits, which every pad types whichever input language is showing. */
+val DIGITS = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+
 /**
  * Presses keys the way a user does: by finding them on the layer that is
  * currently showing. A key that is not showing cannot be pressed.
  */
-/** The ASCII digits, which every pad types whichever input language is showing. */
-val DIGITS = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
-
 class Typist(private val engine: KeyboardEngine) {
 
     fun tap(vararg labels: String) = labels.forEach { label ->

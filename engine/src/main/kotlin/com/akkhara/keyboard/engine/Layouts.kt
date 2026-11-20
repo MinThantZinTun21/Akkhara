@@ -160,8 +160,11 @@ internal object EmojiPanelLayout {
 internal object Pads {
     private const val PAD_WIDTH = 2.5f
 
+    private val blank = Blank(PAD_WIDTH)
+
+    /** A key typing [text], or a blank where the field does not take it. */
     private fun padKey(text: String?, alternates: List<String> = emptyList()): Key =
-        if (text == null) Blank(PAD_WIDTH) else CharKey(text, alternates, width = PAD_WIDTH)
+        if (text == null) blank else CharKey(text, alternates, width = PAD_WIDTH)
 
     private val backspace = ActionKey(Action.Backspace, PAD_WIDTH)
     private val enter = ActionKey(Action.Enter, PAD_WIDTH)
@@ -175,11 +178,11 @@ internal object Pads {
     )
 
     fun number(kind: FieldKind.Number): List<Row> = digitRows(padKey("-".takeIf { kind.allowsNegative })) +
-        listOf(listOf(padKey(".".takeIf { kind.allowsDecimal }), padKey("0"), padKey(null), padKey(null)))
+        listOf(listOf(padKey(".".takeIf { kind.allowsDecimal }), padKey("0"), blank, blank))
 
     /** Holding 0 offers `+`, and holding `#` a space, as on a phone's dialler. */
     val phone: List<Row> = digitRows(padKey("+")) + listOf(
-        listOf(padKey("*"), padKey("0", alternates = listOf("+")), padKey("#", alternates = listOf(" ")), padKey(null)),
+        listOf(padKey("*"), padKey("0", alternates = listOf("+")), padKey("#", alternates = listOf(" ")), blank),
     )
 
     /** A date gets `/` and `-`, a time `:`, and a field for both all three and a space between them. */
@@ -190,7 +193,7 @@ internal object Pads {
                 padKey("/".takeIf { kind.takesDate }),
                 padKey("0"),
                 padKey(":".takeIf { takesBoth }),
-                if (takesBoth) space else padKey(null),
+                if (takesBoth) space else blank,
             ),
         )
     }

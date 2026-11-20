@@ -19,7 +19,7 @@ data class CharKey(
 
 /**
  * A blank on a pad: a place with no key, which keeps the keys in their
- * columns. It is drawn as nothing, and a touch on it goes to the nearest key.
+ * columns. It is drawn as nothing, and a touch on it does nothing.
  * See GLOSSARY.md, "Blank".
  */
 data class Blank(override val width: Float) : Key

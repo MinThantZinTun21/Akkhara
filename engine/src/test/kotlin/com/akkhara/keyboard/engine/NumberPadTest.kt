@@ -12,7 +12,7 @@ class NumberPadTest {
     private val typist = Typist(engine)
 
     @Test
-    fun `a number field shows the DIGITS, backspace and enter, and nothing else`() {
+    fun `a number field shows the digits, backspace and enter, and nothing else`() {
         engine.startInput(Field(kind = FieldKind.Number()))
 
         assertEquals(DIGITS, typist.labels().sorted())
@@ -64,7 +64,7 @@ class NumberPadTest {
     }
 
     @Test
-    fun `the pad types ordinary DIGITS whichever input language is showing`() {
+    fun `the pad types ordinary digits whichever input language is showing`() {
         typist.tap(Action.Globe)
         assertEquals(InputLanguage.Myanmar, engine.inputLanguage)
 
@@ -125,18 +125,18 @@ class NumberPadTest {
     }
 
     @Test
-    fun `a touch on a blank goes to the nearest key in its row`() {
+    fun `a touch on a blank lands on no key`() {
         engine.startInput(Field(kind = FieldKind.Number()))
         val grid = KeyGrid(engine.rows, width = 400f, rowHeight = 50f, padding = 0f, gap = 0f, rowGap = 0f)
 
-        // Bottom row, right-hand end: the cells beside 0 are empty.
-        val touched = grid.cellAt(x = 399f, y = 175f)!!.key
-
-        assertEquals(CharKey("0", width = touched.width), touched)
+        // Bottom row: a blank where the decimal point would be, 0, then two blanks.
+        assertNull(grid.cellAt(x = 50f, y = 175f))
+        assertNull(grid.cellAt(x = 399f, y = 175f))
+        assertEquals("0", (grid.cellAt(x = 150f, y = 175f)!!.key as CharKey).text)
     }
 
     @Test
-    fun `an empty cell types nothing`() {
+    fun `pressing a blank types nothing`() {
         engine.startInput(Field(kind = FieldKind.Number()))
         engine.rows.flatten().filterIsInstance<Blank>().forEach(engine::press)
 

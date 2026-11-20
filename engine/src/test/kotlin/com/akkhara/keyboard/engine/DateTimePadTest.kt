@@ -10,7 +10,7 @@ class DateTimePadTest {
     private val typist = Typist(engine)
 
     @Test
-    fun `a date field shows the DIGITS with a slash and a dash`() {
+    fun `a date field shows the digits with a slash and a dash`() {
         engine.startInput(Field(kind = FieldKind.Date))
 
         assertEquals((DIGITS + "/" + "-").sorted(), typist.labels().sorted())
@@ -26,7 +26,7 @@ class DateTimePadTest {
     }
 
     @Test
-    fun `a time field shows the DIGITS with a colon`() {
+    fun `a time field shows the digits with a colon`() {
         engine.startInput(Field(kind = FieldKind.Time))
         typist.tap("9", ":", "3", "0")
 

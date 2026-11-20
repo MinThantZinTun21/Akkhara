@@ -39,7 +39,7 @@ One touchable cell on a layer. A key either types a character or performs an act
 _Avoid_: Button
 
 **Blank**:
-A place on a pad where there is no key, because the field does not take the character that would go there. It keeps the other keys in their columns, and a touch on it goes to the nearest key.
+A place on a pad where there is no key, because the field does not take the character that would go there. It keeps the other keys in their columns, and a touch on it does nothing.
 _Avoid_: Empty key, gap, spacer
 
 **Alternate**:
