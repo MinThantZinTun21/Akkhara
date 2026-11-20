@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -138,7 +139,20 @@ fun AppScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            ThemePicker(settings)
+            // The key style's previews are drawn in the theme picked above, so both share it.
+            var theme by remember { mutableStateOf(settings.theme) }
+            ThemePicker(theme) { picked ->
+                theme = picked
+                settings.theme = picked
+            }
+
+            SectionTitle(R.string.key_style_title)
+            Text(
+                stringResource(R.string.key_style_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            KeyStylePicker(settings, Theme.shown(theme, systemIsDark = isSystemInDarkTheme()))
 
             SectionTitle(R.string.try_title)
             // Typed text is never saved, not even across a rotation (docs/adr/0002-no-network-permission.md).
@@ -196,12 +210,7 @@ fun AppScreen(
  * See GLOSSARY.md, "Theme".
  */
 @Composable
-private fun ThemePicker(settings: KeyboardSettings) {
-    var chosen by remember { mutableStateOf(settings.theme) }
-    val choose: (Theme?) -> Unit = { theme ->
-        chosen = theme
-        settings.theme = theme
-    }
+private fun ThemePicker(chosen: Theme?, choose: (Theme?) -> Unit) {
     Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Null is following the system, which comes first as it is what a new install does.
         ThemeGrid(listOf(null), chosen, choose)
@@ -236,10 +245,71 @@ private fun ThemeGrid(choices: List<Theme?>, chosen: Theme?, onChoose: (Theme?) 
 }
 
 private const val THEME_COLUMNS = 3
+private const val PREVIEW_KEY_DP = 24f
 
-/** One choice in the [ThemePicker]: a few keys in the theme's colours, and its name. */
+/**
+ * The choice of key style: the theme's own first, then each style, each
+ * previewed in [theme], the theme the keyboard shows now. See GLOSSARY.md, "Key style".
+ */
+@Composable
+private fun KeyStylePicker(settings: KeyboardSettings, theme: Theme) {
+    var chosen by remember { mutableStateOf(settings.keyStyle) }
+    val choices: List<KeyStyle?> = listOf(null) + KeyStyle.entries
+    Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        choices.chunked(THEME_COLUMNS).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { style ->
+                    PreviewCard(
+                        name = stringResource(style?.nameRes ?: R.string.key_style_theme_own),
+                        isChosen = style == chosen,
+                        onChoose = {
+                            chosen = style
+                            settings.keyStyle = style
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        KeysPreview(
+                            theme.palette,
+                            KeyStyle.shown(style, theme),
+                            letters = listOf("a", "က", "b"),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                repeat(THEME_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/** One choice in the [ThemePicker]: a few keys in the theme's colours and its own key style, and its name. */
 @Composable
 private fun ThemeCard(theme: Theme?, isChosen: Boolean, onChoose: () -> Unit, modifier: Modifier = Modifier) {
+    PreviewCard(
+        name = stringResource(theme?.nameRes ?: R.string.theme_follow_system),
+        isChosen = isChosen,
+        onChoose = onChoose,
+        modifier = modifier,
+    ) {
+        if (theme == null) {
+            // Following the system is Light in light mode and Dark in dark mode, so it shows half of each.
+            KeysPreview(Theme.Light.palette, Theme.Light.keyStyle, letters = listOf("a"), modifier = Modifier.weight(1f))
+            KeysPreview(Theme.Dark.palette, Theme.Dark.keyStyle, letters = listOf("က"), modifier = Modifier.weight(1f))
+        } else {
+            KeysPreview(theme.palette, theme.keyStyle, letters = listOf("a", "က", "b"), modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+/** A choice shown as a small preview with its [name] under it, outlined while it is chosen. */
+@Composable
+private fun PreviewCard(
+    name: String,
+    isChosen: Boolean,
+    onChoose: () -> Unit,
+    modifier: Modifier = Modifier,
+    preview: @Composable RowScope.() -> Unit,
+) {
     val shape = RoundedCornerShape(12.dp)
     val colours = MaterialTheme.colorScheme
     val (outline, nameColour) = if (isChosen) colours.primary to colours.primary else colours.outlineVariant to colours.onSurface
@@ -255,17 +325,10 @@ private fun ThemeCard(theme: Theme?, isChosen: Boolean, onChoose: () -> Unit, mo
                 .fillMaxWidth()
                 .clip(shape)
                 .border(if (isChosen) 3.dp else 1.dp, outline, shape),
-        ) {
-            if (theme == null) {
-                // Following the system is Light in light mode and Dark in dark mode, so it shows half of each.
-                KeysPreview(Theme.Light.palette, letters = listOf("a"), modifier = Modifier.weight(1f))
-                KeysPreview(Theme.Dark.palette, letters = listOf("က"), modifier = Modifier.weight(1f))
-            } else {
-                KeysPreview(theme.palette, letters = listOf("a", "က", "b"), modifier = Modifier.weight(1f))
-            }
-        }
+            content = preview,
+        )
         Text(
-            text = (if (isChosen) "\u2713 " else "") + stringResource(theme?.nameRes ?: R.string.theme_follow_system),
+            text = (if (isChosen) "\u2713 " else "") + name,
             style = MaterialTheme.typography.labelLarge,
             color = nameColour,
             maxLines = 1,
@@ -273,9 +336,9 @@ private fun ThemeCard(theme: Theme?, isChosen: Boolean, onChoose: () -> Unit, mo
     }
 }
 
-/** A corner of the keyboard as [palette] draws it: letter keys, an action key and the enter key. */
+/** A corner of the keyboard as [palette] and [keyStyle] draw it: letter keys, an action key and the enter key. */
 @Composable
-private fun KeysPreview(palette: Palette, letters: List<String>, modifier: Modifier = Modifier) {
+private fun KeysPreview(palette: Palette, keyStyle: KeyStyle, letters: List<String>, modifier: Modifier = Modifier) {
     val gap = Arrangement.spacedBy(4.dp)
     Column(
         modifier = modifier.background(Color(palette.background)).padding(8.dp),
@@ -283,16 +346,16 @@ private fun KeysPreview(palette: Palette, letters: List<String>, modifier: Modif
     ) {
         Row(horizontalArrangement = gap) {
             letters.forEach { letter ->
-                PreviewKey(Color(palette.key), Modifier.weight(1f)) {
+                PreviewKey(Color(palette.key), keyStyle, Modifier.weight(1f)) {
                     Text(letter, color = Color(palette.label), fontSize = 13.sp, lineHeight = 16.sp)
                 }
             }
         }
         Row(horizontalArrangement = gap) {
-            PreviewKey(Color(palette.actionKey), Modifier.weight(1f)) {
+            PreviewKey(Color(palette.actionKey), keyStyle, Modifier.weight(1f)) {
                 Text("12", color = Color(palette.actionLabel), fontSize = 11.sp, lineHeight = 16.sp)
             }
-            PreviewKey(Color(palette.accent), Modifier.weight(1f)) {
+            PreviewKey(Color(palette.accent), keyStyle, Modifier.weight(1f)) {
                 Text("\u2713", color = Color(palette.onAccent), fontSize = 11.sp, lineHeight = 16.sp)
             }
         }
@@ -300,9 +363,11 @@ private fun KeysPreview(palette: Palette, letters: List<String>, modifier: Modif
 }
 
 @Composable
-private fun PreviewKey(colour: Color, modifier: Modifier = Modifier, label: @Composable () -> Unit) {
+private fun PreviewKey(colour: Color, keyStyle: KeyStyle, modifier: Modifier = Modifier, label: @Composable () -> Unit) {
+    // A preview key is smaller than a real one, so its corners shrink with it: Rounded keeps the 5 dp it had.
+    val corner = keyStyle.cornerRadius(PREVIEW_KEY_DP, density = 5f / 7f).dp
     Box(
-        modifier = modifier.height(24.dp).background(colour, RoundedCornerShape(5.dp)),
+        modifier = modifier.height(PREVIEW_KEY_DP.dp).background(colour, RoundedCornerShape(corner)),
         contentAlignment = Alignment.Center,
     ) { label() }
 }

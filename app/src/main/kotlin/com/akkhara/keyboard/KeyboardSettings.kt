@@ -36,6 +36,13 @@ class KeyboardSettings(context: Context) {
             preferences.edit { if (value == null) remove(KEY_THEME) else putString(KEY_THEME, value.name) }
         }
 
+    /** The key style the user picked for every theme, or null while each theme draws its own. See GLOSSARY.md, "Key style". */
+    var keyStyle: KeyStyle?
+        get() = KeyStyle.named(preferences.getString(KEY_KEY_STYLE, null))
+        set(value) {
+            preferences.edit { if (value == null) remove(KEY_KEY_STYLE) else putString(KEY_KEY_STYLE, value.name) }
+        }
+
     /** The input language the keyboard was last typing, so it opens in the same one. */
     var inputLanguage: InputLanguage
         get() {
@@ -78,5 +85,6 @@ class KeyboardSettings(context: Context) {
     private companion object {
         const val KEY_INPUT_LANGUAGE = "input_language"
         const val KEY_THEME = "theme"
+        const val KEY_KEY_STYLE = "key_style"
     }
 }

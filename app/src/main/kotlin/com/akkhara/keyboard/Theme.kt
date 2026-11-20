@@ -11,7 +11,14 @@ import androidx.annotation.StringRes
  * The trending themes' colours come from docs/research/trending-film-themes.md.
  * Their names are Akkhara's own: never a title, character or studio.
  */
-enum class Theme(@StringRes val nameRes: Int, val isDark: Boolean, val palette: Palette, val group: Group) {
+enum class Theme(
+    @StringRes val nameRes: Int,
+    val isDark: Boolean,
+    val palette: Palette,
+    val group: Group,
+    /** The shape this theme draws its keys in, unless the user picks another. See GLOSSARY.md, "Key style". */
+    val keyStyle: KeyStyle = KeyStyle.Rounded,
+) {
     /** Grey and white with a green accent; what following the system draws in light mode. */
     Light(
         nameRes = R.string.theme_light,

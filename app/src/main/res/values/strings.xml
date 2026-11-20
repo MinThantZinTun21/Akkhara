@@ -31,6 +31,12 @@
     <string name="theme_follow_system">Follow system</string>
     <string name="theme_group_classic">Classic</string>
     <string name="theme_group_trending">Trending</string>
+    <string name="key_style_title">Key style</string>
+    <string name="key_style_note">The shape of every key. Theme\'s own uses the style each theme comes with; a style picked here is used in every theme. Keys keep their place and size in every style.</string>
+    <string name="key_style_theme_own">Theme\'s own</string>
+    <string name="key_style_rounded">Rounded</string>
+    <string name="key_style_square">Square</string>
+    <string name="key_style_pill">Pill</string>
     <string name="theme_light">Light</string>
     <string name="theme_sand">Sand</string>
     <string name="theme_rose">Rose</string>
