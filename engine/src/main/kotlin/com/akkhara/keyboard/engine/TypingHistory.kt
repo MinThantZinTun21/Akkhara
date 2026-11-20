@@ -58,17 +58,44 @@ class TypingHistoryRecorder(
     val wantsText: Boolean get() = isOn && app != null
 
     /** The field's text is now [text]. Ignored unless [wantsText]. */
-    fun textChanged(text: String) {
-        if (wantsText) held = text
+    /**
+     * The field's text is now [text]; [byKeyboard] says the keyboard's own
+     * last edit made it so. Ignored unless [wantsText]. When the app empties
+     * the field itself, as a chat app does on send, the text it held is
+     * saved; text the user deletes with the keyboard never is.
+     */
+    fun textChanged(text: String, byKeyboard: Boolean = false) {
+        if (!wantsText) return
+        if (text.isEmpty() && !byKeyboard) saveHeld()
+        held = text
     }
+
+    /** The keyboard's action key (Send, Search, Go, Done) is about to act on the field: its text is finished. */
+    fun actionKeyPressed() = saveHeld()
 
     /** The user has left the field: its text is finished. */
     fun leaveField() {
-        val app = app ?: return
-        if (isOn && held.isNotEmpty()) store.save(HistoryEntry(capped(held), app, clock()))
-        this.app = null
-        held = ""
+        saveHeld()
+        app = null
     }
+
+    /** The last text saved from each app, so the same text is not saved twice in a row. */
+    private val lastSaved = mutableMapOf<String, String>()
+
+    /**
+     * Saves the text held, unless it is noise (blank, or one character) or the
+     * same as the last entry from the same app, and then holds nothing.
+     */
+    private fun saveHeld() {
+        val app = app
+        val text = capped(held)
+        held = ""
+        if (!isOn || app == null || isNoise(text) || lastSaved[app.packageName] == text) return
+        store.save(HistoryEntry(text, app, clock()))
+        lastSaved[app.packageName] = text
+    }
+
+    private fun isNoise(text: String): Boolean = text.trim().let { it.codePointCount(0, it.length) <= 1 }
 
     companion object {
         /** The most of one field's text an entry keeps; the rest, from the start, is dropped. */

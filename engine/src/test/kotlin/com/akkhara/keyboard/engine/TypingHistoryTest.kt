@@ -104,6 +104,63 @@ class TypingHistoryTest {
         assertEquals(listOf("Buy rice"), saved.map { it.text })
     }
 
+    @Test
+    fun `pressing the action key saves the field's text`() {
+        recorder.startField(Field(enterAction = EnterAction.Search), BROWSER)
+        recorder.textChanged("rice price")
+        recorder.actionKeyPressed()
+
+        assertEquals(listOf("rice price"), saved.map { it.text })
+    }
+
+    @Test
+    fun `the app emptying the field saves the text it held`() {
+        recorder.startField(Field(), CHAT)
+        recorder.textChanged("See you at 6")
+        recorder.textChanged("")
+
+        assertEquals(listOf("See you at 6"), saved.map { it.text })
+    }
+
+    @Test
+    fun `text the user deletes with the keyboard is never saved`() {
+        recorder.startField(Field(), CHAT)
+        recorder.textChanged("Never mind")
+        recorder.textChanged("", byKeyboard = true)
+        recorder.leaveField()
+
+        assertEquals(emptyList<HistoryEntry>(), saved)
+    }
+
+    @Test
+    fun `a message sent and then left is saved once`() {
+        recorder.startField(Field(enterAction = EnterAction.Send), CHAT)
+        recorder.textChanged("See you at 6")
+        recorder.actionKeyPressed()
+        recorder.textChanged("")
+        recorder.leaveField()
+
+        assertEquals(listOf("See you at 6"), saved.map { it.text })
+    }
+
+    @Test
+    fun `empty, space-only and one-character text is not saved`() {
+        typeAndLeave(Field(), "   ")
+        typeAndLeave(Field(), "k")
+        typeAndLeave(Field(), " 👍 ")
+
+        assertEquals(emptyList<HistoryEntry>(), saved)
+    }
+
+    @Test
+    fun `text identical to the app's last entry is not saved again`() {
+        typeAndLeave(Field(), "Buy rice")
+        typeAndLeave(Field(), "Buy rice")
+        typeAndLeave(Field(), "Buy rice", app = CHAT)
+
+        assertEquals(listOf(NOTES, CHAT), saved.map { it.app })
+    }
+
     private fun typeAndLeave(field: Field, text: String, app: SourceApp = NOTES) {
         recorder.startField(field, app)
         recorder.textChanged(text)
@@ -112,6 +169,8 @@ class TypingHistoryTest {
 
     private companion object {
         val NOTES = SourceApp("com.example.notes", "Notes")
+        val CHAT = SourceApp("com.example.chat", "Chat")
+        val BROWSER = SourceApp("com.example.browser", "Browser")
         val AKKHARA = "com.akkhara.keyboard"
     }
 }

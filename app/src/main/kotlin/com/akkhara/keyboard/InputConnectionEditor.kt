@@ -14,6 +14,8 @@ import com.akkhara.keyboard.engine.Editor
 class InputConnectionEditor(
     private val connection: () -> InputConnection?,
     private val editorInfo: () -> EditorInfo?,
+    /** Called just before the field's own action (Send, Search, ...) runs, while its text is still there. */
+    private val beforeEnterAction: () -> Unit = {},
 ) : Editor {
 
     override fun textBeforeCursor(maxChars: Int): String =
@@ -52,6 +54,7 @@ class InputConnectionEditor(
 
     override fun performEnterAction() {
         val info = editorInfo() ?: return
+        beforeEnterAction()
         connection()?.performEditorAction(info.imeOptions and EditorInfo.IME_MASK_ACTION)
     }
 }

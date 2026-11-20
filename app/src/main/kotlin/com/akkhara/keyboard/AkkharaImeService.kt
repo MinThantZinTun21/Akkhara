@@ -63,7 +63,14 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
             readFieldText()
         }
         engine = KeyboardEngine(
-            editor = InputConnectionEditor({ currentInputConnection }, { currentInputEditorInfo }),
+            editor = InputConnectionEditor(
+                connection = { currentInputConnection },
+                editorInfo = { currentInputEditorInfo },
+                beforeEnterAction = {
+                    readFieldText()
+                    typingHistory.actionKeyPressed()
+                },
+            ),
             clock = SystemClock::uptimeMillis,
             inputLanguage = settings.inputLanguage,
             translator = ServiceTranslator(translatorClient, models),
@@ -166,12 +173,19 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         super.onFinishInput()
     }
 
+    /**
+     * Whether the keyboard has edited the field since its text was last read,
+     * so a field it emptied is known to be the user's own deletion.
+     */
+    private var keyboardEdited = false
+
     /** Tells typing history the field's text, read only while it would be saved. */
     private fun readFieldText() {
         if (!typingHistory.wantsText) return
         val request = ExtractedTextRequest().apply { hintMaxChars = TypingHistoryRecorder.MAX_CHARS }
         val text = currentInputConnection?.getExtractedText(request, 0)?.text ?: return
-        typingHistory.textChanged(text.toString())
+        typingHistory.textChanged(text.toString(), byKeyboard = keyboardEdited)
+        keyboardEdited = false
     }
 
     /** The app a field belongs to, named as the launcher names it, or by its package when that is unknown. */
@@ -207,6 +221,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     /** Runs one key's worth of engine work so the app sees its edits as a single change. */
     override fun edit(work: KeyboardEngine.() -> Unit) {
         val ic = currentInputConnection
+        keyboardEdited = true
         ic?.beginBatchEdit()
         try {
             engine.work()
