@@ -62,13 +62,13 @@ class KeyGrid(
 
     /**
      * The key a touch at ([x], [y]) lands on. A touch in the space beside or
-     * between keys goes to the nearest key in its row, so no touch on the
+     * between keys, or on an empty cell, goes to the nearest key in its row, so no touch on the
      * keyboard is lost. Null only above or below the keyboard.
      */
     fun cellAt(x: Float, y: Float): Cell? {
         if (rows.isEmpty() || y < top || y > top + height) return null
         val rowIndex = floor((y - top - padding) / rowHeight).toInt().coerceIn(0, rows.lastIndex)
-        return rows[rowIndex].minByOrNull { cell ->
+        return rows[rowIndex].filter { it.key !is Blank }.minByOrNull { cell ->
             when {
                 x < cell.left -> cell.left - x
                 x > cell.right -> x - cell.right

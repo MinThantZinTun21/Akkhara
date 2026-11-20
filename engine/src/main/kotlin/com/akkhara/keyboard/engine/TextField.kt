@@ -1,15 +1,19 @@
 package com.akkhara.keyboard.engine
 
 /** What sort of text a text field takes, as far as the keyboard treats it differently. */
-enum class FieldKind {
+sealed interface FieldKind {
     /** Ordinary writing. */
-    Text,
-
-    /** A number or a phone number: the keyboard opens on the symbols layer. */
-    Number,
+    data object Text : FieldKind
 
     /** An email or web address: no English conveniences. */
-    Address,
+    data object Address : FieldKind
+
+    /** A number only: the keyboard shows the number pad. See GLOSSARY.md, "Number pad". */
+    data class Number(val allowsNegative: Boolean = false, val allowsDecimal: Boolean = false) : FieldKind
+
+    /** A phone number, or a date or time: until they have pads of their own, the number pad. */
+    data object Phone : FieldKind
+    data object DateTime : FieldKind
 }
 
 /** What the enter key does in a text field. */

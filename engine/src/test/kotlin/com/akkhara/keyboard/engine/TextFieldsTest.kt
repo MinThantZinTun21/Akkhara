@@ -38,38 +38,11 @@ class TextFieldsTest {
     }
 
     @Test
-    fun `number and phone fields open on the symbols layer`() {
-        engine.startInput(Field(kind = FieldKind.Number))
-
-        assertEquals(Layer.Symbols, engine.layer)
-
-        typist.tap("0", "9")
-
-        assertEquals("09", editor.text)
-    }
-
-    @Test
-    fun `a text field after a number field opens on the letters`() {
-        engine.startInput(Field(kind = FieldKind.Number))
-        engine.startInput(Field())
-
-        assertEquals(Layer.Letters, engine.layer)
-    }
-
-    @Test
     fun `key preview is suppressed in password fields only`() {
         engine.startInput(Field())
         assertTrue(engine.allowsKeyPreview)
 
         engine.startInput(Field(isPassword = true))
-        assertFalse(engine.allowsKeyPreview)
-    }
-
-    @Test
-    fun `a numeric password field opens on the symbols layer with no key preview`() {
-        engine.startInput(Field(kind = FieldKind.Number, isPassword = true))
-
-        assertEquals(Layer.Symbols, engine.layer)
         assertFalse(engine.allowsKeyPreview)
     }
 

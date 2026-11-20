@@ -151,3 +151,24 @@ internal object SymbolsLayout {
 internal object EmojiPanelLayout {
     val bar: List<Row> = listOf(listOf(ActionKey(Action.Letters, WIDE), backspaceKey))
 }
+
+/**
+ * The pads shown in fields that take only numbers: a grid of four equal
+ * columns with backspace and enter down the right. A cell whose key the field
+ * does not take is left blank. See GLOSSARY.md, "Number pad".
+ */
+internal object Pads {
+    private const val PAD_WIDTH = 2.5f
+
+    private fun padKey(text: String?): Key = if (text == null) Blank(PAD_WIDTH) else CharKey(text, width = PAD_WIDTH)
+
+    private val backspace = ActionKey(Action.Backspace, PAD_WIDTH)
+    private val enter = ActionKey(Action.Enter, PAD_WIDTH)
+
+    fun number(kind: FieldKind.Number): List<Row> = listOf(
+        listOf(padKey("1"), padKey("2"), padKey("3"), backspace),
+        listOf(padKey("4"), padKey("5"), padKey("6"), padKey("-".takeIf { kind.allowsNegative })),
+        listOf(padKey("7"), padKey("8"), padKey("9"), enter),
+        listOf(padKey(".".takeIf { kind.allowsDecimal }), padKey("0"), padKey(null), padKey(null)),
+    )
+}

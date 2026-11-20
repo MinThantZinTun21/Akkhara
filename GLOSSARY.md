@@ -20,7 +20,19 @@ _Avoid_: Page, mode, state
 
 **Symbols layer**:
 Either of the two shared layers of digits and punctuation, reached from any layout.
-_Avoid_: Numeric keyboard, number pad
+_Avoid_: Numeric keyboard
+
+**Number pad**:
+The layer shown in a field that takes only a number: the digits 0 to 9, a minus sign if the field takes negative numbers and a decimal point if it takes decimals. It offers no way to letters, symbols or emoji.
+_Avoid_: Numeric keyboard, number layer, symbols layer (for this meaning)
+
+**Phone pad**:
+The layer shown in a field that takes a phone number: the digits with `+`, `*` and `#`. It offers no way to letters.
+_Avoid_: Dialer, dial pad
+
+**Date/time pad**:
+The layer shown in a field that takes a date or a time: the number pad's digits with only the separators that kind of field needs, such as `/` and `-` for a date or `:` for a time.
+_Avoid_: Date picker, calendar
 
 **Key**:
 One touchable cell on a layer. A key either types a character or performs an action (shift, backspace, enter, space, globe, layer switch).

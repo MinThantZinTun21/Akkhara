@@ -74,9 +74,12 @@ class KeyboardEngine(
     val strip: StripState?
         get() = if (offersTranslation) stripState else null
 
-    /** Translation is offered with a model installed, except in a password field, which is never translated. */
+    /**
+     * Translation is offered with a model installed, except in a password
+     * field, which is never translated, and on a pad, where there is nothing to translate.
+     */
     private val offersTranslation: Boolean
-        get() = isTranslationAvailable && translator != null && !textField.isPassword
+        get() = isTranslationAvailable && translator != null && !textField.isPassword && !layer.isPad
 
     /** A grammar check is offered for English text while some model on the phone can check grammar. */
     private val offersGrammarCheck: Boolean
@@ -91,6 +94,7 @@ class KeyboardEngine(
             Layer.Symbols -> SymbolsLayout.first
             Layer.MoreSymbols -> SymbolsLayout.second
             Layer.Emoji -> EmojiPanelLayout.bar
+            Layer.NumberPad -> Pads.number(textField.kind as? FieldKind.Number ?: FieldKind.Number())
         }
 
     /** The emoji chosen since the keyboard started, newest first. Never stored. See GLOSSARY.md, "Recent emoji". */
@@ -119,7 +123,7 @@ class KeyboardEngine(
     fun startInput(field: Field, conveniences: Conveniences = this.conveniences) {
         textField = field
         this.conveniences = conveniences
-        layer = if (field.kind == FieldKind.Number) Layer.Symbols else Layer.Letters
+        layer = if (field.kind is FieldKind.Text || field.kind is FieldKind.Address) Layer.Letters else Layer.NumberPad
         setShift(ShiftState.Off)
         lastShiftTap = null
         updateAutomaticCapital()
@@ -170,6 +174,7 @@ class KeyboardEngine(
         when (key) {
             is CharKey -> type(key.text)
             is ActionKey -> perform(key.action)
+            is Blank -> return
         }
         if (key is CharKey || (key as ActionKey).action in EDITING_ACTIONS) onTextFieldEdited()
         // A tap on shift is the user's own choice of shift, so it is left as they set it.

@@ -17,6 +17,12 @@ data class CharKey(
     val hint: String? = null,
 ) : Key
 
+/**
+ * An empty cell, which keeps the keys of a grid in their columns. It is drawn
+ * as nothing, and a touch on it goes to the nearest key.
+ */
+data class Blank(override val width: Float = 1f) : Key
+
 /** A key that performs [action] instead of typing a character. */
 data class ActionKey(
     val action: Action,
