@@ -31,6 +31,7 @@
     <string name="theme_follow_system">Follow system</string>
     <string name="theme_group_classic">Classic</string>
     <string name="theme_group_trending">Trending</string>
+    <string name="theme_group_designed">Designed</string>
     <string name="key_style_title">Key style</string>
     <string name="key_style_note">The shape of every key. Theme\'s own uses the style each theme comes with; a style picked here is used in every theme. Keys keep their place and size in every style.</string>
     <string name="key_style_theme_own">Theme\'s own</string>
@@ -71,6 +72,26 @@
     <string name="theme_lumen">Lumen</string>
     <string name="theme_nightshift">Nightshift</string>
     <string name="theme_blaze">Blaze</string>
+    <string name="theme_atelier">Atelier</string>
+    <string name="theme_gasp">Gasp</string>
+    <string name="theme_rally">Rally</string>
+    <string name="theme_mesa">Mesa</string>
+    <string name="theme_pasture">Pasture</string>
+    <string name="theme_hearth">Hearth</string>
+    <string name="theme_bayou">Bayou</string>
+    <string name="theme_kiln">Kiln</string>
+    <string name="theme_lacquer">Lacquer</string>
+    <string name="theme_orbit">Orbit</string>
+    <string name="theme_sherbet">Sherbet</string>
+    <string name="theme_scroll">Scroll</string>
+    <string name="theme_caper">Caper</string>
+    <string name="theme_borough">Borough</string>
+    <string name="theme_sepia">Sepia</string>
+    <string name="theme_zenith">Zenith</string>
+    <string name="theme_atomic">Atomic</string>
+    <string name="theme_overcast">Overcast</string>
+    <string name="theme_sirocco">Sirocco</string>
+    <string name="theme_petal">Petal</string>
 
     <string name="models_title">Translation models</string>
     <string name="models_note">The keyboard translates and checks grammar on the phone with the model in use. A larger model translates better but takes longer and needs more memory.</string>

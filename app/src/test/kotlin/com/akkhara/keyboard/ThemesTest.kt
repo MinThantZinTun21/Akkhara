@@ -32,7 +32,7 @@ class ThemesTest {
 
     @Test
     fun `the trending themes follow the classic ones, the light ones first`() {
-        val trending = Theme.entries.dropWhile { it.group == Theme.Group.Classic }
+        val trending = Theme.entries.dropWhile { it.group == Theme.Group.Classic }.takeWhile { it.group == Theme.Group.Trending }
         assertEquals(
             listOf(
                 "Moss", "Prism", "Marquee", "Saffron", "Jade", "Sonata", "Encore", "Crayon", "Wander", "Pond",
@@ -43,6 +43,27 @@ class ThemesTest {
         assertTrue(trending.all { it.group == Theme.Group.Trending })
         assertEquals(listOf(false, true), trending.map { it.isDark }.distinct())
         assertEquals(10, trending.count { it.isDark })
+    }
+
+    @Test
+    fun `the twenty designed themes come last`() {
+        val designed = Theme.entries.dropWhile { it.group != Theme.Group.Designed }
+        assertEquals(
+            listOf(
+                "Atelier", "Gasp", "Rally", "Mesa", "Pasture", "Hearth", "Bayou", "Kiln", "Lacquer", "Orbit",
+                "Sherbet", "Scroll", "Caper", "Borough", "Sepia", "Zenith", "Atomic", "Overcast", "Sirocco", "Petal",
+            ),
+            designed.map { it.name },
+        )
+        assertTrue(designed.all { it.group == Theme.Group.Designed })
+    }
+
+    @Test
+    fun `every key style is the own style of at least two designed themes`() {
+        val designed = Theme.entries.filter { it.group == Theme.Group.Designed }
+        for (style in KeyStyle.entries) {
+            assertTrue("$style", designed.count { it.keyStyle == style } >= 2)
+        }
     }
 
     @Test

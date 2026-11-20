@@ -4,12 +4,13 @@ import androidx.annotation.StringRes
 
 /**
  * A look the user can pick for the keyboard: its name, one fixed [palette],
- * light or dark, in the classic or the trending [group]. See GLOSSARY.md, "Theme". The
+ * light or dark, in the classic, trending or designed [group], with its own [keyStyle]. See GLOSSARY.md, "Theme". The
  * list is built into the app, in the order the picker shows it; ThemesTest
  * holds every theme to the palette's contrast floors.
  *
- * The trending themes' colours come from docs/research/trending-film-themes.md.
- * Their names are Akkhara's own: never a title, character or studio.
+ * The trending themes' colours come from docs/research/trending-film-themes.md,
+ * and the designed themes' from docs/research/designed-film-themes.md. Their
+ * names are Akkhara's own: never a title, character, studio, team or hero.
  */
 enum class Theme(
     @StringRes val nameRes: Int,
@@ -588,12 +589,422 @@ enum class Theme(
         ),
         group = Group.Trending,
     ),
+
+    /** Ivory and ink with a deep wine accent. */
+    Atelier(
+        nameRes = R.string.theme_atelier,
+        isDark = false,
+        Palette(
+            background = 0xFFF4EFE6.toInt(),
+            key = 0xFFFFFFFF.toInt(),
+            keyPressed = 0xFFE4DCCF.toInt(),
+            actionKey = 0xFF6E1F2E.toInt(),
+            label = 0xFF1A1717.toInt(),
+            actionLabel = 0xFFFFFFFF.toInt(),
+            hint = 0xFF5E5650.toInt(),
+            callout = 0xFFFFFFFF.toInt(),
+            accent = 0xFF8A2436.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Square,
+    ),
+
+    /** Midnight violet with a slime-green accent. */
+    Gasp(
+        nameRes = R.string.theme_gasp,
+        isDark = true,
+        Palette(
+            background = 0xFF120E1A.toInt(),
+            key = 0xFF241D30.toInt(),
+            keyPressed = 0xFF3A2F4C.toInt(),
+            actionKey = 0xFF9BE34A.toInt(),
+            label = 0xFFF2EEF8.toInt(),
+            actionLabel = 0xFF101208.toInt(),
+            hint = 0xFFB3A8C4.toInt(),
+            callout = 0xFF2E2540.toInt(),
+            accent = 0xFFB6F25A.toInt(),
+            onAccent = 0xFF141A06.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Raised,
+    ),
+
+    /** Night asphalt with a rally-orange accent. */
+    Rally(
+        nameRes = R.string.theme_rally,
+        isDark = true,
+        Palette(
+            background = 0xFF16181B.toInt(),
+            key = 0xFF1E2124.toInt(),
+            keyPressed = 0xFF2E3236.toInt(),
+            actionKey = 0xFFF28C28.toInt(),
+            label = 0xFFF5F1EA.toInt(),
+            actionLabel = 0xFF1A1208.toInt(),
+            hint = 0xFFB9B2A6.toInt(),
+            callout = 0xFF2A2D31.toInt(),
+            accent = 0xFFFFA640.toInt(),
+            onAccent = 0xFF1E1406.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Borderless,
+    ),
+
+    /** Desert sky fading to sand, with terracotta keys. */
+    Mesa(
+        nameRes = R.string.theme_mesa,
+        isDark = false,
+        Palette(
+            background = 0xFFBFE0F2.toInt(),
+            backgroundBottom = 0xFFF2D3A8.toInt(),
+            key = 0xFFFFF8EE.toInt(),
+            keyPressed = 0xFFF1DFC6.toInt(),
+            actionKey = 0xFFB4471E.toInt(),
+            label = 0xFF2B1D14.toInt(),
+            actionLabel = 0xFFFFFFFF.toInt(),
+            hint = 0xFF6E5544.toInt(),
+            callout = 0xFFFFFBF5.toInt(),
+            accent = 0xFFA5401A.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Rounded,
+    ),
+
+    /** Wool cream on wet-field green. */
+    Pasture(
+        nameRes = R.string.theme_pasture,
+        isDark = false,
+        Palette(
+            background = 0xFFE3EBD9.toInt(),
+            key = 0xFFFAF8F1.toInt(),
+            keyPressed = 0xFFE6E1D2.toInt(),
+            actionKey = 0xFF3F6B3A.toInt(),
+            label = 0xFF1F2A1C.toInt(),
+            actionLabel = 0xFFFFFFFF.toInt(),
+            hint = 0xFF5A6455.toInt(),
+            callout = 0xFFFFFFFF.toInt(),
+            accent = 0xFF3B6A35.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Pill,
+    ),
+
+    /** Warm cream with cranberry and pumpkin. */
+    Hearth(
+        nameRes = R.string.theme_hearth,
+        isDark = false,
+        Palette(
+            background = 0xFFFBF1E4.toInt(),
+            key = 0xFFF6E6D2.toInt(),
+            keyPressed = 0xFFEBD3B6.toInt(),
+            actionKey = 0xFF9C3B1B.toInt(),
+            label = 0xFF2E1A10.toInt(),
+            actionLabel = 0xFFFFFFFF.toInt(),
+            hint = 0xFF6F5240.toInt(),
+            callout = 0xFFFFFFFF.toInt(),
+            accent = 0xFFB0441C.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Outline,
+    ),
+
+    /** Swamp-water teal under glass keys, with a lantern-orange accent. */
+    Bayou(
+        nameRes = R.string.theme_bayou,
+        isDark = true,
+        Palette(
+            background = 0xFF0B3437.toInt(),
+            backgroundBottom = 0xFF062124.toInt(),
+            key = 0xFF355054.toInt(),
+            keyPressed = 0xFF4B6467.toInt(),
+            actionKey = 0xFFF2A541.toInt(),
+            label = 0xFFF4FAF7.toInt(),
+            actionLabel = 0xFF2A1604.toInt(),
+            hint = 0xFFD0E6E2.toInt(),
+            callout = 0xFF1C4E52.toInt(),
+            accent = 0xFFF7B24E.toInt(),
+            onAccent = 0xFF2A1604.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Glass,
+    ),
+
+    /** Fire fading into ice, with ember action keys. */
+    Kiln(
+        nameRes = R.string.theme_kiln,
+        isDark = true,
+        Palette(
+            background = 0xFF5A1A0A.toInt(),
+            backgroundBottom = 0xFF0B2233.toInt(),
+            key = 0xFF3A1F2A.toInt(),
+            keyPressed = 0xFF55303E.toInt(),
+            actionKey = 0xFFE8452C.toInt(),
+            label = 0xFFFFF1E8.toInt(),
+            actionLabel = 0xFF1A0503.toInt(),
+            hint = 0xFFE0BFC0.toInt(),
+            callout = 0xFF2A2440.toInt(),
+            accent = 0xFF8FD3E8.toInt(),
+            onAccent = 0xFF06192A.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Raised,
+    ),
+
+    /** Lacquered dark wood with wisteria and lantern amber. */
+    Lacquer(
+        nameRes = R.string.theme_lacquer,
+        isDark = true,
+        Palette(
+            background = 0xFF1A1012.toInt(),
+            key = 0xFF2B1C1E.toInt(),
+            keyPressed = 0xFF43302F.toInt(),
+            actionKey = 0xFFB08BD6.toInt(),
+            label = 0xFFF6EBDD.toInt(),
+            actionLabel = 0xFF1E1028.toInt(),
+            hint = 0xFFC9B49E.toInt(),
+            callout = 0xFF352426.toInt(),
+            accent = 0xFFE0A050.toInt(),
+            onAccent = 0xFF241405.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Square,
+    ),
+
+    /** Deep violet space under glass keys, with a glowing pink accent. */
+    Orbit(
+        nameRes = R.string.theme_orbit,
+        isDark = true,
+        Palette(
+            background = 0xFF2A1458.toInt(),
+            backgroundBottom = 0xFF0D0B2A.toInt(),
+            key = 0xFF453B63.toInt(),
+            keyPressed = 0xFF61587A.toInt(),
+            actionKey = 0xFF6FE3D2.toInt(),
+            label = 0xFFF6F0FF.toInt(),
+            actionLabel = 0xFF0B2A27.toInt(),
+            hint = 0xFFD2C6F0.toInt(),
+            callout = 0xFF3A2470.toInt(),
+            accent = 0xFFFFB6E1.toInt(),
+            onAccent = 0xFF3A0A2A.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Glass,
+    ),
+
+    /** Night-purple candy with pink and mint. */
+    Sherbet(
+        nameRes = R.string.theme_sherbet,
+        isDark = true,
+        Palette(
+            background = 0xFF140B24.toInt(),
+            key = 0xFF2A1A44.toInt(),
+            keyPressed = 0xFF41296A.toInt(),
+            actionKey = 0xFFFF5FA8.toInt(),
+            label = 0xFFFFF5FB.toInt(),
+            actionLabel = 0xFF2A0618.toInt(),
+            hint = 0xFFC9B8EA.toInt(),
+            callout = 0xFF33204F.toInt(),
+            accent = 0xFF3CF0C8.toInt(),
+            onAccent = 0xFF04241D.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Pill,
+    ),
+
+    /** Rice paper and ink with a cinnabar accent. */
+    Scroll(
+        nameRes = R.string.theme_scroll,
+        isDark = false,
+        Palette(
+            background = 0xFFF4F1E8.toInt(),
+            backgroundBottom = 0xFFE6E3D9.toInt(),
+            key = 0xFFEDEAE0.toInt(),
+            keyPressed = 0xFFDAD6CA.toInt(),
+            actionKey = 0xFF2E2F33.toInt(),
+            label = 0xFF1D1E21.toInt(),
+            actionLabel = 0xFFF4F1E8.toInt(),
+            hint = 0xFF5C5E60.toInt(),
+            callout = 0xFFFFFFFF.toInt(),
+            accent = 0xFFB23A2A.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Borderless,
+    ),
+
+    /** Night-heist navy with getaway gold. */
+    Caper(
+        nameRes = R.string.theme_caper,
+        isDark = true,
+        Palette(
+            background = 0xFF101A33.toInt(),
+            backgroundBottom = 0xFF070C1C.toInt(),
+            key = 0xFF16213D.toInt(),
+            keyPressed = 0xFF24335A.toInt(),
+            actionKey = 0xFFE8B84A.toInt(),
+            label = 0xFFF3EEDF.toInt(),
+            actionLabel = 0xFF1F1606.toInt(),
+            hint = 0xFFB8BED2.toInt(),
+            callout = 0xFF1D2A4C.toInt(),
+            accent = 0xFFF0C35A.toInt(),
+            onAccent = 0xFF241A04.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Outline,
+    ),
+
+    /** Brick dusk over steel, with an apricot sunrise accent. */
+    Borough(
+        nameRes = R.string.theme_borough,
+        isDark = true,
+        Palette(
+            background = 0xFF4A2E2A.toInt(),
+            backgroundBottom = 0xFF181A1F.toInt(),
+            key = 0xFF2C2B30.toInt(),
+            keyPressed = 0xFF45403F.toInt(),
+            actionKey = 0xFFF4A56A.toInt(),
+            label = 0xFFF8F1E9.toInt(),
+            actionLabel = 0xFF2A1308.toInt(),
+            hint = 0xFFC8BDB4.toInt(),
+            callout = 0xFF363238.toInt(),
+            accent = 0xFFFFB37A.toInt(),
+            onAccent = 0xFF2A1308.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Rounded,
+    ),
+
+    /** Magic-hour browns and gold. */
+    Sepia(
+        nameRes = R.string.theme_sepia,
+        isDark = true,
+        Palette(
+            background = 0xFF1E1A14.toInt(),
+            key = 0xFF2F2A22.toInt(),
+            keyPressed = 0xFF463E31.toInt(),
+            actionKey = 0xFFD9A441.toInt(),
+            label = 0xFFF3EADA.toInt(),
+            actionLabel = 0xFF22180A.toInt(),
+            hint = 0xFFC2B6A0.toInt(),
+            callout = 0xFF3A3428.toInt(),
+            accent = 0xFFE2B455.toInt(),
+            onAccent = 0xFF241906.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Raised,
+    ),
+
+    /** Clear sky under glass keys, with a sea-teal accent. */
+    Zenith(
+        nameRes = R.string.theme_zenith,
+        isDark = false,
+        Palette(
+            background = 0xFF8FD0F5.toInt(),
+            backgroundBottom = 0xFFE4F4FD.toInt(),
+            key = 0xFFFFFFFF.toInt(),
+            keyPressed = 0xFFD1ECFB.toInt(),
+            actionKey = 0xFF14507A.toInt(),
+            label = 0xFF0D2238.toInt(),
+            actionLabel = 0xFFFFFFFF.toInt(),
+            hint = 0xFF2F4A60.toInt(),
+            callout = 0xFFFFFFFF.toInt(),
+            accent = 0xFF0A6A60.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Glass,
+    ),
+
+    /** Mid-century pale blue and cream, with teal and orange. */
+    Atomic(
+        nameRes = R.string.theme_atomic,
+        isDark = false,
+        Palette(
+            background = 0xFFD8E9EE.toInt(),
+            key = 0xFFF7F3E8.toInt(),
+            keyPressed = 0xFFE5DED0.toInt(),
+            actionKey = 0xFF2E7D74.toInt(),
+            label = 0xFF1E2A30.toInt(),
+            actionLabel = 0xFFFFFFFF.toInt(),
+            hint = 0xFF4E5B60.toInt(),
+            callout = 0xFFFFFFFF.toInt(),
+            accent = 0xFFB84F1B.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Pill,
+    ),
+
+    /** Desaturated slate with a muted sand accent. */
+    Overcast(
+        nameRes = R.string.theme_overcast,
+        isDark = true,
+        Palette(
+            background = 0xFF1F2224.toInt(),
+            key = 0xFF26292C.toInt(),
+            keyPressed = 0xFF35393D.toInt(),
+            actionKey = 0xFF8C9AA0.toInt(),
+            label = 0xFFE8E6E1.toInt(),
+            actionLabel = 0xFF15181A.toInt(),
+            hint = 0xFFA9ADAE.toInt(),
+            callout = 0xFF303438.toInt(),
+            accent = 0xFFC9B79A.toInt(),
+            onAccent = 0xFF1B1712.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Borderless,
+    ),
+
+    /** Dusty rust fading to dark, with ochre. */
+    Sirocco(
+        nameRes = R.string.theme_sirocco,
+        isDark = true,
+        Palette(
+            background = 0xFF3B2418.toInt(),
+            backgroundBottom = 0xFF1A1412.toInt(),
+            key = 0xFF2E221C.toInt(),
+            keyPressed = 0xFF48362C.toInt(),
+            actionKey = 0xFFD9824A.toInt(),
+            label = 0xFFF6E9DC.toInt(),
+            actionLabel = 0xFF22100A.toInt(),
+            hint = 0xFFCDB5A2.toInt(),
+            callout = 0xFF3A2C24.toInt(),
+            accent = 0xFFE89A5E.toInt(),
+            onAccent = 0xFF2A1408.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Square,
+    ),
+
+    /** Blossom pink with olive action keys. */
+    Petal(
+        nameRes = R.string.theme_petal,
+        isDark = false,
+        Palette(
+            background = 0xFFFBEFF1.toInt(),
+            key = 0xFFF8E4E8.toInt(),
+            keyPressed = 0xFFEFCFD6.toInt(),
+            actionKey = 0xFF4A4A2E.toInt(),
+            label = 0xFF2A1E22.toInt(),
+            actionLabel = 0xFFFFFFFF.toInt(),
+            hint = 0xFF6A545B.toInt(),
+            callout = 0xFFFFFFFF.toInt(),
+            accent = 0xFFB2476A.toInt(),
+            onAccent = 0xFFFFFFFF.toInt(),
+        ),
+        group = Group.Designed,
+        keyStyle = KeyStyle.Outline,
+    ),
     ;
 
     /** Where a theme sits in the picker. See GLOSSARY.md, "Classic theme" and "Trending theme". */
     enum class Group(@StringRes val nameRes: Int) {
         Classic(R.string.theme_group_classic),
         Trending(R.string.theme_group_trending),
+        Designed(R.string.theme_group_designed),
     }
 
     companion object {
