@@ -6,6 +6,7 @@ import android.text.InputType.TYPE_CLASS_PHONE
 import android.text.InputType.TYPE_CLASS_TEXT
 import android.text.InputType.TYPE_DATETIME_VARIATION_DATE
 import android.text.InputType.TYPE_DATETIME_VARIATION_TIME
+import android.text.InputType.TYPE_NULL
 import android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
 import android.text.InputType.TYPE_NUMBER_FLAG_SIGNED
 import android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
@@ -85,5 +86,10 @@ class TextFieldsTest {
     fun `a field the app marks as private may not be learned from`() {
         assertTrue(fieldOf(TYPE_CLASS_TEXT, IME_ACTION_DONE).mayLearn)
         assertFalse(fieldOf(TYPE_CLASS_TEXT, IME_ACTION_DONE or IME_FLAG_NO_PERSONALIZED_LEARNING).mayLearn)
+    }
+
+    @Test
+    fun `a raw field with no input type, such as a terminal's, may not be learned from`() {
+        assertFalse(fieldOf(TYPE_NULL, IME_ACTION_DONE).mayLearn)
     }
 }

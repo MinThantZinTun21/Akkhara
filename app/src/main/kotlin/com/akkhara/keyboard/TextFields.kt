@@ -39,7 +39,8 @@ fun fieldOf(inputType: Int, imeOptions: Int): Field {
         isPassword = (isText && variation in PASSWORD_VARIATIONS) ||
             (isNumber && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD),
         enterAction = enterAction(imeOptions),
-        mayLearn = imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING == 0,
+        // A raw field with no input type, such as a terminal's, may take anything, passwords included.
+        mayLearn = inputType != InputType.TYPE_NULL && imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING == 0,
     )
 }
 

@@ -126,7 +126,7 @@ class TypingHistoryTest {
     fun `text the user deletes with the keyboard is never saved`() {
         recorder.startField(Field(), CHAT)
         recorder.textChanged("Never mind")
-        recorder.textChanged("", byKeyboard = true)
+        recorder.textChanged("", deletedByKeyboard = true)
         recorder.leaveField()
 
         assertEquals(emptyList<HistoryEntry>(), saved)
@@ -153,12 +153,24 @@ class TypingHistoryTest {
     }
 
     @Test
-    fun `text identical to the app's last entry is not saved again`() {
-        typeAndLeave(Field(), "Buy rice")
-        typeAndLeave(Field(), "Buy rice")
-        typeAndLeave(Field(), "Buy rice", app = CHAT)
+    fun `coming back to the same field saves nothing half-made`() {
+        recorder.startField(Field(), NOTES)
+        recorder.textChanged("Buy ri")
+        recorder.startField(Field(), NOTES, sameField = true)
+        recorder.textChanged("Buy rice")
+        recorder.leaveField()
 
-        assertEquals(listOf(NOTES, CHAT), saved.map { it.app })
+        assertEquals(listOf("Buy rice"), saved.map { it.text })
+    }
+
+    @Test
+    fun `a field that turns private when it restarts forgets what it held`() {
+        recorder.startField(Field(), NOTES)
+        recorder.textChanged("my secret")
+        recorder.startField(Field(isPassword = true), NOTES, sameField = true)
+        recorder.leaveField()
+
+        assertEquals(emptyList<HistoryEntry>(), saved)
     }
 
     @Test

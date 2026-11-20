@@ -9,7 +9,6 @@ import android.os.SystemClock
 import android.view.View
 import android.content.pm.PackageManager
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
 import com.akkhara.keyboard.engine.Conveniences
@@ -38,7 +37,20 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
 
     /** Stops following the Remember what I type switch; holding it also keeps the listener alive. */
     private lateinit var stopWatchingRememberTyping: () -> Unit
-    private val handler = Handler(Looper.getMainLooper())
+
+    /** Whether the field started since the keyboard last opened is a new one, not the field it was in. */
+    private var fieldIsNew = false
+
+    /**
+     * Whether the keyboard's last edit was a deletion, and the field's text has
+     * not been read since, so a field it emptied is known to be the user's own doing.
+     */
+    private var keyboardDeleted = false
+
+    /** Whether the field has text selected, which sits between the text before and after the cursor. */
+    private var hasSelection = false
+
+    /** Each app's name, looked up once. */    private val handler = Handler(Looper.getMainLooper())
 
     /**
      * Tells the engine typing has paused, for translate as you type. It only
@@ -70,6 +82,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
                     readFieldText()
                     typingHistory.actionKeyPressed()
                 },
+                onEdit = { deleting -> keyboardDeleted = deleting },
             ),
             clock = SystemClock::uptimeMillis,
             inputLanguage = settings.inputLanguage,
@@ -130,6 +143,11 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
      */
     override fun onEvaluateFullscreenMode(): Boolean = false
 
+    override fun onStartInput(attribute: EditorInfo, restarting: Boolean) {
+        super.onStartInput(attribute, restarting)
+        if (!restarting) fieldIsNew = true
+    }
+
     /** The keyboard is opening: this is when a changed setting takes effect. */
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
@@ -144,7 +162,9 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         val field = info.toField()
         typingHistory.isOn = settings.rememberTyping
         val app = sourceApp(info.packageName)
-        if (app != null) typingHistory.startField(field, app) else typingHistory.leaveField()
+        if (app != null) typingHistory.startField(field, app, sameField = !fieldIsNew) else typingHistory.leaveField()
+        fieldIsNew = false
+        hasSelection = info.initialSelStart != info.initialSelEnd
         readFieldText()
         engine.startInput(
             field,
@@ -163,29 +183,32 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        typingHistory.leaveField()
         edit { finishInput() }
         super.onFinishInputView(finishingInput)
     }
 
+    /** The user has left the field, not just closed the keyboard: its text is finished. */
     override fun onFinishInput() {
         typingHistory.leaveField()
         super.onFinishInput()
     }
 
     /**
-     * Whether the keyboard has edited the field since its text was last read,
-     * so a field it emptied is known to be the user's own deletion.
+     * Tells typing history the field's text, read only while it would be saved.
+     * It reads at most [TypingHistoryRecorder.MAX_CHARS] each side of the
+     * cursor, so a long document is never copied whole on a key press.
      */
-    private var keyboardEdited = false
-
-    /** Tells typing history the field's text, read only while it would be saved. */
     private fun readFieldText() {
+        val deleted = keyboardDeleted
+        keyboardDeleted = false
         if (!typingHistory.wantsText) return
-        val request = ExtractedTextRequest().apply { hintMaxChars = TypingHistoryRecorder.MAX_CHARS }
-        val text = currentInputConnection?.getExtractedText(request, 0)?.text ?: return
-        typingHistory.textChanged(text.toString(), byKeyboard = keyboardEdited)
-        keyboardEdited = false
+        val ic = currentInputConnection ?: return
+        val max = TypingHistoryRecorder.MAX_CHARS
+        // Null means the app could not answer, which is not the same as an empty field.
+        val before = ic.getTextBeforeCursor(max, 0) ?: return
+        val selected = if (hasSelection) ic.getSelectedText(0) ?: return else ""
+        val after = ic.getTextAfterCursor(max, 0) ?: return
+        typingHistory.textChanged("$before$selected$after", deletedByKeyboard = deleted)
     }
 
     /** The app a field belongs to, named as the launcher names it, or by its package when that is unknown. */
@@ -212,6 +235,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         candidatesEnd: Int,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        hasSelection = newSelStart != newSelEnd
         readFieldText()
         val shiftBefore = engine.shift
         engine.onCursorMoved()
@@ -221,7 +245,6 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     /** Runs one key's worth of engine work so the app sees its edits as a single change. */
     override fun edit(work: KeyboardEngine.() -> Unit) {
         val ic = currentInputConnection
-        keyboardEdited = true
         ic?.beginBatchEdit()
         try {
             engine.work()

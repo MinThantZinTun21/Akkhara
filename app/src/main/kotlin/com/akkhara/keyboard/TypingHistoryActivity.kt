@@ -68,8 +68,10 @@ private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
     var entries by remember { mutableStateOf<List<SavedEntry>?>(null) }
     var askDeleteAll by remember { mutableStateOf(false) }
     var search by remember { mutableStateOf("") }
+    // Bumped after each delete. Only the effect below sets the entries, and a newer load cancels an older one.
+    var changes by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(shown, search) {
+    LaunchedEffect(shown, search, changes) {
         entries = withContext(Dispatchers.IO) {
             history.deleteExpired()
             history.newestFirst(search)
@@ -77,10 +79,8 @@ private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
     }
     fun change(work: () -> Unit) {
         scope.launch {
-            entries = withContext(Dispatchers.IO) {
-                work()
-                history.newestFirst(search)
-            }
+            withContext(Dispatchers.IO) { work() }
+            changes++
         }
     }
     if (askDeleteAll) {
@@ -133,6 +133,13 @@ private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
             if (shownEntries.isEmpty()) {
                 Text(stringResource(R.string.typing_history_no_match), style = MaterialTheme.typography.bodyLarge)
                 return@Column
+            }
+            if (shownEntries.size == TypingHistoryDatabase.PAGE_LIMIT) {
+                Text(
+                    stringResource(R.string.typing_history_newest_only, TypingHistoryDatabase.PAGE_LIMIT),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 items(shownEntries, key = { it.id }) { saved ->

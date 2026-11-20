@@ -16,6 +16,8 @@ class InputConnectionEditor(
     private val editorInfo: () -> EditorInfo?,
     /** Called just before the field's own action (Send, Search, ...) runs, while its text is still there. */
     private val beforeEnterAction: () -> Unit = {},
+    /** Called after each change the keyboard makes to the text, saying whether it deleted. */
+    private val onEdit: (deleting: Boolean) -> Unit = {},
 ) : Editor {
 
     override fun textBeforeCursor(maxChars: Int): String =
@@ -29,20 +31,24 @@ class InputConnectionEditor(
 
     override fun deleteAfterCursor(chars: Int) {
         connection()?.deleteSurroundingText(0, chars)
+        onEdit(true)
     }
 
     override fun commit(text: String) {
         connection()?.commitText(text, 1)
+        onEdit(false)
     }
 
     override fun deleteBeforeCursor(chars: Int) {
         connection()?.deleteSurroundingText(chars, 0)
+        onEdit(true)
     }
 
     override fun deleteSelection(): Boolean {
         val ic = connection() ?: return false
         if (ic.getSelectedText(0).isNullOrEmpty()) return false
         ic.commitText("", 1)
+        onEdit(true)
         return true
     }
 

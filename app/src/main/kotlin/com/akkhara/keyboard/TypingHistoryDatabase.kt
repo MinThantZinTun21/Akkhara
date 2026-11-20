@@ -37,6 +37,8 @@ class TypingHistoryDatabase private constructor(context: Context) :
 
     override fun save(entry: HistoryEntry) {
         writer.execute {
+            deleteExpired()
+            if (newestText(entry.app.packageName) == entry.text) return@execute
             writableDatabase.insert(
                 "entries",
                 null,
@@ -47,13 +49,22 @@ class TypingHistoryDatabase private constructor(context: Context) :
                     put("saved_at", entry.savedAt)
                 },
             )
-            deleteExpired(entry.savedAt)
         }
     }
 
-    /** Deletes entries older than 90 days, as of [now]. Writes the disk, so call it off the main thread. */
-    fun deleteExpired(now: Long = System.currentTimeMillis()) {
-        writableDatabase.delete("entries", "saved_at < ?", arrayOf(TypingHistoryRecorder.keptSince(now).toString()))
+    /** The text of [app]'s newest entry, if it has one. */
+    private fun newestText(app: String): String? =
+        readableDatabase.query(
+            "entries", arrayOf("text"), "app = ?", arrayOf(app), null, null, "saved_at DESC, id DESC", "1",
+        ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+
+    /**
+     * Deletes entries older than [TypingHistoryRecorder.KEPT_DAYS]. Writes the
+     * disk, so call it off the main thread.
+     */
+    fun deleteExpired() {
+        val since = TypingHistoryRecorder.keptSince(System.currentTimeMillis())
+        writableDatabase.delete("entries", "saved_at < ?", arrayOf(since.toString()))
     }
 
     /** Deletes one entry. Writes the disk, so call it off the main thread. */
@@ -67,12 +78,12 @@ class TypingHistoryDatabase private constructor(context: Context) :
     }
 
     /** Entries, newest first. Reads the disk, so call it off the main thread. */
-    fun newestFirst(search: String = "", limit: Int = PAGE_LIMIT): List<SavedEntry> {
+    fun newestFirst(search: String = ""): List<SavedEntry> {
         val (where, args) =
             if (search.isBlank()) null to null
             else "text LIKE ? ESCAPE '\\'" to arrayOf(containsPattern(search.trim()))
         return readableDatabase.query(
-            "entries", COLUMNS, where, args, null, null, "saved_at DESC, id DESC", limit.toString(),
+            "entries", COLUMNS, where, args, null, null, "saved_at DESC, id DESC", PAGE_LIMIT.toString(),
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) {

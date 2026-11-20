@@ -42,6 +42,10 @@ _Avoid_: Date picker, calendar
 One touchable cell on a layer. A key either types a character or performs an action (shift, backspace, enter, space, globe, layer switch).
 _Avoid_: Button
 
+**Action key**:
+The enter key when the field gives it a job, such as Send, Search, Go or Done, instead of starting a new line.
+_Avoid_: Submit key, enter action
+
 **Blank**:
 A place on a pad where there is no key, because the field does not take the character that would go there. It keeps the other keys in their columns, and a touch on it does nothing.
 _Avoid_: Empty key, gap, spacer
@@ -225,5 +229,5 @@ _Avoid_: Sound pack, sound theme, voice
 ### Typing history
 
 **Typing history**:
-The text the user has typed, kept only on the phone for 90 days so that a later feature can let the translation model use it. It is off until the user turns on "Remember what I type" in the Akkhara app. Each entry is the whole text of one text field, saved when the user presses the action key, when the app empties the field (as a chat app does on send), or when the user leaves the field, with the app's name and the time. Password fields, fields the app marks as private, number, phone, date and time fields, and the Akkhara app's own fields are never saved, nor is text the user deletes themselves. The user can read, search and delete it in the Akkhara app.
+The text the user has typed, kept only on the phone for 90 days so that a later feature can let the translation model use it. It is off until the user turns on "Remember what I type" in the Akkhara app. Each entry is the whole text of one text field, saved when the user presses the action key, when the app empties the field (as a chat app does on send), or when the user leaves the field, with the app's name and the time. Password fields, fields the app marks as private, number, phone, date and time fields, fields that take raw input (such as a terminal's), and the Akkhara app's own fields are never saved, nor is text the user deletes themselves. The user can read, search and delete it in the Akkhara app.
 _Avoid_: Keylog, text log, memory, database

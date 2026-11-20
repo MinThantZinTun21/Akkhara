@@ -8,6 +8,7 @@ data class HistoryEntry(val text: String, val app: SourceApp, val savedAt: Long)
 
 /** Where typing history is kept. */
 fun interface HistoryStore {
+    /** Keeps [entry], unless its text is the same as the newest entry from the same app. */
     fun save(entry: HistoryEntry)
 }
 
@@ -31,11 +32,16 @@ class TypingHistoryRecorder(
     private var app: SourceApp? = null
     private var held = ""
 
-    /** A text field of [app] has started. Only a field that [mayKeep] is ever saved. */
-    fun startField(field: Field, app: SourceApp) {
-        leaveField()
+    /**
+     * A text field of [app] has started. Only a field that [mayKeep] is ever
+     * saved. With [sameField], the keyboard is back in the field it was in, so
+     * the text held so far is kept rather than saved half-made; it is dropped
+     * if the field may no longer be kept.
+     */
+    fun startField(field: Field, app: SourceApp, sameField: Boolean = false) {
+        if (!sameField) leaveField()
         this.app = app.takeIf { mayKeep(field, it) }
-        held = ""
+        if (!sameField || this.app == null) held = ""
     }
 
     /**
@@ -57,16 +63,15 @@ class TypingHistoryRecorder(
     /** Whether the current field's text would be saved, so is worth reading. */
     val wantsText: Boolean get() = isOn && app != null
 
-    /** The field's text is now [text]. Ignored unless [wantsText]. */
     /**
-     * The field's text is now [text]; [byKeyboard] says the keyboard's own
-     * last edit made it so. Ignored unless [wantsText]. When the app empties
+     * The field's text is now [text]; [deletedByKeyboard] says the keyboard's
+     * own deletion made it so. Ignored unless [wantsText]. When the app empties
      * the field itself, as a chat app does on send, the text it held is
      * saved; text the user deletes with the keyboard never is.
      */
-    fun textChanged(text: String, byKeyboard: Boolean = false) {
+    fun textChanged(text: String, deletedByKeyboard: Boolean = false) {
         if (!wantsText) return
-        if (text.isEmpty() && !byKeyboard) saveHeld()
+        if (text.isEmpty() && !deletedByKeyboard) saveHeld()
         held = text
     }
 
@@ -79,20 +84,16 @@ class TypingHistoryRecorder(
         app = null
     }
 
-    /** The last text saved from each app, so the same text is not saved twice in a row. */
-    private val lastSaved = mutableMapOf<String, String>()
-
     /**
-     * Saves the text held, unless it is noise (blank, or one character) or the
-     * same as the last entry from the same app, and then holds nothing.
+     * Saves the text held, unless it is noise (blank, or one character), and
+     * then holds nothing. The store skips text identical to the app's last entry.
      */
     private fun saveHeld() {
         val app = app
         val text = capped(held)
         held = ""
-        if (!isOn || app == null || isNoise(text) || lastSaved[app.packageName] == text) return
+        if (!isOn || app == null || isNoise(text)) return
         store.save(HistoryEntry(text, app, clock()))
-        lastSaved[app.packageName] = text
     }
 
     private fun isNoise(text: String): Boolean = text.trim().let { it.codePointCount(0, it.length) <= 1 }

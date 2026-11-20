@@ -31,7 +31,7 @@ These come from the decisions in [`docs/adr/`](docs/adr/). A pull request that b
 
 - **Myanmar output is Unicode only.** Never Zawgyi ([ADR 0001](docs/adr/0001-unicode-only-myanmar-output.md)).
 - **No network use.** No analytics, crash reporting, update checks or cloud features ([ADR 0002](docs/adr/0002-no-network-permission.md)). The one exception planned is downloading a translation model when the user asks.
-- **Nothing typed or translated is stored or logged.**
+- **Nothing typed or translated is stored or logged**, except the typing history, which is off until the user turns it on and never leaves the phone ([ADR 0009](docs/adr/0009-typing-history-is-kept-on-the-phone.md)).
 - **The keyboard is a custom View drawn on a Canvas.** Jetpack Compose is used for the app's own screens only ([ADR 0003](docs/adr/0003-custom-view-keyboard-not-compose.md)).
 
 ## Licence
