@@ -66,6 +66,12 @@ enum class KeyStyle(@StringRes val nameRes: Int) {
         /** How much of a key's own colour a [Glass] key shows over the background. */
         const val GLASS_ALPHA = 0.55f
 
+        /** How much darker than its key a [Raised] key's lip is: black at this strength over the key. */
+        const val RAISED_LIP_SHADE = 0.3f
+
+        /** How strongly an [Outline] key's border shows its label's colour. */
+        const val OUTLINE_INK_ALPHA = 0.5f
+
         /** The key style the keyboard draws: the one the user picked, or else the theme's own. */
         fun shown(chosen: KeyStyle?, theme: Theme): KeyStyle = chosen ?: theme.keyStyle
 
@@ -74,12 +80,3 @@ enum class KeyStyle(@StringRes val nameRes: Int) {
     }
 }
 
-/** [colour] drawn at [alpha] over the opaque colour [over], as one opaque ARGB colour. */
-fun blend(colour: Int, alpha: Float, over: Int): Int {
-    fun channel(shift: Int): Int {
-        val top = colour shr shift and 0xFF
-        val under = over shr shift and 0xFF
-        return Math.round(top * alpha + under * (1 - alpha))
-    }
-    return (0xFF shl 24) or (channel(16) shl 16) or (channel(8) shl 8) or channel(0)
-}

@@ -1,6 +1,7 @@
 package com.akkhara.keyboard
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.akkhara.keyboard.engine.InputLanguage
 import com.akkhara.keyboard.engine.ModelTask
@@ -15,8 +16,8 @@ import kotlin.reflect.KProperty
  * The app screen writes these and the keyboard reads them each time it
  * opens; both run in the same process, so a change is seen at once.
  */
-class KeyboardSettings(context: Context) {
-    private val preferences = context.getSharedPreferences("akkhara", Context.MODE_PRIVATE)
+class KeyboardSettings internal constructor(private val preferences: SharedPreferences) {
+    constructor(context: Context) : this(context.getSharedPreferences("akkhara", Context.MODE_PRIVATE))
 
     var hapticFeedback: Boolean by toggle("haptic_feedback")
     var keyPreview: Boolean by toggle("key_preview")

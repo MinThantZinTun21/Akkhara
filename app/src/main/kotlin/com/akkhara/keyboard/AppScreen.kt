@@ -208,7 +208,7 @@ fun AppScreen(
 
 /**
  * The choice of theme: small previews in a grid, following the system first,
- * then the classic themes and the trending ones, each group under its name.
+ * then the classic, trending and designed themes, each group under its name.
  * See GLOSSARY.md, "Theme".
  */
 @Composable
@@ -227,26 +227,26 @@ private fun ThemePicker(chosen: Theme?, choose: (Theme?) -> Unit) {
     }
 }
 
-/** Rows of [ThemeCard]s, [THEME_COLUMNS] to a row. */
+/** Rows of [ThemeCard]s. */
 @Composable
 private fun ThemeGrid(choices: List<Theme?>, chosen: Theme?, onChoose: (Theme?) -> Unit) {
-    choices.chunked(THEME_COLUMNS).forEach { row ->
+    PickerGrid(choices) { theme ->
+        ThemeCard(theme = theme, isChosen = theme == chosen, onChoose = { onChoose(theme) }, modifier = Modifier.weight(1f))
+    }
+}
+
+/** [choices] in rows of [PICKER_COLUMNS], each drawn by [card]; a short last row keeps its cards the width of the others. */
+@Composable
+private fun <T> PickerGrid(choices: List<T>, card: @Composable RowScope.(T) -> Unit) {
+    choices.chunked(PICKER_COLUMNS).forEach { row ->
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            row.forEach { theme ->
-                ThemeCard(
-                    theme = theme,
-                    isChosen = theme == chosen,
-                    onChoose = { onChoose(theme) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            // A short last row keeps its cards the width of the others.
-            repeat(THEME_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+            row.forEach { choice -> card(choice) }
+            repeat(PICKER_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
 
-private const val THEME_COLUMNS = 3
+private const val PICKER_COLUMNS = 3
 private const val PREVIEW_KEY_DP = 24f
 
 /**
@@ -258,27 +258,17 @@ private fun KeyStylePicker(settings: KeyboardSettings, theme: Theme) {
     var chosen by remember { mutableStateOf(settings.keyStyle) }
     val choices: List<KeyStyle?> = listOf(null) + KeyStyle.entries
     Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        choices.chunked(THEME_COLUMNS).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                row.forEach { style ->
-                    PreviewCard(
-                        name = stringResource(style?.nameRes ?: R.string.key_style_theme_own),
-                        isChosen = style == chosen,
-                        onChoose = {
-                            chosen = style
-                            settings.keyStyle = style
-                        },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        KeysPreview(
-                            theme.palette,
-                            KeyStyle.shown(style, theme),
-                            letters = listOf("a", "က", "b"),
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-                repeat(THEME_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+        PickerGrid(choices) { style ->
+            PreviewCard(
+                name = stringResource(style?.nameRes ?: R.string.key_style_theme_own),
+                isChosen = style == chosen,
+                onChoose = {
+                    chosen = style
+                    settings.keyStyle = style
+                },
+                modifier = Modifier.weight(1f),
+            ) {
+                KeysPreview(theme.palette, KeyStyle.shown(style, theme), letters = listOf("a", "က", "b"), modifier = Modifier.weight(1f))
             }
         }
     }
@@ -356,9 +346,7 @@ private fun KeysPreview(palette: Palette, keyStyle: KeyStyle, letters: List<Stri
             }
         }
         Row(horizontalArrangement = gap) {
-            // In a see-through style an action key takes the letter keys' colours, as on the keyboard.
-            val (actionKey, actionLabel) =
-                if (keyStyle.isSeeThrough) palette.key to palette.label else palette.actionKey to palette.actionLabel
+            val (actionKey, actionLabel) = palette.actionColoursIn(keyStyle)
             PreviewKey(Color(actionKey), Color(actionLabel), keyStyle, Modifier.weight(1f)) {
                 Text("12", color = Color(actionLabel), fontSize = 11.sp, lineHeight = 16.sp)
             }
@@ -386,10 +374,10 @@ private fun PreviewKey(
         else -> when (keyStyle) {
             KeyStyle.Rounded, KeyStyle.Square, KeyStyle.Pill -> Modifier.background(colour, shape)
             KeyStyle.Raised -> Modifier
-                .background(Color.Black.copy(alpha = 0.3f).compositeOver(colour), shape)
+                .background(Color.Black.copy(alpha = KeyStyle.RAISED_LIP_SHADE).compositeOver(colour), shape)
                 .padding(bottom = 2.dp)
                 .background(colour, shape)
-            KeyStyle.Outline -> Modifier.border(1.dp, ink.copy(alpha = 0.5f), shape)
+            KeyStyle.Outline -> Modifier.border(1.dp, ink.copy(alpha = KeyStyle.OUTLINE_INK_ALPHA), shape)
             KeyStyle.Glass -> Modifier.background(colour.copy(alpha = KeyStyle.GLASS_ALPHA), shape)
             KeyStyle.Borderless -> Modifier
         }

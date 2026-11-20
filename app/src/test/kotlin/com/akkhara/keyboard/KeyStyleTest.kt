@@ -2,6 +2,7 @@ package com.akkhara.keyboard
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KeyStyleTest {
@@ -16,6 +17,22 @@ class KeyStyleTest {
         for (theme in Theme.entries) {
             assertEquals(KeyStyle.Square, KeyStyle.shown(chosen = KeyStyle.Square, theme = theme))
         }
+    }
+
+    @Test
+    fun `a new install draws each theme's own key style`() {
+        assertNull(KeyboardSettings(FakePreferences()).keyStyle)
+    }
+
+    @Test
+    fun `a picked key style is kept, and going back to the theme's own forgets it`() {
+        val preferences = FakePreferences()
+        val settings = KeyboardSettings(preferences)
+        settings.keyStyle = KeyStyle.Glass
+        assertEquals(KeyStyle.Glass, KeyboardSettings(preferences).keyStyle)
+        settings.keyStyle = null
+        assertNull(KeyboardSettings(preferences).keyStyle)
+        assertTrue(preferences.values.isEmpty())
     }
 
     @Test

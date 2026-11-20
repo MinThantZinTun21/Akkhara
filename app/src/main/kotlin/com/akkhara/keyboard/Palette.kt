@@ -36,7 +36,27 @@ data class Palette(
     /** True when the background fades from [background] at the top to [backgroundBottom]. */
     val isGradient: Boolean get() = backgroundBottom != background
 
+    /**
+     * The colours an action key is drawn in, in [style]: its own, or in a
+     * see-through style the letter keys', so its label stays readable on the background.
+     */
+    fun actionColoursIn(style: KeyStyle): KeyColours =
+        if (style.isSeeThrough) KeyColours(key, label) else KeyColours(actionKey, actionLabel)
+
     /** The colours to check marks on the background against: its top, middle and bottom, or its one colour. */
     val backgroundsAlongHeight: List<Int>
         get() = if (isGradient) listOf(background, blend(background, 0.5f, over = backgroundBottom), backgroundBottom) else listOf(background)
+}
+
+/** A key's fill and the colour of the label on it. */
+data class KeyColours(val key: Int, val label: Int)
+
+/** [colour] drawn at [alpha] over the opaque colour [over], as one opaque ARGB colour. */
+fun blend(colour: Int, alpha: Float, over: Int): Int {
+    fun channel(shift: Int): Int {
+        val top = colour shr shift and 0xFF
+        val under = over shr shift and 0xFF
+        return Math.round(top * alpha + under * (1 - alpha))
+    }
+    return (0xFF shl 24) or (channel(16) shl 16) or (channel(8) shl 8) or channel(0)
 }

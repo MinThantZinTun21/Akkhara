@@ -137,8 +137,8 @@ class EmojiPanel(context: Context, private val palette: Palette, private val key
                     // Inside withClip, a bare `density` would be the Canvas's own, not the screen's.
                     val density = this@EmojiPanel.density
                     val inset = 2f * density
-                    // The pressed emoji's mark follows the key style's shape.
-                    val radius = keyStyle.cornerRadius(cellHeight - 2 * inset, density)
+                    // The pressed emoji's mark follows the key style's shape, a little tighter as it is inset.
+                    val radius = (keyStyle.cornerRadius(cellHeight - 2 * inset, density) - density).coerceAtLeast(0f)
                     drawRoundRect(
                         left + inset, top + inset, left + cellWidth - inset, top + cellHeight - inset,
                         radius, radius, markPaint,

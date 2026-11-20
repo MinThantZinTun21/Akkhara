@@ -109,20 +109,31 @@ class ThemesTest {
     @Test
     fun `every label is readable in every key style, in every theme`() {
         for (theme in Theme.entries) {
-            val palette = theme.palette
-            for (style in KeyStyle.entries) {
-                // In a see-through style an action key is drawn in the letter keys' colours.
-                val action = if (style.isSeeThrough) palette.label to palette.key else palette.actionLabel to palette.actionKey
-                val pairs = mapOf(
-                    "label on key" to (palette.label to palette.key),
-                    "hint on key" to (palette.hint to palette.key),
-                    "action label on action key" to action,
-                )
-                for ((name, colours) in pairs) for (background in palette.backgroundsAlongHeight) {
-                    val face = style.face(colours.second, background)
-                    val ratio = contrast(colours.first, face)
-                    assertTrue("$theme, $style: $name is %.2f:1, under 4.5:1".format(ratio), ratio >= 4.5)
-                }
+            val failures = keyStyleFailures(theme.palette)
+            assertTrue("$theme: $failures", failures.isEmpty())
+        }
+    }
+
+    @Test
+    fun `a gradient whose bottom would hide labels on see-through keys is caught`() {
+        val light = Theme.Light.palette
+        assertTrue(keyStyleFailures(light).isEmpty())
+        val darkBottom = light.copy(backgroundBottom = light.label)
+        assertTrue(keyStyleFailures(darkBottom).any { it.startsWith("Outline") })
+    }
+
+    /** Every label that is under 4.5:1 on what it sits on, in some key style, somewhere down the background. */
+    private fun keyStyleFailures(palette: Palette): List<String> = buildList {
+        for (style in KeyStyle.entries) {
+            val action = palette.actionColoursIn(style)
+            val pairs = mapOf(
+                "label on key" to (palette.label to palette.key),
+                "hint on key" to (palette.hint to palette.key),
+                "action label on action key" to (action.label to action.key),
+            )
+            for ((name, colours) in pairs) for (background in palette.backgroundsAlongHeight) {
+                val ratio = contrast(colours.first, style.face(colours.second, background))
+                if (ratio < 4.5) add("$style: $name is %.2f:1".format(ratio))
             }
         }
     }

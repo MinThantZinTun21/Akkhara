@@ -165,12 +165,6 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
 
     // ---- layout ----
 
-    /**
-     * Key widths come from the width on offer and row heights from the height
-     * of the screen, so one layout serves portrait and landscape: the
-     * keyboard never takes more than [MAX_SCREEN_SHARE] of the screen, which
-     * leaves the text field in view.
-     */
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         // A gradient runs the View's whole height, under the navigation bar too where the keyboard draws behind it.
@@ -181,6 +175,12 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
         }
     }
 
+    /**
+     * Key widths come from the width on offer and row heights from the height
+     * of the screen, so one layout serves portrait and landscape: the
+     * keyboard never takes more than [MAX_SCREEN_SHARE] of the screen, which
+     * leaves the text field in view.
+     */
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rowCount = shownRows()?.size ?: 0
         // A pad keeps the letters' height with fewer rows; the emoji panel has more rows than the engine's bar.
@@ -280,18 +280,17 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
         val key = cell.key
         val role = roleOf(cell)
         val isPressed = touches.values.any { it.cell.isAt(cell) }
-        // In a see-through style an action key is drawn in the letter keys' colours (ThemesTest checks them).
-        val isAction = role == KeyRole.Action && !keyStyle.isSeeThrough
+        val action = palette.actionColoursIn(keyStyle)
         val face = when {
             isPressed -> palette.keyPressed
             role == KeyRole.Accent -> palette.accent
-            isAction -> palette.actionKey
+            role == KeyRole.Action -> action.key
             else -> palette.key
         }
         val ink = when {
             isPressed -> palette.label
             role == KeyRole.Accent -> palette.onAccent
-            isAction -> palette.actionLabel
+            role == KeyRole.Action -> action.label
             else -> palette.label
         }
         labelPaint.color = ink
@@ -319,7 +318,7 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
                     canvas.drawRoundRect(cell.left, cell.top + lip, cell.right, cell.bottom, radius, radius, keyPaint)
                     return lip / 2
                 }
-                keyPaint.color = blend(BLACK, RAISED_LIP_SHADE, over = face)
+                keyPaint.color = blend(BLACK, KeyStyle.RAISED_LIP_SHADE, over = face)
                 canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom, radius, radius, keyPaint)
                 keyPaint.color = face
                 canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom - lip, radius, radius, keyPaint)
@@ -331,7 +330,7 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
                 val stroke = OUTLINE_DP * density
                 outlinePaint.strokeWidth = stroke
                 outlinePaint.color = ink
-                outlinePaint.alpha = OUTLINE_ALPHA
+                outlinePaint.alpha = (KeyStyle.OUTLINE_INK_ALPHA * 0xFF).roundToInt()
                 val half = stroke / 2
                 canvas.drawRoundRect(cell.left + half, cell.top + half, cell.right - half, cell.bottom - half, radius, radius, outlinePaint)
             }
@@ -770,13 +769,11 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
         /** How far down its key a label moves to make room for a hint, as a share of the key's height. */
         const val HINT_SHIFT = 0.07f
 
-        /** A [KeyStyle.Raised] key's lip: how tall, and how much darker than the key. */
+        /** How tall a [KeyStyle.Raised] key's lip is. */
         const val RAISED_LIP_DP = 3f
-        const val RAISED_LIP_SHADE = 0.3f
 
-        /** A [KeyStyle.Outline] key's border: how thick, and how opaque its label's colour is in it. */
+        /** How thick a [KeyStyle.Outline] key's border is. */
         const val OUTLINE_DP = 1.5f
-        const val OUTLINE_ALPHA = 0x80
 
         /** How opaque the light line along a [KeyStyle.Glass] key's top edge is. */
         const val GLASS_SHINE_ALPHA = 0x40
