@@ -50,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,13 +63,20 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.akkhara.keyboard.engine.ModelTask
 import com.akkhara.keyboard.translation.DownloadState
-import com.akkhara.keyboard.translation.ModelDownloadService
-import com.akkhara.keyboard.translation.ModelDownloads
+import com.akkhara.keyboard.translation.ModelImports
 import com.akkhara.keyboard.translation.ModelShelf
 import com.akkhara.keyboard.translation.TranslationModel
+import com.akkhara.keyboard.translation.failureText
 import com.akkhara.keyboard.translation.grammarCheckModel
+import com.akkhara.keyboard.translation.progressText
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlin.reflect.KMutableProperty0
 
 /** Follows the system light or dark setting with two fixed schemes, as the keyboard does. */
@@ -96,9 +104,11 @@ fun AppScreen(
     models: ModelShelf,
     onOpenKeyboardSettings: () -> Unit,
     onChooseKeyboard: () -> Unit,
+    readDownload: () -> DownloadState,
     onDownloadModel: (TranslationModel) -> Unit,
-    onImportModel: (Uri, Long) -> Unit,
     onCancelDownload: () -> Unit,
+    onImportModel: (Uri, Long) -> Unit,
+    onCancelImport: () -> Unit,
     onRemoveModel: (TranslationModel) -> Unit,
 ) {
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { insets ->
@@ -177,7 +187,9 @@ fun AppScreen(
                 )
             }
 
-            ModelsSection(models, onDownloadModel, onImportModel, onCancelDownload, onRemoveModel)
+            ModelsSection(
+                models, readDownload, onDownloadModel, onCancelDownload, onImportModel, onCancelImport, onRemoveModel,
+            )
 
             SectionTitle(R.string.prompts_title)
             Text(
@@ -314,18 +326,30 @@ private fun PreviewKey(colour: Color, modifier: Modifier = Modifier, label: @Com
 @Composable
 private fun ModelsSection(
     models: ModelShelf,
+    readDownload: () -> DownloadState,
     onDownload: (TranslationModel) -> Unit,
-    onImport: (Uri, Long) -> Unit,
     onCancelDownload: () -> Unit,
+    onImport: (Uri, Long) -> Unit,
+    onCancelImport: () -> Unit,
     onRemove: (TranslationModel) -> Unit,
 ) {
     val context = LocalContext.current
-    val download = ModelDownloads.state
+    // Android runs the download, so the screen asks it how the download stands, twice a second while it shows.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val download by produceState<DownloadState>(DownloadState.Idle, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                value = withContext(Dispatchers.IO) { readDownload() }
+                delay(DOWNLOAD_POLL_MILLIS)
+            }
+        }
+    }
+    val import = ModelImports.state
     // What is on the phone is read from the files, and read again after each change.
     var shelf by remember { mutableStateOf(ShelfView(models)) }
-    LaunchedEffect(download is DownloadState.Running) { shelf = ShelfView(models) }
+    LaunchedEffect(download is DownloadState.Running, import is DownloadState.Running) { shelf = ShelfView(models) }
     var downloading by remember { mutableStateOf<TranslationModel?>(null) }
-    // The download runs whether or not notifications are allowed; asking only lets its progress show.
+    // The download runs whether or not notifications are allowed; asking only lets the app say when it is ready.
     var askedFor by remember { mutableStateOf<TranslationModel?>(null) }
     val askForNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         askedFor?.let(onDownload)
@@ -334,6 +358,8 @@ private fun ModelsSection(
     var removing by remember { mutableStateOf<TranslationModel?>(null) }
     val (all, onPhone, inUse) = shelf
     val running = download as? DownloadState.Running
+    // One download or import at a time.
+    val busy = running != null || import is DownloadState.Running
 
     SectionTitle(R.string.models_title)
     Text(
@@ -344,12 +370,11 @@ private fun ModelsSection(
     Column {
         all.forEach { model ->
             val isOnPhone = model in onPhone
-            // An import's progress shows by the import button instead, even while replacing this model.
-            val isRunning = model.source != null && running?.model == model
+            val isRunning = running?.model == model
+            val failed = (download as? DownloadState.Failed)?.takeIf { it.model == model }
             val status = when {
-                isRunning -> ModelDownloadService.progressText(context, running.step, running.bytes, running.total)
-                model.source != null && download is DownloadState.Failed && download.model == model ->
-                    ModelDownloadService.failureText(context, download.reason, model)
+                isRunning -> progressText(context, running.step, running.bytes, running.total)
+                failed != null -> failureText(context, failed.reason, model)
                 model == inUse -> stringResource(R.string.model_in_use)
                 isOnPhone -> stringResource(R.string.model_on_phone)
                 else -> stringResource(R.string.model_not_downloaded)
@@ -360,7 +385,7 @@ private fun ModelsSection(
                 note = if (model.translatesOnly) translatesOnlyNote(model, onPhone) else null,
                 isInUse = model == inUse,
                 isOnPhone = isOnPhone,
-                progress = running?.takeIf { isRunning && it.step != DownloadState.Step.WaitingForWifi }
+                progress = running?.takeIf { isRunning && it.step == DownloadState.Step.Downloading }
                     ?.let { it.bytes.toFloat() / it.total },
                 onUse = {
                     models.use(model)
@@ -372,15 +397,14 @@ private fun ModelsSection(
                     isOnPhone -> TextButton(onClick = { removing = model }) { Text(stringResource(R.string.model_remove)) }
                     model.source != null -> TextButton(
                         onClick = { downloading = model },
-                        // One download at a time.
-                        enabled = running == null,
+                        enabled = !busy,
                     ) { Text(stringResource(R.string.model_download)) }
                 }
             }
         }
     }
 
-    ImportButton(download, onImport, onCancelDownload)
+    ImportButton(import, busy, onImport, onCancelImport)
 
     downloading?.let { model ->
         AlertDialog(
@@ -438,7 +462,7 @@ private fun ModelsSection(
  * failed. Only a file named `.litertlm` is taken.
  */
 @Composable
-private fun ImportButton(download: DownloadState, onImport: (Uri, Long) -> Unit, onCancel: () -> Unit) {
+private fun ImportButton(import: DownloadState, busy: Boolean, onImport: (Uri, Long) -> Unit, onCancel: () -> Unit) {
     val context = LocalContext.current
     var wrongFile by remember { mutableStateOf(false) }
     val chooseFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -447,11 +471,11 @@ private fun ImportButton(download: DownloadState, onImport: (Uri, Long) -> Unit,
         wrongFile = !name.endsWith(".litertlm", ignoreCase = true)
         if (!wrongFile) onImport(uri, size)
     }
-    val importing = (download as? DownloadState.Running)?.takeIf { it.model.source == null }
-    val failed = (download as? DownloadState.Failed)?.takeIf { it.model.source == null }
+    val importing = import as? DownloadState.Running
+    val failed = import as? DownloadState.Failed
     val status = when {
-        importing != null -> ModelDownloadService.progressText(context, importing.step, importing.bytes, importing.total)
-        failed != null -> ModelDownloadService.failureText(context, failed.reason, failed.model)
+        importing != null -> progressText(context, importing.step, importing.bytes, importing.total)
+        failed != null -> failureText(context, failed.reason, failed.model)
         wrongFile -> stringResource(R.string.import_wrong_file)
         else -> stringResource(R.string.model_import_note)
     }
@@ -470,8 +494,7 @@ private fun ImportButton(download: DownloadState, onImport: (Uri, Long) -> Unit,
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = { chooseFile.launch(arrayOf("*/*")) },
-                // One download or import at a time.
-                enabled = download !is DownloadState.Running,
+                enabled = !busy,
             ) { Text(stringResource(R.string.model_import)) }
             if (importing != null) TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
         }
@@ -679,3 +702,5 @@ private fun Toggle(
         Switch(checked = isOn, onCheckedChange = null)
     }
 }
+
+private const val DOWNLOAD_POLL_MILLIS = 500L

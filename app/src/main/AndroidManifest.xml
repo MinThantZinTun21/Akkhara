@@ -3,14 +3,15 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-      The network is used for one thing only: the model download service
-      downloading one of Akkhara's listed translation models, over Wi-Fi
-      (docs/adr/0004 and 0005). No other code may use it: no analytics, crash
-      reports, cloud features or update checks (docs/adr/0002).
+      The network is used for one thing only: Android's DownloadManager
+      downloading one of Akkhara's listed translation models, over Wi-Fi, at
+      the app's request (docs/adr/0004, 0005 and 0006). DownloadManager needs
+      the app to hold INTERNET. No code in the app opens a connection itself:
+      no analytics, crash reports, cloud features or update checks
+      (docs/adr/0002).
     -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- The download runs in the background as a foreground service, shown in a notification. -->
+    <!-- An import, and a download's progress, show in a notification from a foreground service. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -58,9 +59,34 @@
             android:process=":translator" />
 
         <service
-            android:name=".translation.ModelDownloadService"
+            android:name=".translation.ModelImportService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Shows a model download's progress while the app runs; DownloadManager does the download. -->
+        <service
+            android:name=".translation.ModelDownloadProgressService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!--
+          Android says when a model download is over, even while the app is
+          not running. Only the download provider can send this.
+        -->
+        <receiver
+            android:name=".translation.ModelDownloadReceiver"
+            android:exported="true"
+            android:permission="android.permission.SEND_DOWNLOAD_COMPLETED_INTENTS">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Checks a model Android has finished downloading. -->
+        <service
+            android:name=".translation.ModelCheckJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <!-- The GPU backend of the translation model uses OpenCL where the phone has it. -->
         <uses-native-library

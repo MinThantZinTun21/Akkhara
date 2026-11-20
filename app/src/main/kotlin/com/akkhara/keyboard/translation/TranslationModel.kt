@@ -165,11 +165,15 @@ object ListedModels {
  * the screen is seen by the next translation.
  */
 class ModelShelf(context: Context) {
-    private val folder = File(context.filesDir, "translation")
+    private val folder = File(context.filesDir, FOLDER)
+
+    /** Where Android's DownloadManager puts downloaded models (docs/adr/0006). Null while shared storage is missing. */
+    private val downloads: File? = context.getExternalFilesDir(null)?.let { File(it, FOLDER) }
     private val preferences = context.getSharedPreferences("akkhara", Context.MODE_PRIVATE)
 
     init {
         takeOverSingleModel()
+        deleteOldPartialFiles()
     }
 
     /** Every model the app shows: the listed ones, then the imported one once there is one. */
@@ -177,10 +181,26 @@ class ModelShelf(context: Context) {
 
     fun isOnPhone(model: TranslationModel): Boolean = file(model).isFile
 
-    fun file(model: TranslationModel): File = fileFor(model.id)
+    /** [model]'s file: in the app's own folder, or where it was downloaded. */
+    fun file(model: TranslationModel): File {
+        val own = fileFor(model.id)
+        val downloaded = downloadedFile(model)
+        return if (!own.isFile && downloaded?.isFile == true) downloaded else own
+    }
 
-    /** Where [model] is written while it downloads or is imported, until it passes its checks. */
+    /** Where [model] is written while it is imported, until it passes its checks. */
     fun partialFile(model: TranslationModel): File = File(folder, model.id + PARTIAL)
+
+    /** Where Android downloads [model], until it passes its checks. Null while shared storage is missing. */
+    fun downloadFile(model: TranslationModel): File? = downloads?.let { File(it, downloadName(model)) }
+
+    /** [downloadFile]'s path within the app's shared-storage folder, as DownloadManager takes it. */
+    fun downloadPath(model: TranslationModel): String = "$FOLDER/${downloadName(model)}"
+
+    private fun downloadName(model: TranslationModel) = model.id + PARTIAL
+
+    /** Where a downloaded [model] is once it passed its checks. */
+    private fun downloadedFile(model: TranslationModel): File? = downloads?.let { File(it, model.id + EXTENSION) }
 
     /**
      * The model the keyboard translates with, or null while there is none on
@@ -204,14 +224,15 @@ class ModelShelf(context: Context) {
 
     /** Puts [model] on the phone from its checked [partial] file. The first model on the phone goes into use. */
     fun install(model: TranslationModel, partial: File): Boolean {
-        val done = partial.renameTo(file(model))
+        val done = partial.renameTo(File(partial.parentFile, model.id + EXTENSION))
         if (done) inUse()
         return done
     }
 
-    /** Deletes [model]'s file. If it was in use, another model on the phone takes its place. */
+    /** Deletes [model]'s file, wherever it is. If it was in use, another model on the phone takes its place. */
     fun remove(model: TranslationModel) {
-        file(model).delete()
+        fileFor(model.id).delete()
+        downloadedFile(model)?.delete()
         inUse()
     }
 
@@ -232,9 +253,18 @@ class ModelShelf(context: Context) {
         if (single.isFile && !e2b.exists()) single.renameTo(e2b)
     }
 
+    /**
+     * The app's own downloads, before Android did them, left a partial file
+     * when they stopped. Android starts over instead, so those go.
+     */
+    private fun deleteOldPartialFiles() {
+        for (model in ListedModels.all) File(folder, model.id + PARTIAL).delete()
+    }
+
     companion object {
         const val IMPORTED_ID = "imported"
         const val IMPORTED_NAME = "Imported model"
+        private const val FOLDER = "translation"
         private const val EXTENSION = ".litertlm"
         private const val PARTIAL = ".partial.litertlm"
         private const val KEY_IN_USE = "model_in_use"

@@ -16,4 +16,4 @@ Single-context: `GLOSSARY.md` at the repo root and decisions in `docs/adr/`. See
 
 - Base branch is `main`. Work lands through pull requests.
 - Install and test on the `Small_Phone` emulator only. Do not install on a physical device unless the owner asks.
-- The only network use allowed is the translation model download in the model download service (see `docs/adr/0004-in-app-translation-model-download.md`). Nothing else may use the network: no analytics, crash reporting, cloud features or update checks (`docs/adr/0002-no-network-permission.md`).
+- The only network use allowed is the translation model download, done by Android's DownloadManager at the app's request (see `docs/adr/0004-in-app-translation-model-download.md` and `docs/adr/0006-android-downloadmanager-for-model-downloads.md`). Nothing else may use the network: no analytics, crash reporting, cloud features or update checks (`docs/adr/0002-no-network-permission.md`).
