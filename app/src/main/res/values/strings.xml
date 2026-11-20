@@ -18,6 +18,8 @@
     <string name="settings_title">Settings</string>
     <string name="settings_note">Changes apply the next time the keyboard opens.</string>
     <string name="setting_haptic_feedback">Vibrate on key press</string>
+    <string name="setting_key_sound">Sound on key press</string>
+    <string name="setting_key_sound_volume">Volume: %1$d%%</string>
     <string name="setting_key_preview">Show key preview</string>
     <string name="setting_key_preview_note">Never shown while typing a password.</string>
     <string name="setting_capitalise_sentences">Capitalise the start of a sentence</string>

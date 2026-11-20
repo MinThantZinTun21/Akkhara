@@ -78,6 +78,9 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
     var hapticsEnabled = true
     var keyPreviewEnabled = true
 
+    /** Plays the key sound on each press, or null while the user has it off. See GLOSSARY.md, "Key sound". */
+    var keySounds: KeySoundPlayer? = null
+
     private var engine: KeyboardEngine? = null
 
     /** Never in a password field, whatever the setting says. */
@@ -620,7 +623,7 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
             lift is EmojiPanel.Lift.Typed -> lift.emoji
             else -> return
         }
-        if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        pressFeedback(KeySound.Letter)
         host?.edit { typeEmoji(emoji) }
     }
 
@@ -642,7 +645,7 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
         val target = stripPainter.targetAt(x, y, strip) ?: return
         stripPointer = pointerId
         stripTarget = target
-        if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        pressFeedback(KeySound.Letter)
     }
 
     /** The finger lifted from the strip: the part it went down on acts if the finger is still on it. */
@@ -657,11 +660,17 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
         }
     }
 
+    /** What a press gives back: a vibration and a key sound, each if the user has it on. */
+    private fun pressFeedback(sound: KeySound) {
+        if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        keySounds?.play(sound)
+    }
+
     private fun touchDown(pointerId: Int, touch: Touch) {
         val cell = touch.cell
         touches[pointerId] = touch
-        if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         val key = cell.key
+        pressFeedback(KeySound.of(key))
         if (showsKeyPreview && key is CharKey) callout.showPreview(this, cell, key.text)
         touch.holdTimer = Runnable { onHeld(pointerId, touch) }.also { postDelayed(it, HOLD_MILLIS) }
     }

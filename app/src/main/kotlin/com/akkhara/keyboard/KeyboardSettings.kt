@@ -24,6 +24,16 @@ class KeyboardSettings internal constructor(private val preferences: SharedPrefe
     var capitaliseSentences: Boolean by toggle("capitalise_sentences")
     var doubleSpaceFullStop: Boolean by toggle("double_space_full_stop")
 
+    /** Off until the user turns it on, so nobody hears the keyboard who did not ask to. See GLOSSARY.md, "Key sound". */
+    var keySound: Boolean by toggle("key_sound", default = false)
+
+    /** How loud the key sound is, from 0 to 100 percent of the phone's system-sounds volume. */
+    var keySoundVolume: Int
+        get() = preferences.getInt(KEY_KEY_SOUND_VOLUME, DEFAULT_KEY_SOUND_VOLUME)
+        set(value) {
+            preferences.edit { putInt(KEY_KEY_SOUND_VOLUME, value.coerceIn(0, 100)) }
+        }
+
     /** Off until the user turns it on: each translation keeps the phone busy for a while. */
     var translateAsYouType: Boolean by toggle("translate_as_you_type", default = false)
 
@@ -87,5 +97,7 @@ class KeyboardSettings internal constructor(private val preferences: SharedPrefe
         const val KEY_INPUT_LANGUAGE = "input_language"
         const val KEY_THEME = "theme"
         const val KEY_KEY_STYLE = "key_style"
+        const val KEY_KEY_SOUND_VOLUME = "key_sound_volume"
+        const val DEFAULT_KEY_SOUND_VOLUME = 30
     }
 }
