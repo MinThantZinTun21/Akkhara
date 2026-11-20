@@ -1,6 +1,6 @@
 # Third-party sounds
 
-The key sounds in `app/src/main/res/raw/` are cut from two packs by Kenney (www.kenney.nl), both released into the public domain under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Credit is not required; we give it anyway. Each file was trimmed to at most 0.25 s, faded out, mixed to mono and saved as 22.05 kHz 16-bit WAV. See ADR 0008.
+The key sounds in `app/src/main/res/raw/` are cut from two packs by Kenney (www.kenney.nl), both released into the public domain under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Credit is not required; we give it anyway. Each file was cut to at most 0.25 s (the longer ones faded out and their trailing silence removed), mixed to mono and saved as 22.05 kHz 16-bit WAV. See ADR 0008.
 
 | File in the app | Pack | Source file |
 |---|---|---|

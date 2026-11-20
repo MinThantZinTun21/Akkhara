@@ -24,7 +24,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     private lateinit var engine: KeyboardEngine
     private var keyboardView: KeyboardView? = null
     private lateinit var translatorClient: TranslatorClient
-    private lateinit var keySounds: KeySoundPlayer
+    private lateinit var keySoundPlayer: KeySoundPlayer
     private val handler = Handler(Looper.getMainLooper())
 
     /**
@@ -41,7 +41,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         settings = KeyboardSettings(this)
         models = ModelShelf(this)
         translatorClient = TranslatorClient(this)
-        keySounds = KeySoundPlayer(this)
+        keySoundPlayer = KeySoundPlayer(this)
         engine = KeyboardEngine(
             editor = InputConnectionEditor({ currentInputConnection }, { currentInputEditorInfo }),
             clock = SystemClock::uptimeMillis,
@@ -55,7 +55,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     override fun onDestroy() {
         handler.removeCallbacks(typingPaused)
         translatorClient.close()
-        keySounds.release()
+        keySoundPlayer.release()
         super.onDestroy()
     }
 
@@ -118,16 +118,10 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
                 doubleSpaceFullStop = settings.doubleSpaceFullStop,
             ),
         )
-        keySounds.isOn = settings.keySound
-        if (settings.keySound) {
-            keySounds.tone = settings.keySoundTone
-            keySounds.volume = settings.keySoundVolume / 100f
-        } else {
-            keySounds.release() // Sounds stay loaded only while the user has them on.
-        }
+        keySoundPlayer.follow(settings)
         keyboardView?.apply {
             hapticsEnabled = settings.hapticFeedback
-            keySounds = this@AkkharaImeService.keySounds
+            keySoundPlayer = this@AkkharaImeService.keySoundPlayer
             keyPreviewEnabled = settings.keyPreview
             onEngineChanged()
         }

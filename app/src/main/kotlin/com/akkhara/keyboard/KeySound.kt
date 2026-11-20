@@ -25,13 +25,7 @@ enum class KeySound {
             else -> Letter
         }
 
-        /**
-         * A key sound plays only while the user has it on and the phone is
-         * neither silent nor on vibrate. A preview in the app plays while it
-         * is off, so the user can hear a tone first, but still not while the
-         * phone is silenced.
-         */
-        fun plays(isOn: Boolean, ringerMode: Int, isPreview: Boolean = false): Boolean =
-            (isOn || isPreview) && ringerMode == AudioManager.RINGER_MODE_NORMAL
+        /** A key sound plays only while the user has it on and the phone is neither silent nor on vibrate. */
+        fun plays(isOn: Boolean, ringerMode: Int): Boolean = isOn && ringerMode == AudioManager.RINGER_MODE_NORMAL
     }
 }

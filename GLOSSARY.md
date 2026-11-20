@@ -217,3 +217,7 @@ _Avoid_: Auto, default theme, dynamic colour
 **Key sound**:
 The short sound the keyboard can play each time a key is pressed, at the same moments it vibrates. It is off until the user turns it on in the Akkhara app. Each tone has one sound for letters and every other key, and its own for Space, Delete and Enter. The phone's silent and vibrate modes mute it.
 _Avoid_: Click sound, keypress audio, typing sound, voice
+
+**Tone**:
+One of the four ways the key sound can sound: Click, Soft tap, Bubble or Typewriter. The user picks one in the Akkhara app; Click is the first.
+_Avoid_: Sound pack, sound theme, voice

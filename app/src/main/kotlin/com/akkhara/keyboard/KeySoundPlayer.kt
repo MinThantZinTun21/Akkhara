@@ -6,53 +6,76 @@ import android.media.AudioManager
 import android.media.SoundPool
 
 /**
- * Plays key sounds. The sounds are built into the app and loaded the first
- * time they are wanted; nothing is ever downloaded (ADR 0008).
+ * Plays key sounds. The sounds are built into the app; nothing is ever
+ * downloaded (ADR 0008). They load when the user's choices are followed
+ * with key sound on, and are freed while it is off.
  *
  * They play as system sounds, so the phone's system-sounds volume and its
- * silent and vibrate modes apply, and [volume] scales them further.
+ * silent and vibrate modes apply, and the user's volume scales them further.
  */
 class KeySoundPlayer(private val context: Context) {
     private val audio = context.getSystemService(AudioManager::class.java)
     private var pool: SoundPool? = null
-    private var loaded: Map<KeySound, Int> = emptyMap()
+
+    /** The id SoundPool gave each of the tone's sounds when it began loading it. */
+    private var sampleIds: Map<KeySound, Int> = emptyMap()
+
+    /** The sample ids that have finished loading, so play at once. */
     private val ready = mutableSetOf<Int>()
 
-    /** A sound asked for before it had loaded, played as soon as it has. */
-    private var waiting: Int? = null
+    /** A preview asked for before its sound had loaded, played as soon as it has. */
+    private var waitingPreview: Int? = null
 
-    /** Whether the user has key sound on. Only [preview] plays while it is off. */
-    var isOn = false
+    private var isOn = false
 
     /** From 0 to 1. */
-    var volume = 0.3f
+    private var volume = 0f
 
-    var tone = KeySoundTone.Click
+    /** The tone whose sounds are loaded. Changing it frees the old tone's sounds. */
+    private var tone = KeySoundTone.Click
         set(value) {
             if (value != field) release()
             field = value
         }
 
-    /** Plays [sound] for a key press. */
-    fun play(sound: KeySound) = play(sound, isPreview = false)
+    /**
+     * Takes the user's key sound choices from [settings]. While key sound is
+     * on, this loads the sounds, so the first press is heard; while it is
+     * off, it frees them.
+     */
+    fun follow(settings: KeyboardSettings) {
+        isOn = settings.keySound
+        if (!isOn) return release()
+        tone = settings.keySoundTone
+        volume = settings.keySoundVolume / 100f
+        if (pool == null) load()
+    }
 
-    /** Plays the letter sound of the [tone], so the user can hear it in the app. */
-    fun preview() = play(KeySound.Letter, isPreview = true)
+    /**
+     * Plays [sound] for a key press. A press before the sounds have loaded
+     * plays nothing: a sound that comes late is worse than none.
+     */
+    fun play(sound: KeySound) {
+        if (!KeySound.plays(isOn, audio.ringerMode)) return
+        val id = sampleIds[sound]?.takeIf { it in ready } ?: return
+        pool?.play(id, volume, volume, 1, 0, 1f)
+    }
 
-    /** Frees the loaded sounds. The next sound loads them again. */
+    /** Plays the tone's letter sound for the user to hear in the app, waiting for it to load if it must. */
+    fun preview() {
+        if (!KeySound.plays(isOn, audio.ringerMode)) return
+        val pool = pool ?: load()
+        val id = sampleIds[KeySound.Letter] ?: return
+        if (id in ready) pool.play(id, volume, volume, 1, 0, 1f) else waitingPreview = id
+    }
+
+    /** Frees the loaded sounds. */
     fun release() {
         pool?.release()
         pool = null
-        loaded = emptyMap()
+        sampleIds = emptyMap()
         ready.clear()
-        waiting = null
-    }
-
-    private fun play(sound: KeySound, isPreview: Boolean) {
-        if (!KeySound.plays(isOn, audio.ringerMode, isPreview)) return
-        val pool = pool ?: load()
-        val id = loaded[sound] ?: return
-        if (id in ready) pool.play(id, volume, volume, 1, 0, 1f) else waiting = id
+        waitingPreview = null
     }
 
     private fun load(): SoundPool {
@@ -66,20 +89,24 @@ class KeySoundPlayer(private val context: Context) {
             )
             .build()
         pool.setOnLoadCompleteListener { loadedPool, id, status ->
-            if (status != 0 || loadedPool !== this.pool) return@setOnLoadCompleteListener
+            if (loadedPool !== this.pool) return@setOnLoadCompleteListener
+            val preview = waitingPreview.takeIf { it == id }
+            if (preview != null) waitingPreview = null
+            if (status != LOADED) return@setOnLoadCompleteListener
             ready += id
-            if (waiting == id) {
-                waiting = null
-                loadedPool.play(id, volume, volume, 1, 0, 1f)
-            }
+            if (preview != null) loadedPool.play(id, volume, volume, 1, 0, 1f)
         }
         this.pool = pool
-        loaded = KeySound.entries.associateWith { pool.load(context, tone.sound(it), 1) }
+        // SoundPool gives 0 for a sound it could not start loading; such a sound never plays.
+        sampleIds = KeySound.entries.associateWith { pool.load(context, tone.sound(it), 1) }.filterValues { it != 0 }
         return pool
     }
 
     private companion object {
         /** Enough for fast typing with two thumbs, where one sound has not ended before the next. */
         const val MAX_STREAMS = 4
+
+        /** The status SoundPool reports for a sound that loaded. */
+        const val LOADED = 0
     }
 }

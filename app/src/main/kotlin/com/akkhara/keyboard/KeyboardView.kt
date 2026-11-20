@@ -79,7 +79,7 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
     var keyPreviewEnabled = true
 
     /** Plays the key sound on each press, while the user has it on. See GLOSSARY.md, "Key sound". */
-    var keySounds: KeySoundPlayer? = null
+    var keySoundPlayer: KeySoundPlayer? = null
 
     private var engine: KeyboardEngine? = null
 
@@ -663,7 +663,7 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
     /** What a press gives back: a vibration and a key sound, each if the user has it on. */
     private fun pressFeedback(sound: KeySound) {
         if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-        keySounds?.play(sound)
+        keySoundPlayer?.play(sound)
     }
 
     private fun touchDown(pointerId: Int, touch: Touch) {

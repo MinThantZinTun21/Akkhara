@@ -739,8 +739,7 @@ private fun KeySoundSettings(settings: KeyboardSettings) {
     var tone by remember { mutableStateOf(settings.keySoundTone) }
     var volume by remember { mutableFloatStateOf(settings.keySoundVolume.toFloat()) }
     fun preview() {
-        player.tone = tone
-        player.volume = volume / 100f
+        player.follow(settings)
         player.preview()
     }
 
