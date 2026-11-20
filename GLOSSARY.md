@@ -22,16 +22,20 @@ _Avoid_: Page, mode, state
 Either of the two shared layers of digits and punctuation, reached from any layout.
 _Avoid_: Numeric keyboard
 
+**Pad**:
+A layer shown in a field that takes only digits and a few characters: the number pad, phone pad or date/time pad. Its keys sit in a grid of four equal columns, and it offers no way to letters, symbols or emoji.
+_Avoid_: Keypad, numeric keyboard
+
 **Number pad**:
 The layer shown in a field that takes only a number: the digits 0 to 9, a minus sign if the field takes negative numbers and a decimal point if it takes decimals. It offers no way to letters, symbols or emoji.
 _Avoid_: Numeric keyboard, number layer, symbols layer (for this meaning)
 
 **Phone pad**:
-The layer shown in a field that takes a phone number: the digits with `+`, `*` and `#`. It offers no way to letters.
+The layer shown in a field that takes a phone number: the digits with `+`, `*` and `#`. It offers no way to letters, symbols or emoji.
 _Avoid_: Dialer, dial pad
 
 **Date/time pad**:
-The layer shown in a field that takes a date or a time: the number pad's digits with only the separators that kind of field needs, such as `/` and `-` for a date or `:` for a time.
+The layer shown in a field that takes a date or a time: the number pad's digits with only the separators that kind of field needs: `/` and `-` for a date, `:` for a time, and all three with a space key for a field that takes both.
 _Avoid_: Date picker, calendar
 
 **Key**:

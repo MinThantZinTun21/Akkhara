@@ -170,10 +170,10 @@ internal object Pads {
     private val enter = ActionKey(Action.Enter, PAD_WIDTH)
     private val space = ActionKey(Action.Space, PAD_WIDTH)
 
-    /** The three rows every pad shares: digits 1 to 9, backspace, [fourth], and enter. */
-    private fun digitRows(fourth: Key): List<Row> = listOf(
+    /** The three rows every pad shares: digits 1 to 9 with backspace, [besideSix] and enter down the right. */
+    private fun digitRows(besideSix: Key): List<Row> = listOf(
         listOf(padKey("1"), padKey("2"), padKey("3"), backspace),
-        listOf(padKey("4"), padKey("5"), padKey("6"), fourth),
+        listOf(padKey("4"), padKey("5"), padKey("6"), besideSix),
         listOf(padKey("7"), padKey("8"), padKey("9"), enter),
     )
 
