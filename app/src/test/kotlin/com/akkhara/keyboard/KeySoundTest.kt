@@ -63,13 +63,16 @@ class KeySoundTest {
     }
 
     @Test
-    fun `there are four tones, each with its own four sounds`() {
+    fun `there are eight tones, each with its own four sounds`() {
         assertEquals(
-            listOf(KeySoundTone.Click, KeySoundTone.SoftTap, KeySoundTone.Bubble, KeySoundTone.Typewriter),
+            listOf(
+                KeySoundTone.Click, KeySoundTone.SoftTap, KeySoundTone.Bubble, KeySoundTone.Typewriter,
+                KeySoundTone.Glass, KeySoundTone.Wood, KeySoundTone.Retro, KeySoundTone.Chips,
+            ),
             KeySoundTone.entries,
         )
         val sounds = KeySoundTone.entries.flatMap { tone -> KeySound.entries.map(tone::fileFor) }
-        assertEquals(16, sounds.toSet().size)
+        assertEquals(32, sounds.toSet().size)
     }
 
     @Test
