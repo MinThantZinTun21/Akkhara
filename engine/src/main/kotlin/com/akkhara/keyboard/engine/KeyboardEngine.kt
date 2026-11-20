@@ -95,6 +95,7 @@ class KeyboardEngine(
             Layer.MoreSymbols -> SymbolsLayout.second
             Layer.Emoji -> EmojiPanelLayout.bar
             Layer.NumberPad -> Pads.number(textField.kind as? FieldKind.Number ?: FieldKind.Number())
+            Layer.PhonePad -> Pads.phone
         }
 
     /** The emoji chosen since the keyboard started, newest first. Never stored. See GLOSSARY.md, "Recent emoji". */
@@ -123,7 +124,11 @@ class KeyboardEngine(
     fun startInput(field: Field, conveniences: Conveniences = this.conveniences) {
         textField = field
         this.conveniences = conveniences
-        layer = if (field.kind is FieldKind.Text || field.kind is FieldKind.Address) Layer.Letters else Layer.NumberPad
+        layer = when (field.kind) {
+            FieldKind.Text, FieldKind.Address -> Layer.Letters
+            FieldKind.Phone -> Layer.PhonePad
+            is FieldKind.Number, FieldKind.DateTime -> Layer.NumberPad
+        }
         setShift(ShiftState.Off)
         lastShiftTap = null
         updateAutomaticCapital()

@@ -160,7 +160,8 @@ internal object EmojiPanelLayout {
 internal object Pads {
     private const val PAD_WIDTH = 2.5f
 
-    private fun padKey(text: String?): Key = if (text == null) Blank(PAD_WIDTH) else CharKey(text, width = PAD_WIDTH)
+    private fun padKey(text: String?, alternates: List<String> = emptyList()): Key =
+        if (text == null) Blank(PAD_WIDTH) else CharKey(text, alternates, width = PAD_WIDTH)
 
     private val backspace = ActionKey(Action.Backspace, PAD_WIDTH)
     private val enter = ActionKey(Action.Enter, PAD_WIDTH)
@@ -170,5 +171,13 @@ internal object Pads {
         listOf(padKey("4"), padKey("5"), padKey("6"), padKey("-".takeIf { kind.allowsNegative })),
         listOf(padKey("7"), padKey("8"), padKey("9"), enter),
         listOf(padKey(".".takeIf { kind.allowsDecimal }), padKey("0"), padKey(null), padKey(null)),
+    )
+
+    /** See GLOSSARY.md, "Phone pad". Holding 0 offers `+`, and holding `#` a space, as on a phone's dialler. */
+    val phone: List<Row> = listOf(
+        listOf(padKey("1"), padKey("2"), padKey("3"), backspace),
+        listOf(padKey("4"), padKey("5"), padKey("6"), padKey("+")),
+        listOf(padKey("7"), padKey("8"), padKey("9"), enter),
+        listOf(padKey("*"), padKey("0", alternates = listOf("+")), padKey("#", alternates = listOf(" ")), padKey(null)),
     )
 }

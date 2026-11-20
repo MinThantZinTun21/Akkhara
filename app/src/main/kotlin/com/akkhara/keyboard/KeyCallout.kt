@@ -98,7 +98,9 @@ class KeyCallout(context: Context, private val palette: Palette) {
             if (texts.isEmpty()) return
             val each = width.toFloat() / texts.size
             val fullSize = label.textSize
-            texts.forEachIndexed { index, text ->
+            texts.forEachIndexed { index, typed ->
+                // A space would draw as nothing, so it shows as the sign for one.
+                val text = if (typed == " ") SPACE_SIGN else typed
                 label.textSize = fullSize
                 // A key that types several characters may be wider than its share of the callout.
                 label.shrinkToFit(text, room = each - 4f * density)
@@ -119,5 +121,8 @@ class KeyCallout(context: Context, private val palette: Palette) {
     private companion object {
         const val MIN_TEXT_WIDTH_DP = 40f
         const val GAP_DP = 6f
+
+        /** Stands for a space among the alternates. */
+        const val SPACE_SIGN = "\u2423"
     }
 }

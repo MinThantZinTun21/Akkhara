@@ -2,8 +2,8 @@ package com.akkhara.keyboard.engine
 
 /**
  * Which screenful of keys is showing. On [Emoji], the emoji panel takes the
- * place of the keys. [NumberPad] shows in a field that takes only a number,
- * and nothing on it leads to another layer.
+ * place of the keys. [NumberPad] shows in a field that takes only a number
+ * and [PhonePad] in a phone number field; nothing on a pad leads to another layer.
  */
 enum class Layer {
     Letters,
@@ -11,10 +11,11 @@ enum class Layer {
     MoreSymbols,
     Emoji,
     NumberPad,
+    PhonePad,
     ;
 
     /** Whether this is a pad for a field that takes only numbers, as tall as the letters but with fewer rows. */
-    val isPad: Boolean get() = this == NumberPad
+    val isPad: Boolean get() = this == NumberPad || this == PhonePad
 }
 
 enum class ShiftState {

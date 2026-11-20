@@ -11,8 +11,10 @@ sealed interface FieldKind {
     /** A number only: the keyboard shows the number pad. See GLOSSARY.md, "Number pad". */
     data class Number(val allowsNegative: Boolean = false, val allowsDecimal: Boolean = false) : FieldKind
 
-    /** A phone number, or a date or time: until they have pads of their own, the number pad. */
+    /** A phone number: the keyboard shows the phone pad. See GLOSSARY.md, "Phone pad". */
     data object Phone : FieldKind
+
+    /** A date or a time: until it has a pad of its own, the number pad. */
     data object DateTime : FieldKind
 }
 
