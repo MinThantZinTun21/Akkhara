@@ -96,7 +96,7 @@ class KeyboardEngine(
             Layer.Emoji -> EmojiPanelLayout.bar
             Layer.NumberPad -> Pads.number(textField.kind as? FieldKind.Number ?: FieldKind.Number())
             Layer.PhonePad -> Pads.phone
-            Layer.DateTimePad -> Pads.dateTime(textField.kind)
+            Layer.DateTimePad -> Pads.dateTime(textField.kind as? FieldKind.DateOrTime ?: FieldKind.DateAndTime)
         }
 
     /** The emoji chosen since the keyboard started, newest first. Never stored. See GLOSSARY.md, "Recent emoji". */
@@ -110,7 +110,13 @@ class KeyboardEngine(
         get() = listOf(EmojiCategory(EmojiCategory.Kind.Recent, shownRecentEmoji)) + EmojiList.categories
 
     /** The name of the current input language, for the space bar. */
-    val spaceLabel: String get() = layoutFor(inputLanguage).name
+    val spaceLabel: String get() = if (layer.isPad) SPACE_SIGN else layoutFor(inputLanguage).name
+
+    /**
+     * How many rows tall the keys are drawn. A pad has fewer rows than the
+     * letters but keeps their height, so the app above does not jump.
+     */
+    val heightInRows: Int get() = if (layer.isPad) layoutFor(inputLanguage).base.size else rows.size
 
     /** A few letters of the current input language, for the key that leaves the symbols layers. */
     val lettersLabel: String get() = layoutFor(inputLanguage).lettersLabel
@@ -128,7 +134,7 @@ class KeyboardEngine(
         layer = when (field.kind) {
             FieldKind.Text, FieldKind.Address -> Layer.Letters
             FieldKind.Phone -> Layer.PhonePad
-            FieldKind.Date, FieldKind.Time, FieldKind.DateAndTime -> Layer.DateTimePad
+            is FieldKind.DateOrTime -> Layer.DateTimePad
             is FieldKind.Number -> Layer.NumberPad
         }
         setShift(ShiftState.Off)

@@ -14,13 +14,10 @@ class PhonePadTest {
         engine.startInput(Field(kind = FieldKind.Phone))
 
         assertEquals(
-            listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "#", "+").sorted(),
+            (DIGITS + "*" + "#" + "+").sorted(),
             typist.labels().sorted(),
         )
-        assertEquals(
-            setOf(Action.Backspace, Action.Enter),
-            engine.rows.flatten().filterIsInstance<ActionKey>().map { it.action }.toSet(),
-        )
+        assertEquals(setOf(Action.Backspace, Action.Enter), typist.actions())
     }
 
     @Test

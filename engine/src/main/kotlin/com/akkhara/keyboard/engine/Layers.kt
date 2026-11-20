@@ -16,7 +16,7 @@ enum class Layer {
     DateTimePad,
     ;
 
-    /** Whether this is a pad for a field that takes only numbers, as tall as the letters but with fewer rows. */
+    /** Whether this is a pad: the layer for a field that takes only a number, a phone number, or a date or time. */
     val isPad: Boolean get() = this == NumberPad || this == PhonePad || this == DateTimePad
 }
 

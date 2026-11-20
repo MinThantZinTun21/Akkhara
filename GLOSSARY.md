@@ -15,7 +15,7 @@ The full set of keys belonging to one input language, across all of its layers.
 _Avoid_: Keymap, keyboard (for this meaning)
 
 **Layer**:
-One screenful of keys within a layout. Each input language has a base layer and a shift layer; the two symbols layers are shared by both languages.
+One screenful of keys within a layout. Each input language has a base layer and a shift layer; the two symbols layers are shared by both languages; and the number pad, phone pad and date/time pad are the layers for fields that take only those.
 _Avoid_: Page, mode, state
 
 **Symbols layer**:
@@ -37,6 +37,10 @@ _Avoid_: Date picker, calendar
 **Key**:
 One touchable cell on a layer. A key either types a character or performs an action (shift, backspace, enter, space, globe, layer switch).
 _Avoid_: Button
+
+**Blank**:
+A place on a pad where there is no key, because the field does not take the character that would go there. It keeps the other keys in their columns, and a touch on it goes to the nearest key.
+_Avoid_: Empty key, gap, spacer
 
 **Alternate**:
 An extra character offered when a key is held down, such as the Latin digit on a Myanmar digit key.

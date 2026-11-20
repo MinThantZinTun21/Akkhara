@@ -11,30 +11,26 @@ class NumberPadTest {
     private val engine = KeyboardEngine(editor, FakeClock(), translator = FakeTranslator())
     private val typist = Typist(engine)
 
-    private val digits = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
-
-    private fun actions(): Set<Action> = engine.rows.flatten().filterIsInstance<ActionKey>().map { it.action }.toSet()
-
     @Test
-    fun `a number field shows the digits, backspace and enter, and nothing else`() {
+    fun `a number field shows the DIGITS, backspace and enter, and nothing else`() {
         engine.startInput(Field(kind = FieldKind.Number()))
 
-        assertEquals(digits, typist.labels().sorted())
-        assertEquals(setOf(Action.Backspace, Action.Enter), actions())
+        assertEquals(DIGITS, typist.labels().sorted())
+        assertEquals(setOf(Action.Backspace, Action.Enter), typist.actions())
     }
 
     @Test
     fun `a field that takes negative numbers adds a minus key`() {
         engine.startInput(Field(kind = FieldKind.Number(allowsNegative = true)))
 
-        assertEquals((digits + "-").sorted(), typist.labels().sorted())
+        assertEquals((DIGITS + "-").sorted(), typist.labels().sorted())
     }
 
     @Test
     fun `a field that takes decimals adds a decimal point`() {
         engine.startInput(Field(kind = FieldKind.Number(allowsDecimal = true)))
 
-        assertEquals((digits + ".").sorted(), typist.labels().sorted())
+        assertEquals((DIGITS + ".").sorted(), typist.labels().sorted())
     }
 
     @Test
@@ -43,6 +39,16 @@ class NumberPadTest {
         typist.tap("-", "1", "2", ".", "5")
 
         assertEquals("-12.5", editor.text)
+    }
+
+    @Test
+    fun `the pad is as tall as the letters keyboard though it has fewer rows`() {
+        engine.startInput(Field())
+        val letters = engine.heightInRows
+        engine.startInput(Field(kind = FieldKind.Number()))
+
+        assertEquals(5, letters)
+        assertEquals(letters, engine.heightInRows)
     }
 
     @Test
@@ -58,7 +64,7 @@ class NumberPadTest {
     }
 
     @Test
-    fun `the pad types ordinary digits whichever input language is showing`() {
+    fun `the pad types ordinary DIGITS whichever input language is showing`() {
         typist.tap(Action.Globe)
         assertEquals(InputLanguage.Myanmar, engine.inputLanguage)
 
@@ -72,7 +78,7 @@ class NumberPadTest {
     fun `a PIN field shows the number pad with no key preview`() {
         engine.startInput(Field(kind = FieldKind.Number(), isPassword = true))
 
-        assertEquals(digits, typist.labels().sorted())
+        assertEquals(DIGITS, typist.labels().sorted())
         assertFalse(engine.allowsKeyPreview)
     }
 
@@ -108,7 +114,18 @@ class NumberPadTest {
     }
 
     @Test
-    fun `a touch on an empty cell goes to the nearest key in its row`() {
+    fun `a text field after a number field brings back the Myanmar letters if they were showing`() {
+        engine.startInput(Field())
+        typist.tap(Action.Globe)
+        engine.startInput(Field(kind = FieldKind.Number()))
+        engine.startInput(Field())
+
+        assertEquals(InputLanguage.Myanmar, engine.inputLanguage)
+        assertTrue("က" in typist.labels())
+    }
+
+    @Test
+    fun `a touch on a blank goes to the nearest key in its row`() {
         engine.startInput(Field(kind = FieldKind.Number()))
         val grid = KeyGrid(engine.rows, width = 400f, rowHeight = 50f, padding = 0f, gap = 0f, rowGap = 0f)
 

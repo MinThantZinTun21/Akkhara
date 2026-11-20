@@ -4,6 +4,9 @@ package com.akkhara.keyboard.engine
  * Presses keys the way a user does: by finding them on the layer that is
  * currently showing. A key that is not showing cannot be pressed.
  */
+/** The ASCII digits, which every pad types whichever input language is showing. */
+val DIGITS = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+
 class Typist(private val engine: KeyboardEngine) {
 
     fun tap(vararg labels: String) = labels.forEach { label ->
@@ -49,6 +52,9 @@ class Typist(private val engine: KeyboardEngine) {
             ?: error("No $action key on the showing layer")
 
     fun labels(): List<String> = visibleKeys().filterIsInstance<CharKey>().map { it.text }
+
+    /** The actions of the keys showing. */
+    fun actions(): Set<Action> = visibleKeys().filterIsInstance<ActionKey>().map { it.action }.toSet()
 
     fun rowLabels(): List<String> = engine.rows.map { row ->
         row.filterIsInstance<CharKey>().joinToString(" ") { it.text }

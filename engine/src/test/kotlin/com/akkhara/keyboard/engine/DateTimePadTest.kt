@@ -9,16 +9,12 @@ class DateTimePadTest {
     private val engine = KeyboardEngine(editor, FakeClock(), translator = FakeTranslator())
     private val typist = Typist(engine)
 
-    private val digits = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
-
-    private fun actions(): Set<Action> = engine.rows.flatten().filterIsInstance<ActionKey>().map { it.action }.toSet()
-
     @Test
-    fun `a date field shows the digits with a slash and a dash`() {
+    fun `a date field shows the DIGITS with a slash and a dash`() {
         engine.startInput(Field(kind = FieldKind.Date))
 
-        assertEquals((digits + "/" + "-").sorted(), typist.labels().sorted())
-        assertEquals(setOf(Action.Backspace, Action.Enter), actions())
+        assertEquals((DIGITS + "/" + "-").sorted(), typist.labels().sorted())
+        assertEquals(setOf(Action.Backspace, Action.Enter), typist.actions())
     }
 
     @Test
@@ -30,12 +26,12 @@ class DateTimePadTest {
     }
 
     @Test
-    fun `a time field shows the digits with a colon`() {
+    fun `a time field shows the DIGITS with a colon`() {
         engine.startInput(Field(kind = FieldKind.Time))
         typist.tap("9", ":", "3", "0")
 
-        assertEquals((digits + ":").sorted(), typist.labels().sorted())
-        assertEquals(setOf(Action.Backspace, Action.Enter), actions())
+        assertEquals((DIGITS + ":").sorted(), typist.labels().sorted())
+        assertEquals(setOf(Action.Backspace, Action.Enter), typist.actions())
         assertEquals("9:30", editor.text)
     }
 
@@ -46,9 +42,26 @@ class DateTimePadTest {
         typist.tap(Action.Space)
         typist.tap("9", ":", "3", "0")
 
-        assertEquals((digits + "/" + "-" + ":").sorted(), typist.labels().sorted())
-        assertEquals(setOf(Action.Backspace, Action.Enter, Action.Space), actions())
+        assertEquals((DIGITS + "/" + "-" + ":").sorted(), typist.labels().sorted())
+        assertEquals(setOf(Action.Backspace, Action.Enter, Action.Space), typist.actions())
         assertEquals("20/11 9:30", editor.text)
+    }
+
+    @Test
+    fun `the date pad types ordinary digits with Myanmar showing`() {
+        engine.startInput(Field())
+        typist.tap(Action.Globe)
+        engine.startInput(Field(kind = FieldKind.Date))
+        typist.tap("2", "0", "/", "1", "1")
+
+        assertEquals("20/11", editor.text)
+    }
+
+    @Test
+    fun `the space key on a pad shows the sign for a space, not a language`() {
+        engine.startInput(Field(kind = FieldKind.DateAndTime))
+
+        assertEquals("\u2423", engine.spaceLabel)
     }
 
     @Test

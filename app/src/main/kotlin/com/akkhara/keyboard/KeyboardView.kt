@@ -27,6 +27,7 @@ import com.akkhara.keyboard.engine.Layer
 import com.akkhara.keyboard.engine.ShiftState
 import com.akkhara.keyboard.engine.StripState
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -167,8 +168,8 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
      */
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rowCount = shownRows()?.size ?: 0
-        // A pad has fewer rows than the letters but keeps their height, so its keys are taller.
-        val heightInRows = if (engine?.layer?.isPad == true) LETTERS_ROW_COUNT else rowCount
+        // A pad keeps the letters' height with fewer rows; the emoji panel has more rows than the engine's bar.
+        val heightInRows = max(rowCount, engine?.heightInRows ?: 0)
         // The strip shows only while it has something to say, so the keyboard keeps its height otherwise.
         val hasStrip = engine?.strip.let { it != null && it != StripState.Idle }
         var scale = 1f
@@ -254,14 +255,14 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
             if (moving) postInvalidateOnAnimation()
         }
         for (cell in grid?.cells.orEmpty()) {
-            if (cell.key !== EMOJI_TABS) drawKey(canvas, cell)
+            // A blank is drawn as nothing.
+            if (cell.key !== EMOJI_TABS && cell.key !is Blank) drawKey(canvas, cell)
         }
         if (engine?.layer == Layer.Emoji && emojiPanel.draw(canvas)) postInvalidateOnAnimation()
     }
 
     private fun drawKey(canvas: Canvas, cell: Cell) {
         val key = cell.key
-        if (key is Blank) return
         val style = styleOf(cell)
         val isPressed = touches.values.any { it.cell.isAt(cell) }
         keyPaint.color = when {
@@ -341,12 +342,8 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
         iconPath.rewind()
         iconPaint.style = Paint.Style.STROKE
         when (action) {
-            // A pad types no language, so its space key shows the sign for a space instead of a language's name.
-            Action.Space -> return if (engine?.layer?.isPad == true) {
-                drawLabel(canvas, SPACE_SIGN, cell, labelPaint)
-            } else {
-                drawLabel(canvas, engine?.spaceLabel.orEmpty(), cell, smallLabelPaint)
-            }
+            Action.Space ->
+                return drawLabel(canvas, engine?.spaceLabel.orEmpty(), cell, smallLabelPaint)
             Action.Symbols ->
                 return drawLabel(canvas, engine?.symbolsLabel.orEmpty(), cell, smallLabelPaint)
             Action.MoreSymbols -> return drawLabel(canvas, "=\\<", cell, smallLabelPaint)
@@ -702,9 +699,6 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
 
         /** The most of the screen's height the keys may take. */
         const val MAX_SCREEN_SHARE = 0.5f
-
-        /** How many rows the letters keyboard has, whose height a pad keeps. */
-        const val LETTERS_ROW_COUNT = 5
 
         /** How long a finger must stay down to count as holding the key. */
         const val HOLD_MILLIS = 350L

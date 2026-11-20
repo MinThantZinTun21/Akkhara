@@ -9,6 +9,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.PopupWindow
 import com.akkhara.keyboard.engine.Cell
+import com.akkhara.keyboard.engine.SPACE_SIGN
 
 /**
  * What floats above a pressed key: either the key preview (one character) or
@@ -124,5 +125,3 @@ class KeyCallout(context: Context, private val palette: Palette) {
     }
 }
 
-/** Stands for a space where a label must show one: among the alternates, and on a pad's space key. */
-internal const val SPACE_SIGN = "\u2423"

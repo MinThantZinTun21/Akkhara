@@ -153,9 +153,9 @@ internal object EmojiPanelLayout {
 }
 
 /**
- * The pads shown in fields that take only numbers: a grid of four equal
- * columns with backspace and enter down the right. A cell whose key the field
- * does not take is left blank. See GLOSSARY.md, "Number pad".
+ * The pads: a grid of four equal columns with backspace and enter down the
+ * right. A cell whose key the field does not take is left blank. See
+ * GLOSSARY.md, "Number pad", "Phone pad" and "Date/time pad".
  */
 internal object Pads {
     private const val PAD_WIDTH = 2.5f
@@ -167,37 +167,30 @@ internal object Pads {
     private val enter = ActionKey(Action.Enter, PAD_WIDTH)
     private val space = ActionKey(Action.Space, PAD_WIDTH)
 
-    fun number(kind: FieldKind.Number): List<Row> = listOf(
+    /** The three rows every pad shares: digits 1 to 9, backspace, [fourth], and enter. */
+    private fun digitRows(fourth: Key): List<Row> = listOf(
         listOf(padKey("1"), padKey("2"), padKey("3"), backspace),
-        listOf(padKey("4"), padKey("5"), padKey("6"), padKey("-".takeIf { kind.allowsNegative })),
+        listOf(padKey("4"), padKey("5"), padKey("6"), fourth),
         listOf(padKey("7"), padKey("8"), padKey("9"), enter),
-        listOf(padKey(".".takeIf { kind.allowsDecimal }), padKey("0"), padKey(null), padKey(null)),
     )
 
-    /** See GLOSSARY.md, "Phone pad". Holding 0 offers `+`, and holding `#` a space, as on a phone's dialler. */
-    val phone: List<Row> = listOf(
-        listOf(padKey("1"), padKey("2"), padKey("3"), backspace),
-        listOf(padKey("4"), padKey("5"), padKey("6"), padKey("+")),
-        listOf(padKey("7"), padKey("8"), padKey("9"), enter),
+    fun number(kind: FieldKind.Number): List<Row> = digitRows(padKey("-".takeIf { kind.allowsNegative })) +
+        listOf(listOf(padKey(".".takeIf { kind.allowsDecimal }), padKey("0"), padKey(null), padKey(null)))
+
+    /** Holding 0 offers `+`, and holding `#` a space, as on a phone's dialler. */
+    val phone: List<Row> = digitRows(padKey("+")) + listOf(
         listOf(padKey("*"), padKey("0", alternates = listOf("+")), padKey("#", alternates = listOf(" ")), padKey(null)),
     )
 
-    /**
-     * See GLOSSARY.md, "Date/time pad". A date gets `/` and `-`, a time `:`,
-     * and a field for both all three and a space between the date and the time.
-     */
-    fun dateTime(kind: FieldKind): List<Row> {
-        val hasDate = kind == FieldKind.Date || kind == FieldKind.DateAndTime
-        val hasTime = kind == FieldKind.Time || kind == FieldKind.DateAndTime
-        return listOf(
-            listOf(padKey("1"), padKey("2"), padKey("3"), backspace),
-            listOf(padKey("4"), padKey("5"), padKey("6"), padKey(if (hasDate) "-" else ":")),
-            listOf(padKey("7"), padKey("8"), padKey("9"), enter),
+    /** A date gets `/` and `-`, a time `:`, and a field for both all three and a space between them. */
+    fun dateTime(kind: FieldKind.DateOrTime): List<Row> {
+        val takesBoth = kind.takesDate && kind.takesTime
+        return digitRows(padKey(if (kind.takesDate) "-" else ":")) + listOf(
             listOf(
-                padKey("/".takeIf { hasDate }),
+                padKey("/".takeIf { kind.takesDate }),
                 padKey("0"),
-                padKey(":".takeIf { hasDate && hasTime }),
-                if (hasDate && hasTime) space else padKey(null),
+                padKey(":".takeIf { takesBoth }),
+                if (takesBoth) space else padKey(null),
             ),
         )
     }

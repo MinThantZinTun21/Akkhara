@@ -15,9 +15,28 @@ sealed interface FieldKind {
     data object Phone : FieldKind
 
     /** A date, a time, or both: the keyboard shows the date/time pad. See GLOSSARY.md, "Date/time pad". */
-    data object Date : FieldKind
-    data object Time : FieldKind
-    data object DateAndTime : FieldKind
+    sealed interface DateOrTime : FieldKind {
+        val takesDate: Boolean
+        val takesTime: Boolean
+    }
+
+    /** A date only: the pad offers `/` and `-`. */
+    data object Date : DateOrTime {
+        override val takesDate = true
+        override val takesTime = false
+    }
+
+    /** A time only: the pad offers `:`. */
+    data object Time : DateOrTime {
+        override val takesDate = false
+        override val takesTime = true
+    }
+
+    /** A date and a time together: the pad offers `/`, `-`, `:` and a space between them. */
+    data object DateAndTime : DateOrTime {
+        override val takesDate = true
+        override val takesTime = true
+    }
 }
 
 /** What the enter key does in a text field. */
