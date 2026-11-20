@@ -67,9 +67,12 @@ class TypingHistoryDatabase private constructor(context: Context) :
     }
 
     /** Entries, newest first. Reads the disk, so call it off the main thread. */
-    fun newestFirst(limit: Int = PAGE_LIMIT): List<SavedEntry> =
-        readableDatabase.query(
-            "entries", COLUMNS, null, null, null, null, "saved_at DESC, id DESC", limit.toString(),
+    fun newestFirst(search: String = "", limit: Int = PAGE_LIMIT): List<SavedEntry> {
+        val (where, args) =
+            if (search.isBlank()) null to null
+            else "text LIKE ? ESCAPE '\\'" to arrayOf(containsPattern(search.trim()))
+        return readableDatabase.query(
+            "entries", COLUMNS, where, args, null, null, "saved_at DESC, id DESC", limit.toString(),
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) {
@@ -86,11 +89,20 @@ class TypingHistoryDatabase private constructor(context: Context) :
                 }
             }
         }
+    }
 
     companion object {
         private const val FILE = "typing_history.db"
         private const val VERSION = 1
         private val COLUMNS = arrayOf("id", "text", "app", "app_name", "saved_at")
+
+        /**
+         * The LIKE pattern for entries that contain [search] anywhere. Plain
+         * "contains" works for Myanmar, which has no spaces between words
+         * (ADR 0009). The user's %, _ and \ match only themselves.
+         */
+        fun containsPattern(search: String): String =
+            "%" + search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
         /** The most entries the history page shows at once. */
         const val PAGE_LIMIT = 500

@@ -36,6 +36,8 @@
     <string name="typing_history_delete_all_title">Delete all typing history?</string>
     <string name="typing_history_delete_all_text">Everything the keyboard has kept is deleted from this phone. This cannot be undone.</string>
     <string name="typing_history_delete_all_confirm">Delete all</string>
+    <string name="typing_history_search">Search</string>
+    <string name="typing_history_no_match">Nothing saved contains this.</string>
     <string name="typing_history_empty">Nothing kept yet. Turn on Remember what I type to start.</string>
     <string name="key_sound_glass">Glass</string>
     <string name="key_sound_wood">Wood</string>

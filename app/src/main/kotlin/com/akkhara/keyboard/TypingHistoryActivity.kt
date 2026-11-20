@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -66,18 +67,19 @@ class TypingHistoryActivity : ComponentActivity() {
 private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
     var entries by remember { mutableStateOf<List<SavedEntry>?>(null) }
     var askDeleteAll by remember { mutableStateOf(false) }
+    var search by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(shown) {
+    LaunchedEffect(shown, search) {
         entries = withContext(Dispatchers.IO) {
             history.deleteExpired()
-            history.newestFirst()
+            history.newestFirst(search)
         }
     }
     fun change(work: () -> Unit) {
         scope.launch {
             entries = withContext(Dispatchers.IO) {
                 work()
-                history.newestFirst()
+                history.newestFirst(search)
             }
         }
     }
@@ -113,12 +115,24 @@ private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val shownEntries = entries ?: return@Column
-            if (shownEntries.isEmpty()) {
+            if (shownEntries.isEmpty() && search.isEmpty()) {
                 Text(stringResource(R.string.typing_history_empty), style = MaterialTheme.typography.bodyLarge)
                 return@Column
             }
+            // Akkhara's own fields are never saved, so what is typed here stays out of the history.
+            OutlinedTextField(
+                value = search,
+                onValueChange = { search = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.typing_history_search)) },
+                singleLine = true,
+            )
             TextButton(onClick = { askDeleteAll = true }) {
                 Text(stringResource(R.string.typing_history_delete_all))
+            }
+            if (shownEntries.isEmpty()) {
+                Text(stringResource(R.string.typing_history_no_match), style = MaterialTheme.typography.bodyLarge)
+                return@Column
             }
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 items(shownEntries, key = { it.id }) { saved ->
