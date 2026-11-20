@@ -14,8 +14,10 @@ sealed interface FieldKind {
     /** A phone number: the keyboard shows the phone pad. See GLOSSARY.md, "Phone pad". */
     data object Phone : FieldKind
 
-    /** A date or a time: until it has a pad of its own, the number pad. */
-    data object DateTime : FieldKind
+    /** A date, a time, or both: the keyboard shows the date/time pad. See GLOSSARY.md, "Date/time pad". */
+    data object Date : FieldKind
+    data object Time : FieldKind
+    data object DateAndTime : FieldKind
 }
 
 /** What the enter key does in a text field. */

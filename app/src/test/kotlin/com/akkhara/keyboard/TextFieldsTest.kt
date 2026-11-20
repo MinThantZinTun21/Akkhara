@@ -4,6 +4,8 @@ import android.text.InputType.TYPE_CLASS_DATETIME
 import android.text.InputType.TYPE_CLASS_NUMBER
 import android.text.InputType.TYPE_CLASS_PHONE
 import android.text.InputType.TYPE_CLASS_TEXT
+import android.text.InputType.TYPE_DATETIME_VARIATION_DATE
+import android.text.InputType.TYPE_DATETIME_VARIATION_TIME
 import android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
 import android.text.InputType.TYPE_NUMBER_FLAG_SIGNED
 import android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
@@ -54,9 +56,15 @@ class TextFieldsTest {
     }
 
     @Test
-    fun `phone and date fields are told apart from number fields`() {
+    fun `a phone field is told apart from a number field`() {
         assertEquals(FieldKind.Phone, fieldOf(TYPE_CLASS_PHONE, 0).kind)
-        assertEquals(FieldKind.DateTime, fieldOf(TYPE_CLASS_DATETIME, 0).kind)
+    }
+
+    @Test
+    fun `date and time fields are told apart`() {
+        assertEquals(FieldKind.Date, fieldOf(TYPE_CLASS_DATETIME or TYPE_DATETIME_VARIATION_DATE, 0).kind)
+        assertEquals(FieldKind.Time, fieldOf(TYPE_CLASS_DATETIME or TYPE_DATETIME_VARIATION_TIME, 0).kind)
+        assertEquals(FieldKind.DateAndTime, fieldOf(TYPE_CLASS_DATETIME, 0).kind)
     }
 
     @Test

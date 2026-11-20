@@ -22,7 +22,11 @@ fun fieldOf(inputType: Int, imeOptions: Int): Field {
                 allowsDecimal = inputType and InputType.TYPE_NUMBER_FLAG_DECIMAL != 0,
             )
             inputClass == InputType.TYPE_CLASS_PHONE -> FieldKind.Phone
-            inputClass == InputType.TYPE_CLASS_DATETIME -> FieldKind.DateTime
+            inputClass == InputType.TYPE_CLASS_DATETIME -> when (variation) {
+                InputType.TYPE_DATETIME_VARIATION_DATE -> FieldKind.Date
+                InputType.TYPE_DATETIME_VARIATION_TIME -> FieldKind.Time
+                else -> FieldKind.DateAndTime
+            }
             isText && variation in ADDRESS_VARIATIONS -> FieldKind.Address
             else -> FieldKind.Text
         },

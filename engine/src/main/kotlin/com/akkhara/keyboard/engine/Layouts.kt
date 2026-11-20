@@ -165,6 +165,7 @@ internal object Pads {
 
     private val backspace = ActionKey(Action.Backspace, PAD_WIDTH)
     private val enter = ActionKey(Action.Enter, PAD_WIDTH)
+    private val space = ActionKey(Action.Space, PAD_WIDTH)
 
     fun number(kind: FieldKind.Number): List<Row> = listOf(
         listOf(padKey("1"), padKey("2"), padKey("3"), backspace),
@@ -180,4 +181,24 @@ internal object Pads {
         listOf(padKey("7"), padKey("8"), padKey("9"), enter),
         listOf(padKey("*"), padKey("0", alternates = listOf("+")), padKey("#", alternates = listOf(" ")), padKey(null)),
     )
+
+    /**
+     * See GLOSSARY.md, "Date/time pad". A date gets `/` and `-`, a time `:`,
+     * and a field for both all three and a space between the date and the time.
+     */
+    fun dateTime(kind: FieldKind): List<Row> {
+        val hasDate = kind == FieldKind.Date || kind == FieldKind.DateAndTime
+        val hasTime = kind == FieldKind.Time || kind == FieldKind.DateAndTime
+        return listOf(
+            listOf(padKey("1"), padKey("2"), padKey("3"), backspace),
+            listOf(padKey("4"), padKey("5"), padKey("6"), padKey(if (hasDate) "-" else ":")),
+            listOf(padKey("7"), padKey("8"), padKey("9"), enter),
+            listOf(
+                padKey("/".takeIf { hasDate }),
+                padKey("0"),
+                padKey(":".takeIf { hasDate && hasTime }),
+                if (hasDate && hasTime) space else padKey(null),
+            ),
+        )
+    }
 }

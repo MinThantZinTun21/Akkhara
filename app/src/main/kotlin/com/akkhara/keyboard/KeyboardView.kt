@@ -341,8 +341,12 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
         iconPath.rewind()
         iconPaint.style = Paint.Style.STROKE
         when (action) {
-            Action.Space ->
-                return drawLabel(canvas, engine?.spaceLabel.orEmpty(), cell, smallLabelPaint)
+            // A pad types no language, so its space key shows the sign for a space instead of a language's name.
+            Action.Space -> return if (engine?.layer?.isPad == true) {
+                drawLabel(canvas, SPACE_SIGN, cell, labelPaint)
+            } else {
+                drawLabel(canvas, engine?.spaceLabel.orEmpty(), cell, smallLabelPaint)
+            }
             Action.Symbols ->
                 return drawLabel(canvas, engine?.symbolsLabel.orEmpty(), cell, smallLabelPaint)
             Action.MoreSymbols -> return drawLabel(canvas, "=\\<", cell, smallLabelPaint)

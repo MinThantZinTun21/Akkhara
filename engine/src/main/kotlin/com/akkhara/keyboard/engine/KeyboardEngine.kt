@@ -96,6 +96,7 @@ class KeyboardEngine(
             Layer.Emoji -> EmojiPanelLayout.bar
             Layer.NumberPad -> Pads.number(textField.kind as? FieldKind.Number ?: FieldKind.Number())
             Layer.PhonePad -> Pads.phone
+            Layer.DateTimePad -> Pads.dateTime(textField.kind)
         }
 
     /** The emoji chosen since the keyboard started, newest first. Never stored. See GLOSSARY.md, "Recent emoji". */
@@ -127,7 +128,8 @@ class KeyboardEngine(
         layer = when (field.kind) {
             FieldKind.Text, FieldKind.Address -> Layer.Letters
             FieldKind.Phone -> Layer.PhonePad
-            is FieldKind.Number, FieldKind.DateTime -> Layer.NumberPad
+            FieldKind.Date, FieldKind.Time, FieldKind.DateAndTime -> Layer.DateTimePad
+            is FieldKind.Number -> Layer.NumberPad
         }
         setShift(ShiftState.Off)
         lastShiftTap = null

@@ -121,8 +121,8 @@ class KeyCallout(context: Context, private val palette: Palette) {
     private companion object {
         const val MIN_TEXT_WIDTH_DP = 40f
         const val GAP_DP = 6f
-
-        /** Stands for a space among the alternates. */
-        const val SPACE_SIGN = "\u2423"
     }
 }
+
+/** Stands for a space where a label must show one: among the alternates, and on a pad's space key. */
+internal const val SPACE_SIGN = "\u2423"
