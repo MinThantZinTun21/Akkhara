@@ -1,0 +1,5 @@
+# Themes carry a key style, and the user can override it
+
+Until now a theme changed colours only, and every key was drawn as the same rounded rectangle. Akkhara now draws keys in one of seven fixed key styles (Rounded, Square, Pill, Outline, Raised, Glass, Borderless). Every theme names its own style: the classic and trending themes keep Rounded, and each of the twenty designed themes has its own. The user can leave the key style as "Theme's own" or pick one style for every theme.
+
+We chose a fixed list of styles, each drawn in code on the keyboard's Canvas (ADR 0003), instead of a free editor for corner radius, borders and colours, or picture-based key skins. A fixed list lets ThemesTest check every theme with every style against the contrast floors, including keys with little or no fill, whose labels sit on the background; free colours and pictures could not be checked and would make small Myanmar marks unreadable. Pictures would also bring in artwork Akkhara cannot own. A style changes only shape and fill, never a key's place or size, so touch targets and the layouts stay the same in every style.

@@ -189,7 +189,7 @@ _Avoid_: Skin colour, variant, modifier
 ### Themes
 
 **Theme**:
-The set of colours the keyboard is drawn in: its background, keys and labels, the translate strip and the emoji panel. Akkhara has a fixed list of thirty: ten classic themes and twenty trending themes. The user picks one in the Akkhara app. A theme changes colours only, never the shape or place of a key.
+The set of colours the keyboard is drawn in: its background, keys and labels, the translate strip and the emoji panel. Akkhara has a fixed list of fifty: ten classic themes, twenty trending themes and twenty designed themes. The user picks one in the Akkhara app. A theme changes colours and key style, never the place or size of a key.
 _Avoid_: Skin, style, colour scheme, palette (for what the user picks)
 
 **Classic theme**:
@@ -199,6 +199,14 @@ _Avoid_: Default theme, basic theme
 **Trending theme**:
 One of twenty themes whose colours are inspired by films, animation and cartoons that were popular when Akkhara made it. Its name is Akkhara's own, never a title, character or studio, and it has no pictures.
 _Avoid_: Movie theme, film theme, cartoon theme, seasonal theme
+
+**Designed theme**:
+One of twenty themes that each come with their own key style, and whose colours are inspired by funny, animated and superhero films that were popular when Akkhara made it. Its background can fade from one colour to another. Its name is Akkhara's own, never a title, character, studio, team or hero, and it has no pictures, logos or costume patterns.
+_Avoid_: Superhero theme, premium theme, custom theme
+
+**Key style**:
+The shape and fill every key is drawn with: Rounded, Square, Pill, Outline, Raised, Glass or Borderless. It never changes a key's place or size, the layout or the font. Every theme has its own key style; the user can keep it ("Theme's own") or pick one key style for every theme in the Akkhara app.
+_Avoid_: Key shape, skin, button design, key theme
 
 **Follow system**:
 The choice in place until the user picks a theme: the keyboard is drawn in the Light theme while the phone is in light mode and in the Dark theme while it is in dark mode.

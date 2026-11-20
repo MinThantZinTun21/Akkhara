@@ -17,7 +17,7 @@ import com.akkhara.keyboard.engine.SPACE_SIGN
  * window because it must draw above the top row, outside the keyboard View.
  * It never takes touches: the keyboard View keeps the finger.
  */
-class KeyCallout(context: Context, private val palette: Palette) {
+class KeyCallout(context: Context, private val palette: Palette, private val keyStyle: KeyStyle) {
 
     private val density = context.resources.displayMetrics.density
     private val content = Content(context)
@@ -90,10 +90,11 @@ class KeyCallout(context: Context, private val palette: Palette) {
             textSize = 24f * resources.displayMetrics.scaledDensity
         }
         private val bounds = RectF()
-        private val radius = 8f * density
 
         override fun onDraw(canvas: Canvas) {
             bounds.set(0f, 0f, width.toFloat(), height.toFloat())
+            // A little rounder than a key, as the callout is bigger; it follows the key style's shape.
+            val radius = keyStyle.cornerRadius(height.toFloat(), density) + density
             fill.color = palette.callout
             canvas.drawRoundRect(bounds, radius, radius, fill)
             if (texts.isEmpty()) return

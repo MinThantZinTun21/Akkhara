@@ -28,7 +28,7 @@ import kotlin.math.min
  *
  * The recent emoji come first, so the panel opens on them when there are any.
  */
-class EmojiPanel(context: Context, private val palette: Palette) {
+class EmojiPanel(context: Context, private val palette: Palette, private val keyStyle: KeyStyle) {
 
     /** What a finger lifting from the panel did. */
     sealed interface Lift {
@@ -134,10 +134,14 @@ class EmojiPanel(context: Context, private val palette: Palette) {
                 val top = grid.top + row * cellHeight - scrollY
                 if (!isDragging && downEmoji == indexInPanel(category, index)) {
                     markPaint.color = palette.keyPressed
+                    // Inside withClip, a bare `density` would be the Canvas's own, not the screen's.
+                    val density = this@EmojiPanel.density
                     val inset = 2f * density
+                    // The pressed emoji's mark follows the key style's shape, a little tighter as it is inset.
+                    val radius = (keyStyle.cornerRadius(cellHeight - 2 * inset, density) - density).coerceAtLeast(0f)
                     drawRoundRect(
                         left + inset, top + inset, left + cellWidth - inset, top + cellHeight - inset,
-                        CORNER_DP * density, CORNER_DP * density, markPaint,
+                        radius, radius, markPaint,
                     )
                 }
                 drawText(emoji[index].text, left + cellWidth / 2, top + cellHeight / 2 + baselineOffset, emojiPaint)
@@ -288,7 +292,6 @@ class EmojiPanel(context: Context, private val palette: Palette) {
 
         const val EMOJI_SIZE_SHARE = 0.62f
         const val TAB_SIZE_SHARE = 0.5f
-        const val CORNER_DP = 6f
 
         /** The emoji that stands for each category on its tab. */
         val TAB_ICONS = mapOf(

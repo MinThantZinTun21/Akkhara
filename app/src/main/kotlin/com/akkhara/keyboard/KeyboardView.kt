@@ -3,9 +3,11 @@ package com.akkhara.keyboard
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Shader
 import android.os.Build
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
@@ -26,9 +28,11 @@ import com.akkhara.keyboard.engine.KeyboardEngine
 import com.akkhara.keyboard.engine.Layer
 import com.akkhara.keyboard.engine.ShiftState
 import com.akkhara.keyboard.engine.StripState
+import androidx.core.graphics.withTranslation
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * Draws the layer the engine is showing and reports touches back to it.
@@ -36,7 +40,7 @@ import kotlin.math.min
  * held, is decided by the engine, and where each key sits by [KeyGrid].
  */
 @SuppressLint("ViewConstructor")
-class KeyboardView(context: Context, val theme: Theme) : View(context) {
+class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) : View(context) {
 
     /** What the View needs from the service that hosts it. */
     interface Host {
@@ -96,7 +100,6 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
     private var bottomInset = 0
     private val keyGap = 4.2f * density
     private val rowGap = 5.8f * density
-    private val keyRadius = 7f * density
     private val edgePadding = 2f * density
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
@@ -110,9 +113,9 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
     private var stripPointer: Int? = null
     private var stripTarget: StripPainter.Target? = null
     private val touches = LinkedHashMap<Int, Touch>() // by pointer id, oldest first
-    private val callout = KeyCallout(context, palette)
+    private val callout = KeyCallout(context, palette, keyStyle)
 
-    private val emojiPanel = EmojiPanel(context, palette)
+    private val emojiPanel = EmojiPanel(context, palette, keyStyle)
 
     /** The finger on the emoji panel's grid or tabs, if any. */
     private var panelPointer: Int? = null
@@ -125,7 +128,9 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
     /** Which layer was showing when the View last looked, so the emoji panel opens at its start. */
     private var shownLayer: Layer? = null
 
+    private val backgroundPaint = Paint()
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val outlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val labelSize = 20f * resources.displayMetrics.scaledDensity
     private val smallLabelSize = 14f * resources.displayMetrics.scaledDensity
     private val hintSize = 10f * resources.displayMetrics.scaledDensity
@@ -159,6 +164,16 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
     }
 
     // ---- layout ----
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        // A gradient runs the View's whole height, under the navigation bar too where the keyboard draws behind it.
+        if (palette.isGradient) {
+            backgroundPaint.shader = LinearGradient(
+                0f, 0f, 0f, h.toFloat(), palette.background, palette.backgroundBottom, Shader.TileMode.CLAMP,
+            )
+        }
+    }
 
     /**
      * Key widths come from the width on offer and row heights from the height
@@ -245,10 +260,10 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
     // ---- drawing ----
 
     /** Which colours a key is drawn in. */
-    private enum class KeyStyle { Plain, Action, Accent }
+    private enum class KeyRole { Plain, Action, Accent }
 
     override fun onDraw(canvas: Canvas) {
-        canvas.drawColor(palette.background)
+        if (palette.isGradient) canvas.drawPaint(backgroundPaint) else canvas.drawColor(palette.background)
         val strip = engine?.strip
         if (strip != null && stripHeight > 0f) {
             val moving = stripPainter.draw(canvas, strip, stripTarget, SystemClock.uptimeMillis())
@@ -263,25 +278,82 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
 
     private fun drawKey(canvas: Canvas, cell: Cell) {
         val key = cell.key
-        val style = styleOf(cell)
+        val role = roleOf(cell)
         val isPressed = touches.values.any { it.cell.isAt(cell) }
-        keyPaint.color = when {
+        val action = palette.actionColoursIn(keyStyle)
+        val face = when {
             isPressed -> palette.keyPressed
-            style == KeyStyle.Accent -> palette.accent
-            style == KeyStyle.Action -> palette.actionKey
+            role == KeyRole.Accent -> palette.accent
+            role == KeyRole.Action -> action.key
             else -> palette.key
         }
         val ink = when {
             isPressed -> palette.label
-            style == KeyStyle.Accent -> palette.onAccent
-            style == KeyStyle.Action -> palette.actionLabel
+            role == KeyRole.Accent -> palette.onAccent
+            role == KeyRole.Action -> action.label
             else -> palette.label
         }
         labelPaint.color = ink
         smallLabelPaint.color = ink
         iconPaint.color = ink
-        val radius = if (isPill(cell)) cell.height / 2 else keyRadius
-        canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom, radius, radius, keyPaint)
+        val radius = keyStyle.cornerRadius(cell.height, density, isEndKey = isEndKey(cell))
+        val labelShift = drawFace(canvas, cell, face, ink, radius, isSolid = isPressed || role == KeyRole.Accent, isPressed)
+        canvas.withTranslation(y = labelShift) { drawContent(this, cell, key, isPressed) }
+    }
+
+    /**
+     * Draws the face of [cell] in [face] the way the key style does, and
+     * returns how far its label moves down with it. A pressed key and an
+     * accent key are [isSolid]: filled in every style, so they stand out.
+     */
+    private fun drawFace(canvas: Canvas, cell: Cell, face: Int, ink: Int, radius: Float, isSolid: Boolean, isPressed: Boolean): Float {
+        keyPaint.color = face
+        when (keyStyle) {
+            KeyStyle.Rounded, KeyStyle.Square, KeyStyle.Pill ->
+                canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom, radius, radius, keyPaint)
+            KeyStyle.Raised -> {
+                val lip = RAISED_LIP_DP * density
+                if (isPressed) {
+                    // Sunk onto its lip: the face takes the lip's place.
+                    canvas.drawRoundRect(cell.left, cell.top + lip, cell.right, cell.bottom, radius, radius, keyPaint)
+                    return lip / 2
+                }
+                keyPaint.color = blend(BLACK, KeyStyle.RAISED_LIP_SHADE, over = face)
+                canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom, radius, radius, keyPaint)
+                keyPaint.color = face
+                canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom - lip, radius, radius, keyPaint)
+                return -lip / 2
+            }
+            KeyStyle.Outline -> if (isSolid) {
+                canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom, radius, radius, keyPaint)
+            } else {
+                val stroke = OUTLINE_DP * density
+                outlinePaint.strokeWidth = stroke
+                outlinePaint.color = ink
+                outlinePaint.alpha = (KeyStyle.OUTLINE_INK_ALPHA * 0xFF).roundToInt()
+                val half = stroke / 2
+                canvas.drawRoundRect(cell.left + half, cell.top + half, cell.right - half, cell.bottom - half, radius, radius, outlinePaint)
+            }
+            KeyStyle.Glass -> {
+                if (!isSolid) keyPaint.alpha = (KeyStyle.GLASS_ALPHA * 255).roundToInt()
+                canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom, radius, radius, keyPaint)
+                keyPaint.alpha = 0xFF
+                // A thin light line along the top edge, between the corners.
+                outlinePaint.strokeWidth = density
+                outlinePaint.color = WHITE
+                outlinePaint.alpha = GLASS_SHINE_ALPHA
+                val y = cell.top + density
+                canvas.drawLine(cell.left + radius, y, cell.right - radius, y, outlinePaint)
+            }
+            KeyStyle.Borderless -> if (isSolid) {
+                canvas.drawRoundRect(cell.left, cell.top, cell.right, cell.bottom, radius, radius, keyPaint)
+            }
+        }
+        return 0f
+    }
+
+    /** The label, hint or picture of [key], in the colours set on the paints. */
+    private fun drawContent(canvas: Canvas, cell: Cell, key: Key, isPressed: Boolean) {
         when (key) {
             is CharKey -> {
                 val hint = key.hint
@@ -301,20 +373,20 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
         }
     }
 
-    private fun styleOf(cell: Cell): KeyStyle = when (val key = cell.key) {
+    private fun roleOf(cell: Cell): KeyRole = when (val key = cell.key) {
         // The comma and full stop in the bottom row are coloured with the action keys; a pad's keys are all plain.
-        is CharKey -> if (grid?.isInBottomRow(cell) == true && engine?.layer?.isPad != true) KeyStyle.Action else KeyStyle.Plain
-        is Blank -> KeyStyle.Plain
+        is CharKey -> if (grid?.isInBottomRow(cell) == true && engine?.layer?.isPad != true) KeyRole.Action else KeyRole.Plain
+        is Blank -> KeyRole.Plain
         is ActionKey -> when (key.action) {
-            Action.Space, Action.Globe, Action.Translate -> KeyStyle.Plain
-            Action.Shift -> if (engine?.shift == ShiftState.Locked) KeyStyle.Accent else KeyStyle.Action
-            Action.Enter -> if (engine?.enterAction == EnterAction.NewLine) KeyStyle.Action else KeyStyle.Accent
-            Action.Backspace, Action.Symbols, Action.MoreSymbols, Action.Letters, Action.Emoji -> KeyStyle.Action
+            Action.Space, Action.Globe, Action.Translate -> KeyRole.Plain
+            Action.Shift -> if (engine?.shift == ShiftState.Locked) KeyRole.Accent else KeyRole.Action
+            Action.Enter -> if (engine?.enterAction == EnterAction.NewLine) KeyRole.Action else KeyRole.Accent
+            Action.Backspace, Action.Symbols, Action.MoreSymbols, Action.Letters, Action.Emoji -> KeyRole.Action
         }
     }
 
-    /** The two keys at the ends of the bottom row are drawn with fully rounded ends. */
-    private fun isPill(cell: Cell): Boolean {
+    /** The two keys at the ends of the bottom row, which [KeyStyle.Rounded] draws with fully rounded ends. */
+    private fun isEndKey(cell: Cell): Boolean {
         val key = cell.key
         val isEndKey = key is ActionKey &&
             (key.action == Action.Symbols || key.action == Action.Letters || key.action == Action.Enter)
@@ -696,6 +768,18 @@ class KeyboardView(context: Context, val theme: Theme) : View(context) {
 
         /** How far down its key a label moves to make room for a hint, as a share of the key's height. */
         const val HINT_SHIFT = 0.07f
+
+        /** How tall a [KeyStyle.Raised] key's lip is. */
+        const val RAISED_LIP_DP = 3f
+
+        /** How thick a [KeyStyle.Outline] key's border is. */
+        const val OUTLINE_DP = 1.5f
+
+        /** How opaque the light line along a [KeyStyle.Glass] key's top edge is. */
+        const val GLASS_SHINE_ALPHA = 0x40
+
+        const val WHITE = 0xFFFFFFFF.toInt()
+        const val BLACK = 0xFF000000.toInt()
 
         /** The most of the screen's height the keys may take. */
         const val MAX_SCREEN_SHARE = 0.5f

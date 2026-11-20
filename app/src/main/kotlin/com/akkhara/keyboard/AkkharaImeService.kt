@@ -58,7 +58,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
 
     override fun onCreateInputView(): View {
         val theme = shownTheme()
-        return KeyboardView(this, theme).also { view ->
+        return KeyboardView(this, theme, KeyStyle.shown(settings.keyStyle, theme)).also { view ->
             view.bind(engine, this)
             keyboardView = view
             fitNavigationBarTo(theme, view)
@@ -86,7 +86,8 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         // Before Android 15 the bar has a colour of its own.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             @Suppress("DEPRECATION")
-            window.navigationBarColor = theme.palette.background
+            // The bar sits below the keyboard, so it takes the bottom of a gradient.
+            window.navigationBarColor = theme.palette.backgroundBottom
         }
     }
 
@@ -99,8 +100,10 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     /** The keyboard is opening: this is when a changed setting takes effect. */
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        // A newly chosen theme is drawn by a new View, as each View keeps the theme it was built with.
-        if (keyboardView?.theme != shownTheme()) setInputView(onCreateInputView())
+        // A newly chosen theme or key style is drawn by a new View, as each View keeps the ones it was built with.
+        val theme = shownTheme()
+        val view = keyboardView
+        if (view?.theme != theme || view.keyStyle != KeyStyle.shown(settings.keyStyle, theme)) setInputView(onCreateInputView())
         engine.isTranslationAvailable = models.inUse() != null
         engine.isGrammarCheckAvailable = models.grammarCheckModel() != null
         engine.translateAsYouType = settings.translateAsYouType
