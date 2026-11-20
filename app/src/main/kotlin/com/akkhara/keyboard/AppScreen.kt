@@ -743,7 +743,10 @@ private fun KeySoundSettings(settings: KeyboardSettings) {
         player.preview()
     }
 
-    Toggle(R.string.setting_key_sound, settings::keySound, onChange = { isOn = it })
+    Toggle(R.string.setting_key_sound, settings::keySound) {
+        isOn = it
+        player.follow(settings) // Frees the sounds once key sound is off.
+    }
     if (!isOn) return
     Column(modifier = Modifier.padding(bottom = 8.dp)) {
         Text(stringResource(R.string.setting_key_sound_tone), style = MaterialTheme.typography.bodyLarge)

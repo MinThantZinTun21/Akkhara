@@ -3,7 +3,7 @@ package com.akkhara.keyboard
 import androidx.annotation.RawRes
 import androidx.annotation.StringRes
 
-/** One of the key sound's tones the user picks from, each with its four sounds. See GLOSSARY.md, "Key sound". */
+/** One of the key sound's tones the user picks from, each with its four sounds. See GLOSSARY.md, "Tone". */
 enum class KeySoundTone(
     @StringRes val nameRes: Int,
     @RawRes private val letter: Int,
@@ -32,7 +32,7 @@ enum class KeySoundTone(
 
     /** The file this tone plays for [sound]. */
     @RawRes
-    fun sound(sound: KeySound): Int = when (sound) {
+    fun fileFor(sound: KeySound): Int = when (sound) {
         KeySound.Letter -> letter
         KeySound.Space -> space
         KeySound.Delete -> delete

@@ -57,8 +57,9 @@ class KeySoundPlayer(private val context: Context) {
      */
     fun play(sound: KeySound) {
         if (!KeySound.plays(isOn, audio.ringerMode)) return
+        val pool = pool ?: return
         val id = sampleIds[sound]?.takeIf { it in ready } ?: return
-        pool?.play(id, volume, volume, 1, 0, 1f)
+        start(pool, id)
     }
 
     /** Plays the tone's letter sound for the user to hear in the app, waiting for it to load if it must. */
@@ -66,7 +67,7 @@ class KeySoundPlayer(private val context: Context) {
         if (!KeySound.plays(isOn, audio.ringerMode)) return
         val pool = pool ?: load()
         val id = sampleIds[KeySound.Letter] ?: return
-        if (id in ready) pool.play(id, volume, volume, 1, 0, 1f) else waitingPreview = id
+        if (id in ready) start(pool, id) else waitingPreview = id
     }
 
     /** Frees the loaded sounds. */
@@ -94,12 +95,16 @@ class KeySoundPlayer(private val context: Context) {
             if (preview != null) waitingPreview = null
             if (status != LOADED) return@setOnLoadCompleteListener
             ready += id
-            if (preview != null) loadedPool.play(id, volume, volume, 1, 0, 1f)
+            if (preview != null) start(loadedPool, id)
         }
         this.pool = pool
         // SoundPool gives 0 for a sound it could not start loading; such a sound never plays.
-        sampleIds = KeySound.entries.associateWith { pool.load(context, tone.sound(it), 1) }.filterValues { it != 0 }
+        sampleIds = KeySound.entries.associateWith { pool.load(context, tone.fileFor(it), 1) }.filterValues { it != 0 }
         return pool
+    }
+
+    private fun start(pool: SoundPool, id: Int) {
+        pool.play(id, volume, volume, 1, 0, 1f)
     }
 
     private companion object {

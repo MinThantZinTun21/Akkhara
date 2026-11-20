@@ -219,5 +219,5 @@ The short sound the keyboard can play each time a key is pressed, at the same mo
 _Avoid_: Click sound, keypress audio, typing sound, voice
 
 **Tone**:
-One of the four ways the key sound can sound: Click, Soft tap, Bubble or Typewriter. The user picks one in the Akkhara app; Click is the first.
+One of the four ways the key sound can sound: Click, Soft tap, Bubble or Typewriter. The user picks one in the Akkhara app; Click is the default.
 _Avoid_: Sound pack, sound theme, voice

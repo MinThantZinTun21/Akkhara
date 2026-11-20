@@ -68,7 +68,7 @@ class KeySoundTest {
             listOf(KeySoundTone.Click, KeySoundTone.SoftTap, KeySoundTone.Bubble, KeySoundTone.Typewriter),
             KeySoundTone.entries,
         )
-        val sounds = KeySoundTone.entries.flatMap { tone -> KeySound.entries.map(tone::sound) }
+        val sounds = KeySoundTone.entries.flatMap { tone -> KeySound.entries.map(tone::fileFor) }
         assertEquals(16, sounds.toSet().size)
     }
 }
