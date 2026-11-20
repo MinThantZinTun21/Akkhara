@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,7 +68,9 @@ class TypingHistoryActivity : ComponentActivity() {
 private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
     var entries by remember { mutableStateOf<List<SavedEntry>?>(null) }
     var askDeleteAll by remember { mutableStateOf(false) }
-    var search by remember { mutableStateOf("") }
+    var search by rememberSaveable { mutableStateOf("") }
+    // The search the entries were loaded for, so an old empty result is not taken for an empty history.
+    var entriesFor by remember { mutableStateOf("") }
     // Bumped after each delete. Only the effect below sets the entries, and a newer load cancels an older one.
     var changes by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
@@ -76,6 +79,7 @@ private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
             history.deleteExpired()
             history.newestFirst(search)
         }
+        entriesFor = search
     }
     fun change(work: () -> Unit) {
         scope.launch {
@@ -115,7 +119,7 @@ private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val shownEntries = entries ?: return@Column
-            if (shownEntries.isEmpty() && search.isEmpty()) {
+            if (shownEntries.isEmpty() && search.isEmpty() && entriesFor.isEmpty()) {
                 Text(stringResource(R.string.typing_history_empty), style = MaterialTheme.typography.bodyLarge)
                 return@Column
             }
@@ -134,7 +138,7 @@ private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
                 Text(stringResource(R.string.typing_history_no_match), style = MaterialTheme.typography.bodyLarge)
                 return@Column
             }
-            if (shownEntries.size == TypingHistoryDatabase.PAGE_LIMIT) {
+            if (shownEntries.size > TypingHistoryDatabase.PAGE_LIMIT) {
                 Text(
                     stringResource(R.string.typing_history_newest_only, TypingHistoryDatabase.PAGE_LIMIT),
                     style = MaterialTheme.typography.bodySmall,
@@ -142,7 +146,7 @@ private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
                 )
             }
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(shownEntries, key = { it.id }) { saved ->
+                items(shownEntries.take(TypingHistoryDatabase.PAGE_LIMIT), key = { it.id }) { saved ->
                     EntryRow(saved, onDelete = { change { history.delete(saved.id) } })
                     HorizontalDivider()
                 }

@@ -6,7 +6,7 @@ The owner wants a later feature where the translation model can draw on what the
 
 - **Off until the user turns it on.** "Remember what I type" starts off; nothing is kept for anyone who did not ask.
 - **Only on the phone.** It sits in the app's private SQLite database. App backup is already off, the app has no network permission beyond the model download, and nothing in typing history is ever sent anywhere.
-- **Finished text, not keystrokes.** One entry per text field: its whole text when the user presses the action key, when the app empties the field, or when the user leaves it. Single keys, deletions and half-made words are never recorded.
+- **Finished text, not keystrokes.** One entry per text field: its whole text when the user presses the action key, when the app empties the field, or when the user leaves it. Single keys and deletions are never recorded, only the text as it stands at one of those moments.
 - **Never secrets.** Password fields, fields marked as private (IME_FLAG_NO_PERSONALIZED_LEARNING, as in incognito tabs), number, phone, date and time fields, fields that take raw input with no type (such as a terminal's, where passwords are typed too), and the Akkhara app's own fields are never saved.
 - **The user stays in charge.** They can read, search and delete entries, delete everything at once, and entries older than 90 days delete themselves.
 

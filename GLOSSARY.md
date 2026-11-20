@@ -44,7 +44,7 @@ _Avoid_: Button
 
 **Action key**:
 The enter key when the field gives it a job, such as Send, Search, Go or Done, instead of starting a new line.
-_Avoid_: Submit key, enter action
+_Avoid_: Submit key
 
 **Blank**:
 A place on a pad where there is no key, because the field does not take the character that would go there. It keeps the other keys in their columns, and a touch on it does nothing.

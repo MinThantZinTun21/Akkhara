@@ -1,5 +1,6 @@
 package com.akkhara.keyboard
 
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -7,7 +8,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.View
-import android.content.pm.PackageManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
@@ -50,7 +50,10 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     /** Whether the field has text selected, which sits between the text before and after the cursor. */
     private var hasSelection = false
 
-    /** Each app's name, looked up once. */    private val handler = Handler(Looper.getMainLooper())
+    /** Each app's name, looked up once. */
+    private val appNames = mutableMapOf<String, SourceApp>()
+
+    private val handler = Handler(Looper.getMainLooper())
 
     /**
      * Tells the engine typing has paused, for translate as you type. It only
@@ -160,7 +163,6 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         engine.translateAsYouType = settings.translateAsYouType
         engine.customPrompts = settings.customPrompts
         val field = info.toField()
-        typingHistory.isOn = settings.rememberTyping
         val app = sourceApp(info.packageName)
         if (app != null) typingHistory.startField(field, app, sameField = !fieldIsNew) else typingHistory.leaveField()
         fieldIsNew = false
@@ -223,8 +225,6 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
             SourceApp(name, label)
         }
     }
-
-    private val appNames = mutableMapOf<String, SourceApp>()
 
     override fun onUpdateSelection(
         oldSelStart: Int,

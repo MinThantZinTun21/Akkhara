@@ -3,6 +3,7 @@ package com.akkhara.keyboard
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
 import com.akkhara.keyboard.engine.HistoryEntry
 import com.akkhara.keyboard.engine.HistoryStore
@@ -37,25 +38,32 @@ class TypingHistoryDatabase private constructor(context: Context) :
 
     override fun save(entry: HistoryEntry) {
         writer.execute {
-            deleteExpired()
-            if (newestText(entry.app.packageName) == entry.text) return@execute
-            writableDatabase.insert(
-                "entries",
-                null,
-                ContentValues().apply {
-                    put("text", entry.text)
-                    put("app", entry.app.packageName)
-                    put("app_name", entry.app.name)
-                    put("saved_at", entry.savedAt)
-                },
-            )
+            // A full or broken disk loses the entry rather than taking the keyboard down with it.
+            try {
+                deleteExpired()
+                if (newestText(entry.app.packageName) != entry.text) insert(entry)
+            } catch (_: SQLiteException) {
+            }
         }
+    }
+
+    private fun insert(entry: HistoryEntry) {
+        writableDatabase.insert(
+            TABLE,
+            null,
+            ContentValues().apply {
+                put("text", entry.text)
+                put("app", entry.app.packageName)
+                put("app_name", entry.app.name)
+                put("saved_at", entry.savedAt)
+            },
+        )
     }
 
     /** The text of [app]'s newest entry, if it has one. */
     private fun newestText(app: String): String? =
         readableDatabase.query(
-            "entries", arrayOf("text"), "app = ?", arrayOf(app), null, null, "saved_at DESC, id DESC", "1",
+            TABLE, arrayOf("text"), "app = ?", arrayOf(app), null, null, NEWEST_FIRST, "1",
         ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
 
     /**
@@ -64,26 +72,30 @@ class TypingHistoryDatabase private constructor(context: Context) :
      */
     fun deleteExpired() {
         val since = TypingHistoryRecorder.keptSince(System.currentTimeMillis())
-        writableDatabase.delete("entries", "saved_at < ?", arrayOf(since.toString()))
+        writableDatabase.delete(TABLE, "saved_at < ?", arrayOf(since.toString()))
     }
 
     /** Deletes one entry. Writes the disk, so call it off the main thread. */
     fun delete(id: Long) {
-        writableDatabase.delete("entries", "id = ?", arrayOf(id.toString()))
+        writableDatabase.delete(TABLE, "id = ?", arrayOf(id.toString()))
     }
 
     /** Deletes every entry. Writes the disk, so call it off the main thread. */
     fun deleteAll() {
-        writableDatabase.delete("entries", null, null)
+        writableDatabase.delete(TABLE, null, null)
     }
 
-    /** Entries, newest first. Reads the disk, so call it off the main thread. */
+    /**
+     * Entries containing [search], newest first: at most [PAGE_LIMIT] and one
+     * more, so the page knows when there are older ones. Reads the disk, so
+     * call it off the main thread.
+     */
     fun newestFirst(search: String = ""): List<SavedEntry> {
         val (where, args) =
             if (search.isBlank()) null to null
             else "text LIKE ? ESCAPE '\\'" to arrayOf(containsPattern(search.trim()))
         return readableDatabase.query(
-            "entries", COLUMNS, where, args, null, null, "saved_at DESC, id DESC", PAGE_LIMIT.toString(),
+            TABLE, COLUMNS, where, args, null, null, NEWEST_FIRST, (PAGE_LIMIT + 1).toString(),
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) {
@@ -105,6 +117,8 @@ class TypingHistoryDatabase private constructor(context: Context) :
     companion object {
         private const val FILE = "typing_history.db"
         private const val VERSION = 1
+        private const val TABLE = "entries"
+        private const val NEWEST_FIRST = "saved_at DESC, id DESC"
         private val COLUMNS = arrayOf("id", "text", "app", "app_name", "saved_at")
 
         /**
