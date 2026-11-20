@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.akkhara.keyboard.engine.HistoryEntry
 import com.akkhara.keyboard.engine.HistoryStore
 import com.akkhara.keyboard.engine.SourceApp
+import com.akkhara.keyboard.engine.TypingHistoryRecorder
 import java.util.concurrent.Executors
 
 /** A saved entry of typing history, with the [id] it is deleted by. */
@@ -46,7 +47,23 @@ class TypingHistoryDatabase private constructor(context: Context) :
                     put("saved_at", entry.savedAt)
                 },
             )
+            deleteExpired(entry.savedAt)
         }
+    }
+
+    /** Deletes entries older than 90 days, as of [now]. Writes the disk, so call it off the main thread. */
+    fun deleteExpired(now: Long = System.currentTimeMillis()) {
+        writableDatabase.delete("entries", "saved_at < ?", arrayOf(TypingHistoryRecorder.keptSince(now).toString()))
+    }
+
+    /** Deletes one entry. Writes the disk, so call it off the main thread. */
+    fun delete(id: Long) {
+        writableDatabase.delete("entries", "id = ?", arrayOf(id.toString()))
+    }
+
+    /** Deletes every entry. Writes the disk, so call it off the main thread. */
+    fun deleteAll() {
+        writableDatabase.delete("entries", null, null)
     }
 
     /** Entries, newest first. Reads the disk, so call it off the main thread. */

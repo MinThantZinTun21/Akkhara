@@ -100,5 +100,11 @@ class TypingHistoryRecorder(
     companion object {
         /** The most of one field's text an entry keeps; the rest, from the start, is dropped. */
         const val MAX_CHARS = 5_000
+
+        /** How long an entry is kept before it deletes itself. */
+        const val KEPT_DAYS = 90
+
+        /** The oldest time, at [now], an entry may have been saved and still be kept. */
+        fun keptSince(now: Long): Long = now - KEPT_DAYS * 24 * 60 * 60 * 1000L
     }
 }

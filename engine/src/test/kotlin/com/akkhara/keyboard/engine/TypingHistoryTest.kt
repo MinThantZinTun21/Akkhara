@@ -161,6 +161,14 @@ class TypingHistoryTest {
         assertEquals(listOf(NOTES, CHAT), saved.map { it.app })
     }
 
+    @Test
+    fun `an entry is kept for 90 days`() {
+        val day = 24 * 60 * 60 * 1000L
+        val now = 100 * day
+
+        assertEquals(10 * day, TypingHistoryRecorder.keptSince(now))
+    }
+
     private fun typeAndLeave(field: Field, text: String, app: SourceApp = NOTES) {
         recorder.startField(field, app)
         recorder.textChanged(text)
