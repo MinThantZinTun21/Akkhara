@@ -3,9 +3,11 @@ package com.akkhara.keyboard
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Shader
 import android.os.Build
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
@@ -126,6 +128,7 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
     /** Which layer was showing when the View last looked, so the emoji panel opens at its start. */
     private var shownLayer: Layer? = null
 
+    private val backgroundPaint = Paint()
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val outlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val labelSize = 20f * resources.displayMetrics.scaledDensity
@@ -168,6 +171,16 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
      * keyboard never takes more than [MAX_SCREEN_SHARE] of the screen, which
      * leaves the text field in view.
      */
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        // A gradient runs the View's whole height, under the navigation bar too where the keyboard draws behind it.
+        if (palette.isGradient) {
+            backgroundPaint.shader = LinearGradient(
+                0f, 0f, 0f, h.toFloat(), palette.background, palette.backgroundBottom, Shader.TileMode.CLAMP,
+            )
+        }
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rowCount = shownRows()?.size ?: 0
         // A pad keeps the letters' height with fewer rows; the emoji panel has more rows than the engine's bar.
@@ -250,7 +263,7 @@ class KeyboardView(context: Context, val theme: Theme, val keyStyle: KeyStyle) :
     private enum class KeyRole { Plain, Action, Accent }
 
     override fun onDraw(canvas: Canvas) {
-        canvas.drawColor(palette.background)
+        if (palette.isGradient) canvas.drawPaint(backgroundPaint) else canvas.drawColor(palette.background)
         val strip = engine?.strip
         if (strip != null && stripHeight > 0f) {
             val moving = stripPainter.draw(canvas, strip, stripTarget, SystemClock.uptimeMillis())

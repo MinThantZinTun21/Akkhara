@@ -86,7 +86,8 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         // Before Android 15 the bar has a colour of its own.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             @Suppress("DEPRECATION")
-            window.navigationBarColor = theme.palette.background
+            // The bar sits below the keyboard, so it takes the bottom of a gradient.
+            window.navigationBarColor = theme.palette.backgroundBottom
         }
     }
 

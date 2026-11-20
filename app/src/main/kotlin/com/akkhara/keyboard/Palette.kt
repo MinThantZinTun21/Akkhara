@@ -7,11 +7,14 @@ package com.akkhara.keyboard
  * In every theme, [label] has a contrast ratio of at least 4.5:1 against [key],
  * [keyPressed] and [callout], [actionLabel] against [actionKey], [hint]
  * against [key] and [onAccent] against [accent], so small Myanmar marks stay
- * readable. [accent] has at least 3:1 against [background], where it draws
+ * readable. [accent] has at least 3:1 against the background, top to bottom, where it draws
  * marks that are not text. ThemesTest checks both floors.
  */
 data class Palette(
+    /** The keyboard's background, or the top of it when [backgroundBottom] differs. */
     val background: Int,
+    /** The bottom of the background, which fades into it from [background]. The same colour for a one-colour background. */
+    val backgroundBottom: Int = background,
     val key: Int,
     val keyPressed: Int,
     /**
@@ -29,4 +32,11 @@ data class Palette(
     /** The selected alternate, shift lock, and an enter key that does more than start a new line. */
     val accent: Int,
     val onAccent: Int,
-)
+) {
+    /** True when the background fades from [background] at the top to [backgroundBottom]. */
+    val isGradient: Boolean get() = backgroundBottom != background
+
+    /** The colours to check marks on the background against: its top, middle and bottom, or its one colour. */
+    val backgroundsAlongHeight: List<Int>
+        get() = if (isGradient) listOf(background, blend(background, 0.5f, over = backgroundBottom), backgroundBottom) else listOf(background)
+}

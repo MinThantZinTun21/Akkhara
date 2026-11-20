@@ -56,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
@@ -342,7 +343,9 @@ private fun PreviewCard(
 private fun KeysPreview(palette: Palette, keyStyle: KeyStyle, letters: List<String>, modifier: Modifier = Modifier) {
     val gap = Arrangement.spacedBy(4.dp)
     Column(
-        modifier = modifier.background(Color(palette.background)).padding(8.dp),
+        modifier = modifier
+            .background(Brush.verticalGradient(listOf(Color(palette.background), Color(palette.backgroundBottom))))
+            .padding(8.dp),
         verticalArrangement = gap,
     ) {
         Row(horizontalArrangement = gap) {

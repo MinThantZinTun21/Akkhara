@@ -51,6 +51,17 @@ class ThemesTest {
     }
 
     @Test
+    fun `a gradient background is checked at its top, middle and bottom`() {
+        val palette = Theme.Light.palette.copy(background = WHITE, backgroundBottom = BLACK)
+        assertEquals(listOf(WHITE, 0xFF808080.toInt(), BLACK), palette.backgroundsAlongHeight)
+    }
+
+    @Test
+    fun `a one-colour background is checked once`() {
+        assertEquals(listOf(Theme.Light.palette.background), Theme.Light.palette.backgroundsAlongHeight)
+    }
+
+    @Test
     fun `Black has a pure black background`() {
         assertEquals(BLACK, Theme.Black.palette.background)
     }
@@ -86,8 +97,8 @@ class ThemesTest {
                     "hint on key" to (palette.hint to palette.key),
                     "action label on action key" to action,
                 )
-                for ((name, colours) in pairs) {
-                    val face = style.face(colours.second, palette.background)
+                for ((name, colours) in pairs) for (background in palette.backgroundsAlongHeight) {
+                    val face = style.face(colours.second, background)
                     val ratio = contrast(colours.first, face)
                     assertTrue("$theme, $style: $name is %.2f:1, under 4.5:1".format(ratio), ratio >= 4.5)
                 }
@@ -98,16 +109,15 @@ class ThemesTest {
     @Test
     fun `the accent stands out from the keyboard's background in every theme`() {
         // Marks that are not text, such as the underline of an emoji tab, need 3:1 (WCAG 1.4.11).
-        for (theme in Theme.entries) {
-            val ratio = contrast(theme.palette.accent, theme.palette.background)
+        for (theme in Theme.entries) for (background in theme.palette.backgroundsAlongHeight) {
+            val ratio = contrast(theme.palette.accent, background)
             assertTrue("$theme: accent on background is %.2f:1, under 3:1".format(ratio), ratio >= 3.0)
         }
     }
 
     @Test
     fun `a dark theme has a dark background and a light theme a light one`() {
-        for (theme in Theme.entries) {
-            val background = theme.palette.background
+        for (theme in Theme.entries) for (background in theme.palette.backgroundsAlongHeight) {
             val isDark = contrast(background, WHITE) > contrast(background, BLACK)
             assertEquals("$theme", theme.isDark, isDark)
         }
