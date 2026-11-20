@@ -37,6 +37,10 @@
     <string name="key_style_rounded">Rounded</string>
     <string name="key_style_square">Square</string>
     <string name="key_style_pill">Pill</string>
+    <string name="key_style_outline">Outline</string>
+    <string name="key_style_raised">Raised</string>
+    <string name="key_style_glass">Glass</string>
+    <string name="key_style_borderless">Borderless</string>
     <string name="theme_light">Light</string>
     <string name="theme_sand">Sand</string>
     <string name="theme_rose">Rose</string>

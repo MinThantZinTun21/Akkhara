@@ -75,6 +75,27 @@ class ThemesTest {
     }
 
     @Test
+    fun `every label is readable in every key style, in every theme`() {
+        for (theme in Theme.entries) {
+            val palette = theme.palette
+            for (style in KeyStyle.entries) {
+                // In a see-through style an action key is drawn in the letter keys' colours.
+                val action = if (style.isSeeThrough) palette.label to palette.key else palette.actionLabel to palette.actionKey
+                val pairs = mapOf(
+                    "label on key" to (palette.label to palette.key),
+                    "hint on key" to (palette.hint to palette.key),
+                    "action label on action key" to action,
+                )
+                for ((name, colours) in pairs) {
+                    val face = style.face(colours.second, palette.background)
+                    val ratio = contrast(colours.first, face)
+                    assertTrue("$theme, $style: $name is %.2f:1, under 4.5:1".format(ratio), ratio >= 4.5)
+                }
+            }
+        }
+    }
+
+    @Test
     fun `the accent stands out from the keyboard's background in every theme`() {
         // Marks that are not text, such as the underline of an emoji tab, need 3:1 (WCAG 1.4.11).
         for (theme in Theme.entries) {

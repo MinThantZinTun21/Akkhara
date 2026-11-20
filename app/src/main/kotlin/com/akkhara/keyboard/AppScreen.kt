@@ -57,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -346,16 +347,19 @@ private fun KeysPreview(palette: Palette, keyStyle: KeyStyle, letters: List<Stri
     ) {
         Row(horizontalArrangement = gap) {
             letters.forEach { letter ->
-                PreviewKey(Color(palette.key), keyStyle, Modifier.weight(1f)) {
+                PreviewKey(Color(palette.key), Color(palette.label), keyStyle, Modifier.weight(1f)) {
                     Text(letter, color = Color(palette.label), fontSize = 13.sp, lineHeight = 16.sp)
                 }
             }
         }
         Row(horizontalArrangement = gap) {
-            PreviewKey(Color(palette.actionKey), keyStyle, Modifier.weight(1f)) {
-                Text("12", color = Color(palette.actionLabel), fontSize = 11.sp, lineHeight = 16.sp)
+            // In a see-through style an action key takes the letter keys' colours, as on the keyboard.
+            val (actionKey, actionLabel) =
+                if (keyStyle.isSeeThrough) palette.key to palette.label else palette.actionKey to palette.actionLabel
+            PreviewKey(Color(actionKey), Color(actionLabel), keyStyle, Modifier.weight(1f)) {
+                Text("12", color = Color(actionLabel), fontSize = 11.sp, lineHeight = 16.sp)
             }
-            PreviewKey(Color(palette.accent), keyStyle, Modifier.weight(1f)) {
+            PreviewKey(Color(palette.accent), Color(palette.onAccent), keyStyle, Modifier.weight(1f), isSolid = true) {
                 Text("\u2713", color = Color(palette.onAccent), fontSize = 11.sp, lineHeight = 16.sp)
             }
         }
@@ -363,13 +367,31 @@ private fun KeysPreview(palette: Palette, keyStyle: KeyStyle, letters: List<Stri
 }
 
 @Composable
-private fun PreviewKey(colour: Color, keyStyle: KeyStyle, modifier: Modifier = Modifier, label: @Composable () -> Unit) {
+private fun PreviewKey(
+    colour: Color,
+    ink: Color,
+    keyStyle: KeyStyle,
+    modifier: Modifier = Modifier,
+    isSolid: Boolean = false,
+    label: @Composable () -> Unit,
+) {
     // A preview key is smaller than a real one, so its corners shrink with it: Rounded keeps the 5 dp it had.
-    val corner = keyStyle.cornerRadius(PREVIEW_KEY_DP, density = 5f / 7f).dp
-    Box(
-        modifier = modifier.height(PREVIEW_KEY_DP.dp).background(colour, RoundedCornerShape(corner)),
-        contentAlignment = Alignment.Center,
-    ) { label() }
+    val shape = RoundedCornerShape(keyStyle.cornerRadius(PREVIEW_KEY_DP, density = 5f / 7f).dp)
+    // Roughly what the keyboard draws for each key style; the keyboard itself is the reference.
+    val look = when {
+        isSolid -> Modifier.background(colour, shape)
+        else -> when (keyStyle) {
+            KeyStyle.Rounded, KeyStyle.Square, KeyStyle.Pill -> Modifier.background(colour, shape)
+            KeyStyle.Raised -> Modifier
+                .background(Color.Black.copy(alpha = 0.3f).compositeOver(colour), shape)
+                .padding(bottom = 2.dp)
+                .background(colour, shape)
+            KeyStyle.Outline -> Modifier.border(1.dp, ink.copy(alpha = 0.5f), shape)
+            KeyStyle.Glass -> Modifier.background(colour.copy(alpha = KeyStyle.GLASS_ALPHA), shape)
+            KeyStyle.Borderless -> Modifier
+        }
+    }
+    Box(modifier = modifier.height(PREVIEW_KEY_DP.dp).then(look), contentAlignment = Alignment.Center) { label() }
 }
 
 /**

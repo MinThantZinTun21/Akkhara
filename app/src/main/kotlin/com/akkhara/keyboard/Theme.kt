@@ -315,7 +315,7 @@ enum class Theme(
             actionKey = 0xFFB9CFC8.toInt(),
             label = 0xFF2B1F12.toInt(),
             actionLabel = 0xFF163F42.toInt(),
-            hint = 0xFF5E5038.toInt(),
+            hint = 0xFF5A4C35.toInt(),
             callout = 0xFFFBF4E8.toInt(),
             accent = 0xFF1F5A5E.toInt(),
             onAccent = 0xFFFFFFFF.toInt(),
