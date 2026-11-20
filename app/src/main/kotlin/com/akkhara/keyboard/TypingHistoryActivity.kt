@@ -29,8 +29,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -135,7 +135,10 @@ private fun TypingHistoryScreen(history: TypingHistoryDatabase, shown: Int) {
                 Text(stringResource(R.string.typing_history_delete_all))
             }
             if (shownEntries.isEmpty()) {
-                Text(stringResource(R.string.typing_history_no_match), style = MaterialTheme.typography.bodyLarge)
+                // While a new search loads, the old result says nothing about it.
+                if (entriesFor == search) {
+                    Text(stringResource(R.string.typing_history_no_match), style = MaterialTheme.typography.bodyLarge)
+                }
                 return@Column
             }
             if (shownEntries.size > TypingHistoryDatabase.PAGE_LIMIT) {
