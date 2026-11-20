@@ -107,6 +107,7 @@ fun AppScreen(
     onImportModel: (Uri, Long) -> Unit,
     onCancelDownload: () -> Unit,
     onRemoveModel: (TranslationModel) -> Unit,
+    onOpenTypingHistory: () -> Unit,
 ) {
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { insets ->
         Column(
@@ -196,6 +197,14 @@ fun AppScreen(
                     settings::translateAsYouType,
                     note = R.string.setting_translate_as_you_type_note,
                 )
+                Toggle(
+                    R.string.setting_remember_typing,
+                    settings::rememberTyping,
+                    note = R.string.setting_remember_typing_note,
+                )
+                TextButton(onClick = onOpenTypingHistory) {
+                    Text(stringResource(R.string.typing_history_open))
+                }
             }
 
             ModelsSection(models, onDownloadModel, onImportModel, onCancelDownload, onRemoveModel)

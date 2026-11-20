@@ -26,6 +26,12 @@
     <string name="key_sound_soft_tap">Soft tap</string>
     <string name="key_sound_bubble">Bubble</string>
     <string name="key_sound_typewriter">Typewriter</string>
+    <string name="setting_remember_typing">Remember what I type</string>
+    <string name="setting_remember_typing_note">Saved only on this phone, for 90 days. Never passwords, private tabs, numbers or codes.</string>
+    <string name="typing_history_open">Typing history</string>
+    <string name="typing_history_title">Typing history</string>
+    <string name="typing_history_note">What the keyboard has kept, newest first. It stays on this phone.</string>
+    <string name="typing_history_empty">Nothing kept yet. Turn on Remember what I type to start.</string>
     <string name="key_sound_glass">Glass</string>
     <string name="key_sound_wood">Wood</string>
     <string name="key_sound_retro">Retro</string>

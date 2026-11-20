@@ -35,6 +35,13 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".TypingHistoryActivity"
+            android:exported="false"
+            android:label="@string/typing_history_title"
+            android:theme="@style/Theme.Akkhara"
+            android:windowSoftInputMode="adjustResize" />
+
         <service
             android:name=".AkkharaImeService"
             android:exported="true"

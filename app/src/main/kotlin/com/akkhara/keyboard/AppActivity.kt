@@ -54,6 +54,7 @@ class AppActivity : ComponentActivity() {
                         translator.unload()
                         models.remove(model)
                     },
+                    onOpenTypingHistory = { startActivity(Intent(this, TypingHistoryActivity::class.java)) },
                 )
             }
         }

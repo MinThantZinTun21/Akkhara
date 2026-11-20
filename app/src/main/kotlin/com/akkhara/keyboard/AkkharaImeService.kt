@@ -7,11 +7,15 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.View
+import android.content.pm.PackageManager
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.WindowCompat
 import com.akkhara.keyboard.engine.Conveniences
 import com.akkhara.keyboard.engine.KeyboardEngine
+import com.akkhara.keyboard.engine.SourceApp
+import com.akkhara.keyboard.engine.TypingHistoryRecorder
 import com.akkhara.keyboard.translation.ServiceTranslator
 import com.akkhara.keyboard.translation.ModelShelf
 import com.akkhara.keyboard.translation.TranslatorClient
@@ -28,6 +32,12 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
 
     /** Stops following key sound changes; holding it also keeps the listener alive. */
     private lateinit var stopWatchingKeySound: () -> Unit
+
+    /** Keeps typing history while the user has it on (ADR 0009). */
+    private lateinit var typingHistory: TypingHistoryRecorder
+
+    /** Stops following the Remember what I type switch; holding it also keeps the listener alive. */
+    private lateinit var stopWatchingRememberTyping: () -> Unit
     private val handler = Handler(Looper.getMainLooper())
 
     /**
@@ -46,6 +56,12 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         translatorClient = TranslatorClient(this)
         keySoundPlayer = KeySoundPlayer(this)
         stopWatchingKeySound = settings.watchKeySound { keySoundPlayer.follow(settings) }
+        typingHistory = TypingHistoryRecorder(TypingHistoryDatabase.get(this), System::currentTimeMillis, ownApp = packageName)
+        typingHistory.isOn = settings.rememberTyping
+        stopWatchingRememberTyping = settings.watchRememberTyping {
+            typingHistory.isOn = settings.rememberTyping
+            readFieldText()
+        }
         engine = KeyboardEngine(
             editor = InputConnectionEditor({ currentInputConnection }, { currentInputEditorInfo }),
             clock = SystemClock::uptimeMillis,
@@ -60,6 +76,8 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         handler.removeCallbacks(typingPaused)
         translatorClient.close()
         stopWatchingKeySound()
+        stopWatchingRememberTyping()
+        typingHistory.leaveField()
         keySoundPlayer.release()
         super.onDestroy()
     }
@@ -116,8 +134,13 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         engine.isGrammarCheckAvailable = models.grammarCheckModel() != null
         engine.translateAsYouType = settings.translateAsYouType
         engine.customPrompts = settings.customPrompts
+        val field = info.toField()
+        typingHistory.isOn = settings.rememberTyping
+        val app = sourceApp(info.packageName)
+        if (app != null) typingHistory.startField(field, app) else typingHistory.leaveField()
+        readFieldText()
         engine.startInput(
-            info.toField(),
+            field,
             Conveniences(
                 capitaliseSentences = settings.capitaliseSentences,
                 doubleSpaceFullStop = settings.doubleSpaceFullStop,
@@ -133,9 +156,38 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        typingHistory.leaveField()
         edit { finishInput() }
         super.onFinishInputView(finishingInput)
     }
+
+    override fun onFinishInput() {
+        typingHistory.leaveField()
+        super.onFinishInput()
+    }
+
+    /** Tells typing history the field's text, read only while it would be saved. */
+    private fun readFieldText() {
+        if (!typingHistory.wantsText) return
+        val request = ExtractedTextRequest().apply { hintMaxChars = TypingHistoryRecorder.MAX_CHARS }
+        val text = currentInputConnection?.getExtractedText(request, 0)?.text ?: return
+        typingHistory.textChanged(text.toString())
+    }
+
+    /** The app a field belongs to, named as the launcher names it, or by its package when that is unknown. */
+    private fun sourceApp(packageName: String?): SourceApp? {
+        val name = packageName ?: return null
+        return appNames.getOrPut(name) {
+            val label = try {
+                packageManager.getApplicationLabel(packageManager.getApplicationInfo(name, 0)).toString()
+            } catch (_: PackageManager.NameNotFoundException) {
+                name
+            }
+            SourceApp(name, label)
+        }
+    }
+
+    private val appNames = mutableMapOf<String, SourceApp>()
 
     override fun onUpdateSelection(
         oldSelStart: Int,
@@ -146,6 +198,7 @@ class AkkharaImeService : InputMethodService(), KeyboardView.Host {
         candidatesEnd: Int,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        readFieldText()
         val shiftBefore = engine.shift
         engine.onCursorMoved()
         if (engine.shift != shiftBefore) keyboardView?.onEngineChanged()

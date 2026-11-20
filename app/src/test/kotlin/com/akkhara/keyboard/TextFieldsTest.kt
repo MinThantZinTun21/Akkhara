@@ -11,10 +11,13 @@ import android.text.InputType.TYPE_NUMBER_FLAG_SIGNED
 import android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
 import android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
 import android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+import android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
 import com.akkhara.keyboard.engine.EnterAction
 import com.akkhara.keyboard.engine.Field
 import com.akkhara.keyboard.engine.FieldKind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TextFieldsTest {
@@ -76,5 +79,11 @@ class TextFieldsTest {
     @Test
     fun `enter shows the field's action`() {
         assertEquals(EnterAction.Done, fieldOf(TYPE_CLASS_NUMBER, IME_ACTION_DONE).enterAction)
+    }
+
+    @Test
+    fun `a field the app marks as private may not be learned from`() {
+        assertTrue(fieldOf(TYPE_CLASS_TEXT, IME_ACTION_DONE).mayLearn)
+        assertFalse(fieldOf(TYPE_CLASS_TEXT, IME_ACTION_DONE or IME_FLAG_NO_PERSONALIZED_LEARNING).mayLearn)
     }
 }

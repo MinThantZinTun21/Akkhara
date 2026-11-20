@@ -42,11 +42,15 @@ sealed interface FieldKind {
 /** What the enter key does in a text field. */
 enum class EnterAction { NewLine, Go, Search, Send, Next, Done }
 
-/** The text field the keyboard is typing into. */
+/**
+ * The text field the keyboard is typing into. [mayLearn] is false when the
+ * app asks keyboards not to learn from it, as an incognito tab does.
+ */
 data class Field(
     val kind: FieldKind = FieldKind.Text,
     val isPassword: Boolean = false,
     val enterAction: EnterAction = EnterAction.NewLine,
+    val mayLearn: Boolean = true,
 )
 
 /** Which of the English conveniences the user has left switched on. */

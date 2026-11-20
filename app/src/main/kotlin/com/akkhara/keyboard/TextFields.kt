@@ -1,5 +1,6 @@
 package com.akkhara.keyboard
 
+import android.annotation.SuppressLint
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import com.akkhara.keyboard.engine.EnterAction
@@ -9,7 +10,12 @@ import com.akkhara.keyboard.engine.FieldKind
 /** Describes Android's text field to the engine. */
 fun EditorInfo.toField(): Field = fieldOf(inputType, imeOptions)
 
-/** Reads a text field's [inputType] and [imeOptions], as Android gives them, into what the engine needs. */
+/**
+ * Reads a text field's [inputType] and [imeOptions], as Android gives them, into what the engine needs.
+ * The private-field flag is from Android 8.0; it is only a bit in [imeOptions], which apps on
+ * older phones never set, so reading it there is harmless.
+ */
+@SuppressLint("InlinedApi")
 fun fieldOf(inputType: Int, imeOptions: Int): Field {
     val inputClass = inputType and InputType.TYPE_MASK_CLASS
     val variation = inputType and InputType.TYPE_MASK_VARIATION
@@ -33,6 +39,7 @@ fun fieldOf(inputType: Int, imeOptions: Int): Field {
         isPassword = (isText && variation in PASSWORD_VARIATIONS) ||
             (isNumber && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD),
         enterAction = enterAction(imeOptions),
+        mayLearn = imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING == 0,
     )
 }
 

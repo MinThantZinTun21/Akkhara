@@ -10,12 +10,13 @@ import kotlin.reflect.KProperty
 
 /**
  * The user's choices, kept on the device. Nothing typed with the keyboard is
- * ever stored here or anywhere else; the prompts are settings the user writes
- * in the app.
+ * ever stored here; the prompts are settings the user writes in the app.
+ * Typing history, when the user turns it on, is kept apart (ADR 0009).
  *
  * The app screen writes these and the keyboard reads them each time it
  * opens; both run in the same process, so a change is seen at once. Key
- * sound is also followed while the keyboard is open ([watchKeySound]).
+ * sound and typing history are also followed while the keyboard is open
+ * ([watchKeySound], [watchRememberTyping]).
  */
 class KeyboardSettings internal constructor(private val preferences: SharedPreferences) {
     constructor(context: Context) : this(context.getSharedPreferences("akkhara", Context.MODE_PRIVATE))
@@ -47,9 +48,20 @@ class KeyboardSettings internal constructor(private val preferences: SharedPrefe
      * until the returned function is called. The open keyboard uses this to
      * sound as the user chose straight away, without waiting to be reopened.
      */
-    fun watchKeySound(onChange: () -> Unit): () -> Unit {
+    fun watchKeySound(onChange: () -> Unit): () -> Unit = watch(KEY_SOUND_KEYS, onChange)
+
+    /**
+     * Off until the user turns it on: while on, the keyboard keeps typing
+     * history on the phone (ADR 0009). See GLOSSARY.md, "Typing history".
+     */
+    var rememberTyping: Boolean by toggle(KEY_REMEMBER_TYPING, default = false)
+
+    /** Calls [onChange] each time [rememberTyping] changes, until the returned function is called, so the open keyboard follows it at once. */
+    fun watchRememberTyping(onChange: () -> Unit): () -> Unit = watch(setOf(KEY_REMEMBER_TYPING), onChange)
+
+    private fun watch(keys: Set<String>, onChange: () -> Unit): () -> Unit {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key in KEY_SOUND_KEYS) onChange()
+            if (key in keys) onChange()
         }
         preferences.registerOnSharedPreferenceChangeListener(listener)
         return { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
@@ -122,6 +134,7 @@ class KeyboardSettings internal constructor(private val preferences: SharedPrefe
         const val KEY_KEY_SOUND_TONE = "key_sound_tone"
         const val KEY_KEY_SOUND_VOLUME = "key_sound_volume"
         val KEY_SOUND_KEYS = setOf(KEY_KEY_SOUND, KEY_KEY_SOUND_TONE, KEY_KEY_SOUND_VOLUME)
+        const val KEY_REMEMBER_TYPING = "remember_typing"
         const val DEFAULT_KEY_SOUND_VOLUME = 30
     }
 }
