@@ -14,7 +14,8 @@ import kotlin.reflect.KProperty
  * in the app.
  *
  * The app screen writes these and the keyboard reads them each time it
- * opens; both run in the same process, so a change is seen at once.
+ * opens; both run in the same process, so a change is seen at once. Key
+ * sound is also followed while the keyboard is open ([watchKeySound]).
  */
 class KeyboardSettings internal constructor(private val preferences: SharedPreferences) {
     constructor(context: Context) : this(context.getSharedPreferences("akkhara", Context.MODE_PRIVATE))
@@ -25,7 +26,7 @@ class KeyboardSettings internal constructor(private val preferences: SharedPrefe
     var doubleSpaceFullStop: Boolean by toggle("double_space_full_stop")
 
     /** Off until the user turns it on, so nobody hears the keyboard who did not ask to. See GLOSSARY.md, "Key sound". */
-    var keySound: Boolean by toggle("key_sound", default = false)
+    var keySound: Boolean by toggle(KEY_KEY_SOUND, default = false)
 
     /** The key sound's tone. */
     var keySoundTone: KeySoundTone
@@ -40,6 +41,19 @@ class KeyboardSettings internal constructor(private val preferences: SharedPrefe
         set(value) {
             preferences.edit { putInt(KEY_KEY_SOUND_VOLUME, value.coerceIn(0, 100)) }
         }
+
+    /**
+     * Calls [onChange] each time key sound, its tone or its volume changes,
+     * until the returned function is called. The open keyboard uses this to
+     * sound as the user chose straight away, without waiting to be reopened.
+     */
+    fun watchKeySound(onChange: () -> Unit): () -> Unit {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key in KEY_SOUND_KEYS) onChange()
+        }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        return { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
 
     /** Off until the user turns it on: each translation keeps the phone busy for a while. */
     var translateAsYouType: Boolean by toggle("translate_as_you_type", default = false)
@@ -104,8 +118,10 @@ class KeyboardSettings internal constructor(private val preferences: SharedPrefe
         const val KEY_INPUT_LANGUAGE = "input_language"
         const val KEY_THEME = "theme"
         const val KEY_KEY_STYLE = "key_style"
+        const val KEY_KEY_SOUND = "key_sound"
         const val KEY_KEY_SOUND_TONE = "key_sound_tone"
         const val KEY_KEY_SOUND_VOLUME = "key_sound_volume"
+        val KEY_SOUND_KEYS = setOf(KEY_KEY_SOUND, KEY_KEY_SOUND_TONE, KEY_KEY_SOUND_VOLUME)
         const val DEFAULT_KEY_SOUND_VOLUME = 30
     }
 }

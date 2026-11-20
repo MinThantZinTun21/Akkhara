@@ -2,9 +2,10 @@ package com.akkhara.keyboard
 
 import android.content.SharedPreferences
 
-/** SharedPreferences kept in a map, for testing settings on the JVM. Edits apply when committed or applied. */
+/** SharedPreferences kept in a map, for testing settings on the JVM. Edits apply when committed or applied, and listeners hear each key that changed. */
 class FakePreferences : SharedPreferences {
     val values = mutableMapOf<String, Any?>()
+    private val listeners = mutableSetOf<SharedPreferences.OnSharedPreferenceChangeListener>()
 
     override fun getAll(): Map<String, *> = values.toMap()
     override fun getString(key: String, defValue: String?): String? = values[key] as String? ?: defValue
@@ -16,8 +17,12 @@ class FakePreferences : SharedPreferences {
     override fun getBoolean(key: String, defValue: Boolean): Boolean = values[key] as Boolean? ?: defValue
     override fun contains(key: String): Boolean = key in values
     override fun edit(): SharedPreferences.Editor = Editor()
-    override fun registerOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) = Unit
-    override fun unregisterOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) = Unit
+    override fun registerOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        listeners += listener
+    }
+    override fun unregisterOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        listeners -= listener
+    }
 
     private inner class Editor : SharedPreferences.Editor {
         private val changes = mutableMapOf<String, Any?>()
@@ -33,9 +38,12 @@ class FakePreferences : SharedPreferences {
         override fun remove(key: String) = apply { removals += key }
         override fun clear() = apply { clearAll = true }
         override fun commit(): Boolean {
+            val before = values.toMap()
             if (clearAll) values.clear()
             removals.forEach(values::remove)
             values.putAll(changes)
+            val changed = (before.keys + values.keys).filter { before[it] != values[it] || (it in before) != (it in values) }
+            changed.forEach { key -> listeners.toList().forEach { it.onSharedPreferenceChanged(this@FakePreferences, key) } }
             return true
         }
         override fun apply() {

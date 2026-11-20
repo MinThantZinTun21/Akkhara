@@ -71,4 +71,21 @@ class KeySoundTest {
         val sounds = KeySoundTone.entries.flatMap { tone -> KeySound.entries.map(tone::fileFor) }
         assertEquals(16, sounds.toSet().size)
     }
+
+    @Test
+    fun `the keyboard hears each key sound change, and no other`() {
+        val settings = KeyboardSettings(FakePreferences())
+        var changes = 0
+        val stop = settings.watchKeySound { changes++ }
+        settings.keySound = true
+        settings.keySoundTone = KeySoundTone.Bubble
+        settings.keySoundVolume = 50
+        assertEquals(3, changes)
+        settings.hapticFeedback = false
+        settings.theme = Theme.entries.first()
+        assertEquals(3, changes)
+        stop()
+        settings.keySoundVolume = 60
+        assertEquals(3, changes)
+    }
 }
